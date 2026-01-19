@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@next/eslint-plugin-next": "^14.2.35",
     "@react-oauth/google": "^0.13.4",
     "@supabase/supabase-js": "^2.38.4",
     "@types/node": "^20.8.0",
@@ -17,7 +18,7 @@
     "autoprefixer": "^10.4.16",
     "lucide-react": "^0.294.0",
     "midtrans-client": "^1.4.3",
-    "next": "^14.0.0",
+    "next": "^14.2.35",
     "postcss": "^8.4.31",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -26,6 +27,9 @@
   },
   "devDependencies": {
     "eslint": "^8.51.0",
-    "eslint-config-next": "^14.0.0"
+    "eslint-config-next": "^14.2.35"
+  },
+  "overrides": {
+    "glob": "^10.4.6"
   }
 }
