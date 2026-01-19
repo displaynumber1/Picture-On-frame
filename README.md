@@ -124,5 +124,34 @@ Frontend akan berjalan di `http://localhost:3000`
 - Window.aistudio interface adalah optional untuk integrasi dengan extension/plugin tertentu.
 - Pastikan `SUPABASE_URL` dan `SUPABASE_SERVICE_KEY` sudah di-set sebelum menjalankan backend.
 
+## Deploy (Vercel + Railway)
+
+### Backend (Railway)
+1. Buat project baru di Railway → Deploy from GitHub.
+2. Pilih repo ini dan set Root Directory ke `backend`.
+3. Set Environment Variables:
+```
+SUPABASE_URL=your_supabase_url
+SUPABASE_SERVICE_KEY=your_supabase_service_role_key
+GOOGLE_CLIENT_ID=your_google_client_id
+GEMINI_API_KEY=your_gemini_api_key
+BOOTSTRAP_ADMIN_ENABLED=true
+BOOTSTRAP_ADMIN_EMAILS=admin1@email.com,admin2@email.com
+```
+4. Set Start Command:
+```
+uvicorn main:app --host 0.0.0.0 --port $PORT
+```
+5. Deploy dan catat URL backend (HTTPS).
+
+### Frontend (Vercel)
+1. Import repo di Vercel dan set Root Directory ke `frontend`.
+2. Set Environment Variables:
+```
+NEXT_PUBLIC_API_URL=https://your-railway-backend-url
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id
+```
+3. Build & Deploy.
+
 
 
