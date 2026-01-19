@@ -1,0 +1,91 @@
+==========================================
+DIAGNOSIS: PAYLOAD YANG DIKIRIM KE FAL.AI
+==========================================
+
+❌ MASALAH DITEMUKAN:
+Dari log terakhir (2026-01-11T03:17:59), payload yang dikirim ke Fal.ai TIDAK mengandung image_url!
+
+PAYLOAD YANG DIKIRIM (SAAT INI - SALAH):
+{
+  "model": "fal-ai/flux/schnell",
+  "prompt": "A Woman model, for Fashion, in Mirror selfie using iPhone pose...",
+  "num_inference_steps": 7,
+  "guidance_scale": 3.5,
+  "image_size": "square_hd"  ← ❌ INI TEXT-TO-IMAGE, BUKAN IMAGE-TO-IMAGE!
+}
+
+MASALAH:
+- ❌ TIDAK ADA "image_url" parameter
+- ❌ TIDAK ADA "strength" parameter
+- ❌ Menggunakan "image_size" (ini untuk text-to-image saja)
+- ❌ Mode: text-to-image (bukan image-to-image)
+
+PAYLOAD YANG SEHARUSNYA (JIKA ADA IMAGE):
+{
+  "model": "fal-ai/flux/schnell",
+  "prompt": "A Woman model, for Fashion, in Mirror selfie using iPhone pose...",
+  "image_url": "https://...supabase.co/storage/v1/object/public/public/user_id/uuid.jpg",  ← ✅ HARUS ADA
+  "num_inference_steps": 7,
+  "guidance_scale": 3.5,
+  "strength": 0.65  ← ✅ HARUS ADA untuk image-to-image
+}
+
+==========================================
+ROOT CAUSE:
+==========================================
+
+1. ❌ init_image_url adalah None
+   - Backend tidak menerima image dari frontend
+   - Atau upload ke Supabase Storage gagal
+   - Atau kondisi untuk set init_image_url tidak terpenuhi
+
+2. ❌ Frontend mungkin tidak mengirim image dengan benar
+   - Cek apakah frontend mengirim product_images, face_image, atau background_image
+   - Cek format request (JSON atau multipart/form-data)
+
+3. ❌ Upload ke Supabase Storage mungkin gagal
+   - Cek log backend untuk error upload
+   - Cek apakah bucket "public" sudah dibuat di Supabase
+   - Cek apakah bucket "public" set sebagai public
+
+==========================================
+SOLUSI:
+==========================================
+
+STEP 1: Cek Log Backend untuk Upload Image
+Cari log ini di terminal backend:
+- "📤 Uploading image to Supabase Storage" → HARUS ADA
+- "✅ Image uploaded successfully" → HARUS ADA
+- "Public URL: https://..." → HARUS ADA
+
+Jika TIDAK ADA log ini, berarti image tidak ter-upload.
+
+STEP 2: Cek Apakah Frontend Mengirim Image
+Buka Browser Dev Tools > Network tab:
+- Cari request ke `/api/generate-image`
+- Lihat Request Payload
+- Cek apakah ada "product_images", "face_image", atau "background_image"
+
+STEP 3: Cek Supabase Storage
+- Buka Supabase Dashboard > Storage
+- Cek apakah bucket "public" sudah dibuat
+- Cek apakah bucket "public" set sebagai public (Public bucket)
+- Cek apakah ada file di bucket
+
+STEP 4: Generate Batch Lagi dan Copy Log Lengkap
+Setelah generate batch lagi, copy SEMUA log dari terminal backend:
+- Log upload image (jika ada)
+- Log "Init image URL: YES/NO"
+- Log "FULL REQUEST PAYLOAD ke Fal.ai"
+- Log error (jika ada)
+
+==========================================
+ACTION REQUIRED:
+==========================================
+
+1. ✅ Saya sudah tambahkan logging lengkap untuk payload ke Fal.ai
+2. ✅ Saya sudah update debug_prompt_log.py untuk save image_url
+3. ⏳ USER: Generate batch lagi dan share log lengkap dari terminal backend
+4. ⏳ USER: Cek apakah image benar-benar ter-upload ke Supabase Storage
+
+Silakan generate batch lagi dan share log lengkap untuk diagnosis lebih detail!

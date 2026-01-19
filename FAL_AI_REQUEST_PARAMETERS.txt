@@ -1,0 +1,444 @@
+================================================================================
+PARAMETER YANG DIKIRIM DARI BACKEND KE FAL.AI UNTUK GENERATE BATCH
+================================================================================
+
+📅 Tanggal Generate: [Tanggal generate batch terakhir Anda]
+🎯 Endpoint Fal.ai: https://fal.run/fal-ai/flux/schnell
+🔒 Model: fal-ai/flux/schnell (LOCKED - Terkunci untuk kecepatan dan biaya optimal)
+⚡ Kecepatan: < 2 detik per image
+💰 Biaya: Minimal (num_inference_steps: 4)
+
+================================================================================
+1. HTTP REQUEST DETAILS
+================================================================================
+
+Method: POST
+URL: https://fal.run/fal-ai/flux/schnell
+Headers:
+  - Authorization: Key {FAL_KEY}
+    Format: "Key fb2e630a-8d36-4641-a4cc-804997d229fe:55f0fbbd1e990396fcef92ce958b4cdc"
+  - Content-Type: application/json
+
+================================================================================
+2. REQUEST BODY (JSON)
+================================================================================
+
+{
+  "prompt": "[PROMPT TEXT DARI buildPromptFromOptions]",
+  "image_size": "square_hd",
+  "num_inference_steps": 4,
+  "guidance_scale": 3.5
+}
+
+================================================================================
+3. DETAIL PARAMETER
+================================================================================
+
+3.1. PROMPT (String)
+────────────────────────────────────────────────────────────────────────────
+Description: Text prompt yang digunakan untuk generate image
+Source: Dihasilkan dari buildPromptFromOptions(state.options) di frontend
+Format: String dalam bahasa Inggris (otomatis di-translate dari Indonesia)
+Length: Variable (tergantung options yang dipilih)
+
+Contoh Prompt Structure:
+"A [MODEL_TYPE] model for [CATEGORY] in [POSE] pose, with [BACKGROUND] background, 
+in [STYLE] style, with [LIGHTING] lighting, shot from [CAMERA_ANGLE] angle, 
+in [ASPECT_RATIO] aspect ratio, photorealistic resolusi HD"
+
+Cara Prompt Dibangun (buildPromptFromOptions):
+
+1. Content Type & Model:
+   - Jika "Model": "A {MODEL_TYPE} model"
+   - Jika "Non Model": "Product photography"
+
+2. Category:
+   - "for {CATEGORY}"
+
+3. Pose:
+   - "in {POSE} pose" (jika ada pose)
+   - Atau "in {CUSTOM_POSE_PROMPT} pose" (jika custom)
+
+4. Background:
+   - "with {BACKGROUND} background" (jika ada background)
+   - Atau "with {CUSTOM_BACKGROUND_PROMPT} background" (jika custom)
+
+5. Style:
+   - "in {STYLE} style" (jika ada style)
+   - Atau "in {CUSTOM_STYLE_PROMPT} style" (jika custom)
+
+6. Lighting:
+   - "with {LIGHTING} lighting" (jika ada lighting)
+   - Atau "with {CUSTOM_LIGHTING_PROMPT} lighting" (jika custom)
+
+7. Camera Angle:
+   - "shot from {CAMERA_ANGLE} angle"
+
+8. Aspect Ratio:
+   - "in {ASPECT_RATIO} aspect ratio"
+
+9. Additional Prompt:
+   - Ditambahkan langsung jika ada
+
+10. Quality Keywords:
+    - "photorealistic resolusi HD" (selalu ditambahkan di akhir)
+
+Semua parts digabung dengan koma: parts.join(', ')
+
+
+Contoh Prompt Lengkap (dengan semua options terisi):
+────────────────────────────────────────────────────────────────────────────
+"A Woman model for Fashion in Standing casually holding product pose, 
+with Studio background, in Studio Clean style, with Natural Daylight lighting, 
+shot from Eye-Level angle, in 3:4 aspect ratio, photorealistic resolusi HD"
+────────────────────────────────────────────────────────────────────────────
+
+Contoh Prompt Minimal (hanya required fields):
+────────────────────────────────────────────────────────────────────────────
+"A Woman model for Fashion, photorealistic resolusi HD"
+────────────────────────────────────────────────────────────────────────────
+
+
+Translation Mapping (Indonesian → English):
+────────────────────────────────────────────────────────────────────────────
+Model Type:
+  "Wanita" → "Woman"
+  "Pria" → "Man"
+  "Anak LakiLaki" → "Boy"
+  "Anak Perempuan" → "Girl"
+  "Hewan" → "Animal"
+  "Cartoon" → "Cartoon"
+
+Category:
+  "Fashion" → "Fashion" (sudah English)
+  "Beauty" → "Beauty" (sudah English)
+  "Tas" → "Bag"
+  "Sandal/Sepatu" → "Sandals/Shoes"
+  "Aksesoris" → "Accessories"
+  "Home Living" → "Home Living" (sudah English)
+  "Food & Beverage" → "Food & Beverage" (sudah English)
+
+Pose (contoh):
+  "Berdiri santai memegang produk" → "Standing casually holding product"
+  "Duduk sambil memegang produk" → "Sitting while holding product"
+  "Tatap kamera dengan senyum" → "Looking at camera with smile"
+  "Half body dengan ekspresi percaya diri" → "Half body with confident expression"
+
+Background:
+  "Studio" → "Studio" (sudah English)
+  "Kamar Aesthetic Women" → "Aesthetic Women's Room"
+  "Kamar Aesthetic Men" → "Aesthetic Men's Room"
+  "Minimalis" → "Minimalist"
+  "Jalan" → "Street"
+
+Style:
+  "Studio Clean" → "Studio Clean" (sudah English)
+  "Lifestyle" → "Lifestyle" (sudah English)
+  "Editorial" → "Editorial" (sudah English)
+  Kebanyakan style options sudah dalam bahasa Inggris
+
+Lighting:
+  "Natural Daylight" → "Natural Daylight" (sudah English)
+  "Golden Hour" → "Golden Hour" (sudah English)
+  Kebanyakan lighting options sudah dalam bahasa Inggris
+
+Camera Angle:
+  "Eye-Level" → "Eye-Level" (sudah English)
+  "45° Angle" → "45° Angle" (sudah English)
+  Kebanyakan camera angle options sudah dalam bahasa Inggris
+
+Aspect Ratio:
+  "3:4" → "3:4" (format tetap, tidak perlu translate)
+  "1:1" → "1:1"
+  "16:9" → "16:9"
+────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────
+
+3.2. IMAGE_SIZE (String) - LOCKED
+────────────────────────────────────────────────────────────────────────────
+Value: "square_hd"
+Type: String (Constant)
+Status: LOCKED - Tidak bisa diubah
+Description: Ukuran gambar yang di-generate (square HD format)
+Alternatives (jika model mendukung):
+  - "square_hd" (default, current)
+  - "landscape_4_3"
+  - "portrait_4_3"
+  - "landscape_16_9"
+  - "portrait_16_9"
+Note: Saat ini terkunci ke "square_hd" untuk konsistensi
+
+────────────────────────────────────────────────────────────────────────────
+
+3.3. NUM_INFERENCE_STEPS (Integer) - LOCKED ⚠️
+────────────────────────────────────────────────────────────────────────────
+Value: 4
+Type: Integer
+Status: LOCKED - HARUS 4 (Tidak boleh diubah!)
+Reason: 
+  - Kecepatan maksimal (< 2 detik per image)
+  - Biaya minimal per generate
+  - Optimal untuk model flux/schnell
+Validation: Runtime validation akan raise error jika != 4
+
+Possible Values (TIDAK DISARANKAN):
+  - 4: Minimal, cepat, murah ✅ CURRENT
+  - 8: Sedang, ~3s, lebih mahal ❌
+  - 28: Standard flux, ~15s, sangat mahal ❌
+  - 50: High quality, ~30s, sangat mahal ❌
+
+Cost Impact:
+  - 4 steps: $0.001 per image ✅
+  - 8 steps: $0.002 per image (2x lebih mahal)
+  - 28 steps: $0.010 per image (10x lebih mahal)
+
+────────────────────────────────────────────────────────────────────────────
+
+3.4. GUIDANCE_SCALE (Float) - LOCKED
+────────────────────────────────────────────────────────────────────────────
+Value: 3.5
+Type: Float
+Status: LOCKED - Optimal untuk flux/schnell dengan 4 steps
+Description: Control how closely the model follows the prompt
+Range: Typically 1.0 - 20.0
+Current: 3.5 (optimal untuk fast generation dengan 4 steps)
+
+Impact:
+  - Lower (1-3): More creative, less prompt following
+  - Current (3.5): Balanced for fast generation ✅
+  - Higher (5-10): More prompt following, slower generation
+
+────────────────────────────────────────────────────────────────────────────
+
+================================================================================
+4. CONFIGURATION CONSTANTS (BACKEND)
+================================================================================
+
+File: backend/fal_service.py
+
+Constants yang digunakan:
+  FAL_API_BASE = "https://fal.run"
+  FAL_MODEL_ENDPOINT = "fal-ai/flux/schnell"  # LOCKED
+  FAL_NUM_INFERENCE_STEPS = 4  # LOCKED
+  FAL_GUIDANCE_SCALE = 3.5  # LOCKED
+  FAL_IMAGE_SIZE = "square_hd"  # LOCKED
+
+Full URL:
+  https://fal.run/fal-ai/flux/schnell
+
+================================================================================
+5. ALUR GENERATE BATCH
+================================================================================
+
+Step 1: Frontend (App.tsx)
+  - User klik "Generate Batch (3)"
+  - buildPromptFromOptions(state.options) → Generate prompt string
+  - Call generateImagesWithFal(basePrompt, 3)
+
+Step 2: Frontend Service (falService.ts)
+  - generateImagesWithFal() memanggil backend endpoint
+  - POST /api/generate-image dengan body: {"prompt": basePrompt}
+
+Step 3: Backend API (main.py)
+  - Endpoint: /api/generate-image
+  - Menerima request: GenerateImageRequest { prompt: str }
+  - Call: fal_generate_images(request.prompt, num_images=2)
+
+Step 4: Fal Service (fal_service.py)
+  - generate_images(prompt, num_images=2)
+  - Loop 2 kali (untuk 2 images per batch)
+  - Untuk setiap image:
+      POST https://fal.run/fal-ai/flux/schnell
+      Body: {
+        "prompt": prompt,  # Dari request
+        "image_size": "square_hd",  # LOCKED
+        "num_inference_steps": 4,  # LOCKED
+        "guidance_scale": 3.5  # LOCKED
+      }
+
+Step 5: Fal.ai API
+  - Process request dengan parameter di atas
+  - Return image URL(s)
+
+Step 6: Backend Response
+  - Return: {
+      "images": [url1, url2],
+      "remaining_coins": X
+    }
+
+Step 7: Frontend
+  - Receive images
+  - Display di UI
+  - Update remaining_coins jika diperlukan
+
+================================================================================
+6. CONTOH REQUEST YANG DIKIRIM KE FAL.AI
+================================================================================
+
+Request untuk Image 1:
+────────────────────────────────────────────────────────────────────────────
+POST https://fal.run/fal-ai/flux/schnell
+Headers:
+  Authorization: Key fb2e630a-8d36-4641-a4cc-804997d229fe:55f0fbbd1e990396fcef92ce958b4cdc
+  Content-Type: application/json
+
+Body (JSON):
+{
+  "prompt": "A Woman model for Fashion in Standing casually holding product pose, with Studio background, in Studio Clean style, with Natural Daylight lighting, shot from Eye-Level angle, in 3:4 aspect ratio, photorealistic resolusi HD",
+  "image_size": "square_hd",
+  "num_inference_steps": 4,
+  "guidance_scale": 3.5
+}
+
+cURL Command (untuk test manual):
+curl -X POST https://fal.run/fal-ai/flux/schnell \
+  -H "Authorization: Key fb2e630a-8d36-4641-a4cc-804997d229fe:55f0fbbd1e990396fcef92ce958b4cdc" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "A Woman model for Fashion in Standing casually holding product pose, with Studio background, in Studio Clean style, with Natural Daylight lighting, shot from Eye-Level angle, in 3:4 aspect ratio, photorealistic resolusi HD",
+    "image_size": "square_hd",
+    "num_inference_steps": 4,
+    "guidance_scale": 3.5
+  }'
+────────────────────────────────────────────────────────────────────────────
+
+Request untuk Image 2:
+────────────────────────────────────────────────────────────────────────────
+POST https://fal.run/fal-ai/flux/schnell
+Headers:
+  Authorization: Key fb2e630a-8d36-4641-a4cc-804997d229fe:55f0fbbd1e990396fcef92ce958b4cdc
+  Content-Type: application/json
+
+Body (JSON):
+{
+  "prompt": "A Woman model for Fashion in Standing casually holding product pose, with Studio background, in Studio Clean style, with Natural Daylight lighting, shot from Eye-Level angle, in 3:4 aspect ratio, photorealistic resolusi HD",
+  "image_size": "square_hd",
+  "num_inference_steps": 4,
+  "guidance_scale": 3.5
+}
+────────────────────────────────────────────────────────────────────────────
+
+Note: Prompt sama untuk kedua image (variasi dihasilkan oleh model itu sendiri dengan random seed)
+
+================================================================================
+7. PARAMETER YANG TIDAK DIGUNAKAN (Tapi Available di Fal.ai)
+================================================================================
+
+Parameter berikut TIDAK dikirim (default dari Fal.ai):
+  - seed: Random seed (default: random)
+  - num_images: Number of images per request (default: 1, kita loop manual)
+  - safety_tolerance: Safety filter level (default: Fal.ai default)
+  - enable_safety_checker: Enable/disable safety checker (default: enabled)
+  - format: Image format (default: jpg/webp)
+  - return_url: Return type (default: URL)
+
+Alasan tidak digunakan:
+  - Model flux/schnell mungkin tidak support semua parameter
+  - Default Fal.ai sudah optimal untuk use case kita
+  - Fokus pada kecepatan dan biaya minimal
+
+================================================================================
+8. COST CALCULATION PER GENERATE BATCH
+================================================================================
+
+Generate Batch (3 images):
+  - 2 requests ke Fal.ai (masing-masing generate 2 images)
+  - Request 1: Generate 2 images → Cost: ~$0.002
+  - Request 2: Generate 1 image (total perlu 3) → Cost: ~$0.001
+  - Total Cost: ~$0.003 per batch (3 images)
+  
+  Note: Backend mengurangi 1 coin dari user, bukan berdasarkan actual Fal.ai cost
+
+Coins Deducted: 1 coin per batch (bukan per image)
+
+================================================================================
+9. RESPONSE FORMAT DARI FAL.AI
+================================================================================
+
+Success Response (200 OK):
+{
+  "images": [
+    {
+      "url": "https://fal-ai-storage.s3.amazonaws.com/...",
+      "content_type": "image/jpeg",
+      "file_name": "...",
+      "file_size": 123456
+    }
+  ],
+  "seed": 12345,
+  "has_nsfw_concepts": false,
+  "nsfw_score": 0.01
+}
+
+Atau format async (jika polling):
+{
+  "request_id": "abc123...",
+  "status": "IN_PROGRESS"
+}
+
+Response yang kita ekstrak:
+  - image_url dari "images[0].url" atau "image.url" atau "url"
+
+================================================================================
+10. VALIDATION & SECURITY
+================================================================================
+
+Runtime Validation (backend/fal_service.py line 57-61):
+  ✅ Check FAL_MODEL_ENDPOINT == "fal-ai/flux/schnell"
+  ✅ Check FAL_NUM_INFERENCE_STEPS == 4
+  ✅ Raise ValueError jika tidak sesuai
+
+Error Handling:
+  ✅ 401 Unauthorized: FAL_KEY invalid
+  ✅ 403 Forbidden: API key tidak punya permission atau model tidak tersedia
+  ✅ 500 Server Error: Fal.ai internal error
+  ✅ Timeout: 180 seconds per request
+
+Security:
+  ✅ FAL_KEY tidak pernah di-expose ke frontend
+  ✅ FAL_KEY hanya digunakan di backend
+  ✅ Request ke Fal.ai dari backend (server-to-server)
+
+================================================================================
+11. LOGGING & DEBUGGING
+================================================================================
+
+Log yang di-generate:
+  - INFO: "Generating images for user {user_id} using Fal.ai flux/schnell. Current coins: X"
+  - DEBUG: "Fal.ai API response for image {i+1}: {result}"
+  - INFO: "✅ Generated image {i+1}/{num_images} from Fal.ai: {url}..."
+  - INFO: "Successfully generated {len(images)}/{num_images} images from Fal.ai"
+  - INFO: "Images generated successfully. Reducing coins by 1 for user {user_id}"
+  - INFO: "Coins deducted. Remaining coins for user {user_id}: X"
+
+Untuk debugging, cek log backend untuk melihat:
+  - Prompt yang dikirim
+  - Response dari Fal.ai
+  - Error detail jika terjadi
+
+================================================================================
+12. SUMMARY - PARAMETER LENGKAP
+================================================================================
+
+Endpoint: https://fal.run/fal-ai/flux/schnell
+Method: POST
+Headers:
+  - Authorization: Key {FAL_KEY}
+  - Content-Type: application/json
+
+Request Body (JSON):
+{
+  "prompt": "[PROMPT DARI buildPromptFromOptions - String, Variable length]",
+  "image_size": "square_hd",  // LOCKED - Constant
+  "num_inference_steps": 4,   // LOCKED - Must be 4
+  "guidance_scale": 3.5       // LOCKED - Optimal value
+}
+
+Total Parameters: 4
+  - 1 Dynamic (prompt) - Berubah setiap request
+  - 3 Locked Constants - Tidak bisa diubah
+
+================================================================================
+END OF DOCUMENT
+================================================================================

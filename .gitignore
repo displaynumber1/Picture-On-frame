@@ -23,10 +23,13 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
 # local env files
-.env*.local
 .env
+.env.*
+.env*.local
+config.env
 
 # vercel
 .vercel
@@ -34,3 +37,40 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite
+*.sqlite3
+venv/
+
+# Node
+node_modules/
+**/node_modules/
+
+# Build / temp / logs
+dist/
+build/
+.cache/
+*.log
+backend/temp_videos/
+backend/last_prompt_debug.json
+backend/prompt_log.json
+backend/premium_studio.db
+
+# Assets & large binaries
+ffmpeg/
+ffmpeg.zip
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.exe
+
+# Local files
+base64.txt
+produk.jpg

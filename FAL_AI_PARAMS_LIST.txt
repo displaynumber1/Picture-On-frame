@@ -1,0 +1,43 @@
+Listing parameter untuk Fal.ai
+
+1) fal-ai/flux-2/lora/edit (image-to-image)
+Parameter kunci dari UI:
+- Tipe Konten (contentType)
+- Model Type
+- Kategori Produk
+- Pose
+- Interaksi (tangan/kaki/tanpa interaksi)
+- Background
+- Style
+- Lighting
+- Aspect Ratio
+- Sudut Pandang (cameraAngle)
+- Background Color (opsional)
+
+Parameter teknis yang dikirim ke endpoint:
+- prompt
+- negative_prompt
+- image_strength (default 0.67)
+- num_inference_steps (default 24)
+- guidance_scale (default 4.5)
+- aspect_ratio
+- product_images[] (array)
+- face_image (opsional)
+- background_image (opsional)
+- reference_image (legacy)
+
+2) fal-ai/kling-video/v2.1/standard/image-to-video
+Parameter kunci dari UI (untuk prompt):
+- Tipe Konten
+- Kategori Produk
+- Pose Pilihan
+- Interaksi
+- Kamera
+- Background
+- Aspect Ratio
+
+Parameter teknis yang dikirim ke endpoint:
+- prompt (dibentuk dari parameter kunci)
+- image_url
+- duration (default 5)
+- aspect_ratio (default 9:16)
