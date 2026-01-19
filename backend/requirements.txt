@@ -12,7 +12,7 @@ supabase>=2.0.0
 python-jose[cryptography]>=3.3.0
 Pillow>=10.0.0
 opencv-python-headless>=4.8.0
-mediapipe==0.10.14
+mediapipe==0.10.31
 webrtcvad>=2.0.10
 
 
