@@ -6,7 +6,6 @@ export const BACKGROUND_OPTIONS = [
   "Dinding, Karpet & Standing Lampu",
   "Minimalis",
   "Jalan",
-  "Warna (Custom)",
   "Meja Aesthetic",
   "Karpet",
   "Gorden",

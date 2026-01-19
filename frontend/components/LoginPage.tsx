@@ -209,13 +209,6 @@ const LoginPage: React.FC = () => {
         : null
     },
     {
-      label: 'TikTok',
-      icon: TikTokIcon,
-      href: shareUrl
-        ? `https://www.tiktok.com/share?url=${encodeURIComponent(shareUrl)}`
-        : null
-    },
-    {
       label: 'Instagram',
       icon: Instagram,
       href: shareUrl
@@ -260,27 +253,28 @@ const LoginPage: React.FC = () => {
       </div>
 
       {/* Login Card - positioned above background */}
-      <div className="relative z-10 w-full max-w-md p-10">
+      <div className="relative z-10 w-full max-w-md px-5 py-10 sm:px-8">
         <div
-          className="bg-white/20 backdrop-blur-xl rounded-3xl border border-white/30 shadow-2xl p-8 md:p-10"
-          style={{ paddingBottom: '1cm' }}
+          className="bg-white/20 backdrop-blur-xl rounded-3xl border border-white/30 shadow-2xl p-6 sm:p-8 md:p-10"
         >
           {/* Header */}
-          <div className="flex items-center justify-center gap-2 mb-6">
-            <Sparkles size={12} className="text-purple-300 animate-blink" />
-            <span className="text-[9px] font-bold tracking-[0.5em] uppercase text-white">PREMIUM AI STUDIO</span>
-            <Sparkles size={12} className="text-pink-300 animate-blink" />
+          <div className="flex items-center justify-center gap-2 mb-5">
+            <Sparkles size={10} className="text-purple-300 animate-blink" />
+            <span className="text-[8px] sm:text-[9px] font-bold tracking-[0.35em] sm:tracking-[0.5em] uppercase text-white">
+              PREMIUM AI STUDIO
+            </span>
+            <Sparkles size={10} className="text-pink-300 animate-blink" />
           </div>
 
           {/* Main Title */}
-          <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight mb-2 text-center title-serif drop-shadow-2xl">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight mb-2 text-center title-serif drop-shadow-2xl">
             <span className="text-white">Picture</span>{' '}
             <span className="text-[#ec4899] italic">on</span>{' '}
             <span className="text-white">Frame</span>
           </h1>
 
           {/* Subtitle */}
-          <div className="text-[10px] uppercase tracking-[1em] font-medium text-white/70 mb-8 text-center">
+          <div className="text-[9px] sm:text-[10px] uppercase tracking-[0.6em] sm:tracking-[1em] font-medium text-white/70 mb-6 sm:mb-8 text-center">
             BY <span className="text-white">SLSTARI</span>
           </div>
 
@@ -308,10 +302,10 @@ const LoginPage: React.FC = () => {
           <button
             onClick={handleGoogleLogin}
             disabled={isLoading || !process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}
-            className="w-full py-4 bg-white text-gray-700 rounded-2xl flex justify-center items-center gap-3 shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed font-medium border border-white"
+            className="w-full py-3.5 sm:py-4 bg-white text-gray-700 rounded-2xl flex justify-center items-center gap-3 shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed font-medium border border-white text-sm sm:text-base"
           >
             {/* Google Logo SVG */}
-            <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                 fill="#4285F4"
@@ -335,16 +329,16 @@ const LoginPage: React.FC = () => {
           {/* Hubungi Kami Button */}
           <button
             onClick={handleContactUs}
-            className="w-full py-4 bg-white/10 border-2 border-white text-white hover:text-white rounded-2xl flex justify-center items-center gap-3 shadow-lg hover:bg-white/20 hover:shadow-xl hover:shadow-white/20 transition-all duration-300 font-medium mt-3 cursor-pointer"
+            className="w-full py-3.5 sm:py-4 bg-white/10 border-2 border-white text-white hover:text-white rounded-2xl flex justify-center items-center gap-3 shadow-lg hover:bg-white/20 hover:shadow-xl hover:shadow-white/20 transition-all duration-300 font-medium mt-3 cursor-pointer text-sm sm:text-base"
             style={{ fontFamily: 'Inter, sans-serif' }}
           >
             <span>Hubungi Kami</span>
           </button>
 
-          <div className="mt-6 flex flex-col items-center" style={{ marginTop: '1cm' }}>
+          <div className="mt-5 sm:mt-6 flex flex-col items-center">
             <button
               onClick={handleShare}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/25 border border-white/30 text-white font-semibold text-sm hover:bg-white/35 transition-all duration-300"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/25 border border-white/30 text-white font-semibold text-xs sm:text-sm hover:bg-white/35 transition-all duration-300"
             >
               <Share2 size={16} />
               Share

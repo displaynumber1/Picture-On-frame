@@ -357,15 +357,15 @@ const DashboardView: React.FC<{
   return (
     <div className="min-h-screen bg-slate-100">
       <div className="bg-white border-b border-slate-200">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-black text-[10px] tracking-wider">
               PRO
             </div>
             <span className="text-lg font-bold text-slate-800">AI Auto-Posting</span>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+            <div className="flex flex-wrap items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden flex items-center justify-center text-[10px] font-bold text-slate-600">
                 {avatarUrl ? (
                   <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover" />
@@ -382,24 +382,26 @@ const DashboardView: React.FC<{
                 </span>
               )}
             </div>
-            <button
-              onClick={onBack}
-              className="px-4 py-2 rounded-full bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition"
-            >
-              Back to Studio
-            </button>
-            <button
-              onClick={onLogout}
-              className="px-4 py-2 rounded-full bg-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-300 transition"
-            >
-              Logout
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={onBack}
+                className="px-4 py-2 rounded-full bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition"
+              >
+                Back to Studio
+              </button>
+              <button
+                onClick={onLogout}
+                className="px-4 py-2 rounded-full bg-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-300 transition"
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-6 py-8 space-y-6">
-        <div className="bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl p-6 text-white flex items-center justify-between shadow-lg">
+        <div className="bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl p-6 text-white flex flex-col gap-4 md:flex-row md:items-center md:justify-between shadow-lg">
           <div>
             <h2 className="text-xl font-bold">Upload Video</h2>
             <p className="text-sm text-white/80">Boost video kamu biar engagement postingan makin naik 🚀</p>
@@ -407,7 +409,7 @@ const DashboardView: React.FC<{
               Biaya upload: 90 coins
             </span>
           </div>
-          <div className="relative flex items-center gap-2">
+          <div className="relative flex flex-wrap items-center gap-2">
             <button
               onClick={() => setShowUploadInfo((prev) => !prev)}
               className="flex items-center gap-1 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-xs font-semibold"
@@ -423,7 +425,7 @@ const DashboardView: React.FC<{
               Upload Video
             </button>
             {showUploadInfo && (
-              <div className="absolute right-0 top-full mt-2 w-72 rounded-lg border border-white/20 bg-white p-3 text-[11px] text-slate-700 shadow-lg">
+              <div className="absolute left-0 top-full mt-2 w-72 rounded-lg border border-white/20 bg-white p-3 text-[11px] text-slate-700 shadow-lg">
                 <div className="font-semibold text-slate-800 mb-2">Info Penting</div>
                 <ul className="list-disc pl-4 space-y-1">
                   <li>Upload video minimal HD 720p (recommended 1080p atau di atasnya).</li>
@@ -461,7 +463,7 @@ const DashboardView: React.FC<{
         </div>
 
         <div className="bg-white rounded-2xl shadow-md border border-slate-200 p-5">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4">
             <div>
               <h3 className="text-sm font-semibold text-slate-700">Trend CSV</h3>
               <p className="text-xs text-slate-500">
@@ -481,7 +483,7 @@ const DashboardView: React.FC<{
                 <div className="mt-1">Kami tidak memerlukan DM, Dompet, atau data sensitif lainnya.</div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={onDownloadTemplate}
                 className="px-3 py-1.5 text-xs rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -1329,10 +1331,28 @@ export default function App() {
       if (profile?.avatar_url !== undefined) {
         setAvatarUrl(profile.avatar_url || null);
       }
-      if (!profile?.display_name) {
+      if (!profile?.display_name || !profile?.avatar_url) {
         const user = await supabaseService.getCurrentUser();
-        const fallbackName = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email || 'User';
-        setDisplayName(fallbackName);
+        if (!profile?.display_name) {
+          const fallbackName = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email || 'User';
+          setDisplayName(fallbackName);
+        }
+        if (!profile?.avatar_url) {
+          const fallbackAvatar = user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
+          if (fallbackAvatar) {
+            setAvatarUrl(fallbackAvatar);
+            if (user?.id) {
+              try {
+                await supabaseService.supabase
+                  .from('profiles')
+                  .update({ avatar_url: fallbackAvatar })
+                  .eq('user_id', user.id);
+              } catch {
+                // ignore avatar persistence errors
+              }
+            }
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching coins balance:', error);
