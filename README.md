@@ -22,7 +22,7 @@ project-gemini-ai/
 └── config.env        # Environment variables
 ```
 
-## Setup
+## Setup (Quick Start)
 
 ### Backend (FastAPI)
 
@@ -32,11 +32,21 @@ cd backend
 pip install -r requirements.txt
 ```
 
-2. Setup environment:
+2. Setup environment (template):
 ```bash
-# Pastikan config.env ada di root project dengan GEMINI_API_KEY
-# atau set environment variable:
-export GEMINI_API_KEY=your_api_key_here
+cp backend/config.env.example config.env
+```
+
+Isi `config.env`:
+```
+SUPABASE_URL=your_supabase_url
+SUPABASE_SERVICE_KEY=your_supabase_service_role_key
+GOOGLE_CLIENT_ID=your_google_client_id
+GEMINI_API_KEY=your_gemini_api_key
+
+# Bootstrap admin (optional)
+BOOTSTRAP_ADMIN_ENABLED=true
+BOOTSTRAP_ADMIN_EMAILS=admin1@email.com,admin2@email.com
 ```
 
 3. Run server:
@@ -56,10 +66,10 @@ cd frontend
 npm install
 ```
 
-2. Setup environment:
-```bash
-# File .env.local sudah dibuat dengan NEXT_PUBLIC_API_URL=http://localhost:8000
-# Jika perlu, edit .env.local untuk mengubah API URL
+2. Setup environment (create file `frontend/.env.local`):
+```
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id
 ```
 
 3. Run development server:
@@ -112,7 +122,7 @@ Frontend akan berjalan di `http://localhost:3000`
 
 - Video generation endpoint (`/api/generate-video`) saat ini masih placeholder. Untuk production, perlu integrasi dengan video generation API (seperti Grok, Runway, dll).
 - Window.aistudio interface adalah optional untuk integrasi dengan extension/plugin tertentu.
-- Pastikan GEMINI_API_KEY sudah di-set di config.env sebelum menjalankan backend.
+- Pastikan `SUPABASE_URL` dan `SUPABASE_SERVICE_KEY` sudah di-set sebelum menjalankan backend.
 
 
 
