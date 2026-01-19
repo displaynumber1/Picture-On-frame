@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
 export default function HelpPage() {
@@ -20,9 +21,12 @@ export default function HelpPage() {
               <li>
                 <span className="font-semibold">Buka aplikasi TikTok → Settings & Privacy.</span>
                 <div className="mt-4">
-                  <img
+                  <Image
                     src="/help/Settings%20%26%20Privacy.jpeg"
                     alt="Settings & Privacy"
+                    width={640}
+                    height={480}
+                    sizes="(max-width: 640px) 100vw, 640px"
                     className="w-full max-w-sm rounded-xl border border-slate-200"
                   />
                 </div>
@@ -30,9 +34,12 @@ export default function HelpPage() {
               <li>
                 <span className="font-semibold">Masuk ke “Download your data”.</span>
                 <div className="mt-4">
-                  <img
+                  <Image
                     src="/help/Download%20your%20data.jpeg"
                     alt="Download your data"
+                    width={640}
+                    height={480}
+                    sizes="(max-width: 640px) 100vw, 640px"
                     className="w-full max-w-sm rounded-xl border border-slate-200"
                   />
                 </div>
@@ -40,9 +47,12 @@ export default function HelpPage() {
               <li>
                 <span className="font-semibold">Pilih format data (JSON atau TXT). Centang hanya Postingan dan TikTok Shop, lalu klik Minta data.</span>
                 <div className="mt-4">
-                  <img
+                  <Image
                     src="/help/Format%20data.jpeg"
                     alt="Format data"
+                    width={640}
+                    height={480}
+                    sizes="(max-width: 640px) 100vw, 640px"
                     className="w-full max-w-sm rounded-xl border border-slate-200"
                   />
                 </div>
@@ -50,9 +60,12 @@ export default function HelpPage() {
               <li>
                 <span className="font-semibold">Setelah data TikTok sudah ada maka klik “Unduh data”.</span>
                 <div className="mt-4">
-                  <img
+                  <Image
                     src="/help/Hasil%20unduh%20data.jpeg"
                     alt="Hasil unduh data"
+                    width={640}
+                    height={480}
+                    sizes="(max-width: 640px) 100vw, 640px"
                     className="w-full max-w-sm rounded-xl border border-slate-200"
                   />
                 </div>

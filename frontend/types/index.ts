@@ -14,6 +14,7 @@ export interface GenerationOptions {
   category: string;
   interactionType: string;
   backgroundColor?: string;
+  additionalPrompt?: string;
 }
 
 export interface ImageData {

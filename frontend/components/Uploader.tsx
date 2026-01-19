@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import Image from 'next/image';
 
 interface UploaderProps {
   label: string;
@@ -35,7 +36,14 @@ const Uploader: React.FC<UploaderProps> = ({ label, onImageSelected, preview, cl
         onChange={handleFileChange} 
       />
       {preview ? (
-        <img src={preview} alt="Preview" className="w-full h-full object-cover rounded-xl" />
+        <Image
+          src={preview}
+          alt="Preview"
+          fill
+          sizes="(max-width: 768px) 100vw, 480px"
+          className="object-cover rounded-xl"
+          unoptimized
+        />
       ) : (
         <>
           <div className="text-pink-400 mb-2">
