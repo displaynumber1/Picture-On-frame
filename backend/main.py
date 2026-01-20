@@ -100,6 +100,23 @@ async def get_current_user(authorization: Optional[str] = Header(None)) -> Dict[
         raise HTTPException(status_code=401, detail="Token verification failed")
 
 
+async def get_current_user_raw(authorization: Optional[str] = Header(None)) -> Dict[str, Any]:
+    """Verify Supabase JWT token without profile enforcement (debug only)"""
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authorization header required")
+    try:
+        token = authorization.replace("Bearer ", "").strip()
+        user = verify_user_token(token)
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+        return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error verifying token: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=401, detail="Token verification failed")
+
+
 async def require_admin(current_user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
     user_id = current_user.get("id")
     if not user_id:
@@ -4843,6 +4860,22 @@ async def admin_status(current_user: Dict[str, Any] = Depends(get_current_user))
         return {"is_admin": False}
     role = get_user_role_from_profile(user_id) or "user"
     return {"is_admin": role == "admin", "role": role}
+
+
+@app.get("/api/debug/profile-status")
+async def debug_profile_status(current_user: Dict[str, Any] = Depends(get_current_user_raw)):
+    """Debug profile lookup for the current user."""
+    user_id = current_user.get("id")
+    email = current_user.get("email")
+    profile = get_user_profile(user_id) if user_id else None
+    return {
+        "user_id": user_id,
+        "email": email,
+        "profile_found": profile is not None,
+        "profile_user_id": profile.get("user_id") if profile else None,
+        "profile_role": profile.get("role_user") if profile else None,
+        "supabase_url": os.getenv("SUPABASE_URL", ""),
+    }
 
 
 @app.get("/api/admin/autopost/logs")
