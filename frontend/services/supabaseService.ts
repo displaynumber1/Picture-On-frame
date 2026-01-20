@@ -5,12 +5,13 @@ import { createClient, SupabaseClient, Session } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const isValidSupabaseUrl = /^https?:\/\//i.test(supabaseUrl);
 
 // Create a dummy client if credentials are missing to prevent runtime errors
 // User should configure .env.local with actual credentials
 let supabase: SupabaseClient;
 
-if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('your-project') || supabaseAnonKey.includes('your-anon')) {
+if (!supabaseUrl || !supabaseAnonKey || !isValidSupabaseUrl || supabaseUrl.includes('your-project') || supabaseAnonKey.includes('your-anon')) {
   console.warn('⚠️ Supabase credentials not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local');
   // Create a dummy client with placeholder values to prevent crash
   // This will fail on actual API calls, but won't crash the app on load
