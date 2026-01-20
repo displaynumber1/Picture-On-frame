@@ -1689,14 +1689,25 @@ AUTPOST_IMPORT_STATUS: Dict[str, Any] = {
     "errors": []
 }
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
+def _get_cors_origins() -> List[str]:
+    raw = os.getenv("CORS_ORIGINS", "")
+    defaults = [
         "http://localhost:3000",
         "http://localhost:3001",
         "http://127.0.0.1:3000",
-        "http://127.0.0.1:3001"
-    ],
+        "http://127.0.0.1:3001",
+        "https://picture-on-frame.vercel.app",
+        "https://picture-on-frame.onrender.com",
+    ]
+    if not raw:
+        return defaults
+    extras = [origin.strip() for origin in raw.split(",") if origin.strip()]
+    return list(dict.fromkeys(defaults + extras))
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_get_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
