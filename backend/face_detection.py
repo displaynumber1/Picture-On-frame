@@ -7,13 +7,20 @@ import cv2
 import numpy as np
 import logging
 from typing import Tuple, Optional, List
-import mediapipe as mp
+try:
+    import mediapipe as mp
+except Exception:  # pragma: no cover - optional dependency
+    mp = None
 
 logger = logging.getLogger(__name__)
 
-# Initialize MediaPipe Face Detection
-mp_face_detection = mp.solutions.face_detection
-mp_drawing = mp.solutions.drawing_utils
+MP_AVAILABLE = bool(mp) and hasattr(mp, "solutions")
+if not MP_AVAILABLE:
+    logger.warning("MediaPipe is not available. Face detection is disabled.")
+else:
+    # Initialize MediaPipe Face Detection
+    mp_face_detection = mp.solutions.face_detection
+    mp_drawing = mp.solutions.drawing_utils
 
 
 def detect_face(image_path: str) -> Optional[Tuple[int, int, int, int]]:
@@ -30,6 +37,9 @@ def detect_face(image_path: str) -> Optional[Tuple[int, int, int, int]]:
         Tuple of (x, y, width, height) bounding box, or None if no face detected
         Bounding box is expanded by 15-20% for safety margin
     """
+    if not MP_AVAILABLE:
+        return None
+
     try:
         # Load image with IMREAD_UNCHANGED to preserve all channels (including alpha)
         image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
@@ -158,6 +168,8 @@ def has_human_face(image_path: str) -> bool:
     Returns:
         True if face detected, False otherwise
     """
+    if not MP_AVAILABLE:
+        return False
     face_bbox = detect_face(image_path)
     return face_bbox is not None
 
@@ -172,6 +184,8 @@ def get_face_region_info(image_path: str) -> Optional[dict]:
     Returns:
         Dictionary with face bounding box and mask info, or None if no face
     """
+    if not MP_AVAILABLE:
+        return None
     face_bbox = detect_face(image_path)
     if face_bbox is None:
         return None
