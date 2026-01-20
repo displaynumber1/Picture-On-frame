@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS profiles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     role_user TEXT NOT NULL DEFAULT 'user',
+    display_name TEXT,
+    avatar_url TEXT,
     free_image_quota INTEGER NOT NULL DEFAULT 5,
     coins_balance INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -15,6 +17,8 @@ CREATE TABLE IF NOT EXISTS profiles (
 
 -- 1b. Pastikan kolom role_user tersedia untuk admin di Supabase
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS role_user TEXT NOT NULL DEFAULT 'user';
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS display_name TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 
 -- 2. Buat index untuk performa query
 CREATE INDEX IF NOT EXISTS idx_profiles_user_id ON profiles(user_id);
