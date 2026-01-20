@@ -91,7 +91,7 @@ async def get_current_user(authorization: Optional[str] = Header(None)) -> Dict[
         # Enforce profile existence (whitelist via profiles table)
         profile = get_user_profile(user_id)
         if not profile:
-            raise HTTPException(status_code=403, detail="Profile not found. Access denied.")
+            raise HTTPException(status_code=403, detail="Email kamu belum terdaftar di sistem kami")
         return user
     except HTTPException:
         raise
