@@ -23,7 +23,7 @@ const LoginPage: React.FC = () => {
 
   // WhatsApp number - format: country code + number (without + or spaces)
   // Example: 6282115434299 (for Indonesia +62 821-1543-4299)
-  const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '6282115434299';
+  const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '6285190049996';
 
   const handleContactUs = () => {
     const message = encodeURIComponent('Halo kak, saya tertarik dengan tools Picture on Frame.');

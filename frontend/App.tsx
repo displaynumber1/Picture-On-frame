@@ -2899,33 +2899,33 @@ export default function App() {
   return (
     <div className="min-h-screen bg-white selection:bg-purple-100">
       {/* Header Section */}
-      <div className="luxury-gradient-bg py-32 md:py-48 lg:py-56 px-6 text-white text-center relative overflow-hidden">
+      <div className="luxury-gradient-bg py-16 sm:py-24 md:py-32 lg:py-40 px-4 sm:px-6 text-white text-center relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden opacity-20 pointer-events-none">
           <Sparkles className="absolute top-10 left-10 w-20 h-20 animate-blink" />
           <Sparkles className="absolute bottom-10 right-10 w-32 h-32 animate-blink" style={{animationDelay: '1s'}} />
           <div className="absolute top-1/2 left-1/4 w-64 h-64 bg-white/20 rounded-full blur-[100px] floating"></div>
         </div>
 
-        <div className="relative z-10 flex flex-col items-center justify-center min-h-[60vh]">
-          <div className="flex items-center gap-3 mb-8 bg-white/10 px-6 py-3 rounded-full backdrop-blur-md border border-white/20 shadow-xl">
-            <Sparkles size={16} className="text-purple-300 animate-blink" />
-            <span className="text-xs md:text-sm font-bold tracking-[0.5em] uppercase text-white">PREMIUM AI STUDIO</span>
-            <Sparkles size={16} className="text-pink-300 animate-blink" />
+        <div className="relative z-10 flex flex-col items-center justify-center min-h-[45vh] sm:min-h-[55vh]">
+          <div className="flex items-center gap-2 mb-6 bg-white/10 px-4 py-2 rounded-full backdrop-blur-md border border-white/20 shadow-xl">
+            <Sparkles size={12} className="text-purple-300 animate-blink" />
+            <span className="text-[10px] sm:text-xs font-bold tracking-[0.35em] sm:tracking-[0.5em] uppercase text-white">PREMIUM AI STUDIO</span>
+            <Sparkles size={12} className="text-pink-300 animate-blink" />
           </div>
           
-          <h1 className="text-7xl md:text-9xl lg:text-[10rem] font-extrabold tracking-tight mb-4 uppercase drop-shadow-2xl text-white leading-[1.1]">
+          <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-[9rem] font-extrabold tracking-tight mb-4 uppercase drop-shadow-2xl text-white leading-[1.1]">
             PICTURE ON<br />FRAME
           </h1>
           
-          <div className="text-sm md:text-base uppercase tracking-[1.5em] font-medium text-white/80 mt-4">
+          <div className="text-[10px] sm:text-sm md:text-base uppercase tracking-[0.6em] sm:tracking-[1.2em] font-medium text-white/80 mt-4">
             BY <span className="text-white font-semibold">SLSTARI</span>
           </div>
         </div>
       </div>
 
       {/* Dashboard, Coin, Top-Up, and Logout Buttons - Below Header */}
-      <div className="relative z-20 px-6 mt-6 mb-6">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+      <div className="relative z-20 px-4 sm:px-6 mt-6 mb-6">
+        <div className="max-w-7xl mx-auto flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <button
             onClick={handleDashboard}
             className="flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-md border border-purple-200 rounded-xl text-purple-600 hover:bg-white hover:border-purple-300 hover:shadow-lg transition-all duration-300 text-sm font-semibold shadow-sm"
@@ -2933,7 +2933,7 @@ export default function App() {
             <LayoutGrid size={16} />
             <span>Dashboard</span>
           </button>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={handleCoinClick}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-200 rounded-xl text-amber-600 hover:from-amber-100 hover:to-yellow-100 hover:border-amber-300 hover:shadow-lg transition-all duration-300 text-sm font-semibold shadow-sm relative"
@@ -2970,7 +2970,7 @@ export default function App() {
       </div>
 
       {/* Studio Mode Panel - Overlapping */}
-      <div className="relative z-20 -mt-6 px-6 mb-10" style={{ marginTop: '2cm' }}>
+      <div className="relative z-20 -mt-4 sm:-mt-6 px-4 sm:px-6 mb-10 mt-6 sm:mt-10">
         <div className="max-w-7xl mx-auto">
           <div className="glass-panel p-6 md:p-8 rounded-[3rem] shadow-2xl border border-white/40">
             <div className="flex items-center justify-between">
