@@ -26,6 +26,24 @@ const AuthLanding: React.FC = () => {
             }
           })
         };
+
+        // Speed up OAuth redirects by reading the current session immediately.
+        // (onAuthStateChange can be delayed on some networks/devices.)
+        (async () => {
+          try {
+            const { data } = await supabaseService.getSession();
+            if (data?.session) {
+              setSession(data.session);
+            }
+          } catch (error) {
+            console.error('Error getting initial session:', error);
+          } finally {
+            if (!initializedRef.current) {
+              initializedRef.current = true;
+              setAuthReady(true);
+            }
+          }
+        })();
       } else {
         setAuthReady(true);
       }
