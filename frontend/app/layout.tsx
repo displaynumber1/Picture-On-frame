@@ -3,7 +3,7 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'PREMIUM AI STUDIO - Picture on Frame',
-  description: 'Picture on Frame by slstari',
+  description: 'Exclusive AI Renderings - Picture on Frame',
   icons: {
     icon: '/icon.svg',
     apple: '/icon.svg',

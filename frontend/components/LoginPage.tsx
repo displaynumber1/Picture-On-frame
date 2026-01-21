@@ -275,7 +275,7 @@ const LoginPage: React.FC = () => {
 
           {/* Subtitle */}
           <div className="text-[9px] sm:text-[10px] uppercase tracking-[0.6em] sm:tracking-[1em] font-medium text-white/70 mb-6 sm:mb-8 text-center">
-            BY <span className="text-white">SLSTARI</span>
+            <span className="text-white">Exclusive AI Renderings</span>
           </div>
 
           {/* Error Message */}
