@@ -1177,6 +1177,13 @@ const CopyButton: React.FC<{ text: string }> = ({ text }) => {
   );
 };
 
+type VariantPreset = {
+  id: string;
+  name: string;
+  options: GenerationOptions;
+  createdAt: string;
+};
+
 export default function App() {
   const router = useRouter();
   const IMAGE_BATCH_COINS = 75;
@@ -1226,6 +1233,8 @@ export default function App() {
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [dashboardErrorNeedsTopUp, setDashboardErrorNeedsTopUp] = useState(false);
+  const [variantName, setVariantName] = useState('');
+  const [variants, setVariants] = useState<VariantPreset[]>([]);
   const [adminLogs, setAdminLogs] = useState<AdminAutopostLog[]>([]);
   const [adminLogsLoading, setAdminLogsLoading] = useState(false);
   const [adminLogsError, setAdminLogsError] = useState<string | null>(null);
@@ -1357,6 +1366,42 @@ export default function App() {
     } catch (error) {
       console.error('Error fetching coins balance:', error);
     }
+  }, []);
+
+  const handleSaveVariant = useCallback(() => {
+    const name = variantName.trim();
+    if (!name) {
+      setState(prev => ({
+        ...prev,
+        error: "Nama varian tidak boleh kosong."
+      }));
+      return;
+    }
+    const snapshot = JSON.parse(JSON.stringify(state.options)) as GenerationOptions;
+    setVariants(prev => [
+      {
+        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        name,
+        options: snapshot,
+        createdAt: new Date().toISOString()
+      },
+      ...prev
+    ]);
+    setVariantName('');
+  }, [state.options, variantName]);
+
+  const handleApplyVariant = useCallback((variant: VariantPreset) => {
+    setState(prev => ({
+      ...prev,
+      options: {
+        ...prev.options,
+        ...variant.options
+      }
+    }));
+  }, []);
+
+  const handleDeleteVariant = useCallback((id: string) => {
+    setVariants(prev => prev.filter(variant => variant.id !== id));
   }, []);
 
   const ensureRegisteredUser = useCallback(async () => {
@@ -2979,6 +3024,81 @@ export default function App() {
                 <span className="text-[11px] font-black uppercase text-purple-600">{state.options.contentType} • {state.options.category}</span>
               </div>
               <Monitor size={16} className="text-purple-400" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Variant Presets */}
+      <div className="relative z-20 px-4 sm:px-6 mb-10">
+        <div className="max-w-7xl mx-auto">
+          <div className="glass-panel p-6 md:p-8 rounded-[2.5rem] shadow-2xl border border-white/40 bg-white">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Save size={16} className="text-purple-500" />
+                <h3 className="text-sm font-semibold text-slate-700">Variant Input</h3>
+              </div>
+              <span className="text-[11px] text-slate-500">Simpan & pakai ulang kombinasi input</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr] gap-4">
+              <div className="space-y-3">
+                <label className="text-xs font-semibold text-slate-600">Nama Variant</label>
+                <input
+                  value={variantName}
+                  onChange={(e) => setVariantName(e.target.value)}
+                  placeholder="Contoh: Fashion indoor soft"
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-200"
+                />
+                <div className="flex flex-wrap gap-2 text-[11px] text-slate-500">
+                  <span className="px-2 py-1 rounded-full bg-slate-100">{state.options.contentType}</span>
+                  <span className="px-2 py-1 rounded-full bg-slate-100">{state.options.category}</span>
+                  <span className="px-2 py-1 rounded-full bg-slate-100">{state.options.style}</span>
+                  <span className="px-2 py-1 rounded-full bg-slate-100">{state.options.lighting}</span>
+                </div>
+                <button
+                  onClick={handleSaveVariant}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700 transition"
+                >
+                  <Save size={14} />
+                  Simpan Variant
+                </button>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                  <List size={14} className="text-slate-400" />
+                  Daftar Variant
+                </div>
+                {variants.length === 0 ? (
+                  <div className="text-xs text-slate-400">Belum ada variant tersimpan.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {variants.map((variant) => (
+                      <div key={variant.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 px-3 py-2">
+                        <div>
+                          <div className="text-sm font-semibold text-slate-700">{variant.name}</div>
+                          <div className="text-[11px] text-slate-500">
+                            {variant.options.contentType} • {variant.options.category} • {variant.options.style}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleApplyVariant(variant)}
+                            className="px-3 py-1.5 text-xs rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200"
+                          >
+                            Pakai
+                          </button>
+                          <button
+                            onClick={() => handleDeleteVariant(variant.id)}
+                            className="px-3 py-1.5 text-xs rounded-lg bg-red-50 text-red-600 hover:bg-red-100"
+                          >
+                            Hapus
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
