@@ -2096,11 +2096,21 @@ export default function App() {
       `Kamera: ${camera}`,
       `Background: ${background}`,
       `Aspect Ratio: ${aspect}`,
-      `Buat video sinematik 5 detik dengan 2 fase gerakan.`,
-      `Fase 1 (0-2.5s): ${phase1}.`,
-      `Fase 2 (2.5-5s): ${phase2}.`,
-      `${transition}, produk tetap jelas, lighting natural, detail tekstur tajam, depth of field halus, warna akurat, no jitter.`,
-      `Aesthetic lifestyle vibe, golden hour glow, clean soft look, gentle shadows, premium minimalist background.`
+      isFootwear
+        ? [
+            `Mode: The Detailed Close-up (Macro Slide).`,
+            `Detik 0-2: slow zoom-in ke detail tekstur sepatu (lace atau bahan kulit), fokus tajam pada material dan jahitan.`,
+            `Detik 2-5: panning perlahan dari ujung depan (toe) ke arah tumit (heel), memperlihatkan sisi per sisi.`,
+            `Tujuan: menonjolkan kualitas bahan dan kerapihan jahitan secara sinematik tanpa mengganggu fokus produk.`,
+            `Gerakan sangat stabil, no jitter, no scale shift, lighting natural, detail tekstur tajam, warna akurat.`
+          ].join(' ')
+        : [
+            `Buat video sinematik 5 detik dengan 2 fase gerakan.`,
+            `Fase 1 (0-2.5s): ${phase1}.`,
+            `Fase 2 (2.5-5s): ${phase2}.`,
+            `${transition}, produk tetap jelas, lighting natural, detail tekstur tajam, depth of field halus, warna akurat, no jitter.`,
+            `Aesthetic lifestyle vibe, golden hour glow, clean soft look, gentle shadows, premium minimalist background.`
+          ].join(' ')
     ].join(' | ');
 
     const negativePrompt = [
