@@ -1331,6 +1331,86 @@ export default function App() {
         return posesForInteraction;
       }
     }
+
+    if (isNonModel) {
+      const nonModelPoseByInteraction: Record<string, Record<string, string[]>> = {
+        "Fashion": {
+          "Pegang 1 Tangan Wanita": ["Pegang produk dengan satu tangan"],
+          "Pegang 2 Tangan Wanita": ["Pegang produk dengan dua tangan"],
+          "Pegang 1 Tangan Pria": ["Pegang produk dengan satu tangan"],
+          "Pegang 2 Tangan Pria": ["Pegang produk dengan dua tangan"],
+          "Pegang Hanger dengan Produk": ["Pegang hanger dengan produk"],
+          "Tanpa Interaksi": [
+            "Produk digantung menggunakan hanger",
+            "Hanger digantung di standing rack",
+            "Hanger digantung di hook",
+            "Produk dilipat dan diletakkan di meja",
+            "Flatlay produk fashion"
+          ]
+        },
+        "Beauty": {
+          "Pegang 1 Tangan Wanita": ["Tangan memegang produk"],
+          "Pegang 2 Tangan Wanita": ["Dua tangan menampilkan produk"],
+          "Pegang 1 Tangan Pria": ["Tangan memegang produk"],
+          "Pegang 2 Tangan Pria": ["Dua tangan menampilkan produk"],
+          "Tanpa Interaksi": [
+            "Produk diletakkan di meja aesthetic",
+            "Produk didekatkan ke area wajah tanpa menampilkan wajah",
+            "Flatlay produk beauty"
+          ]
+        },
+        "Tas": {
+          "Pegang 1 Tangan Wanita": ["Tangan memegang tas"],
+          "Pegang 2 Tangan Wanita": ["Dua tangan menampilkan tas"],
+          "Pegang 1 Tangan Pria": ["Tangan memegang tas"],
+          "Pegang 2 Tangan Pria": ["Dua tangan menampilkan tas"],
+          "Tanpa Interaksi": [
+            "Tas digantung",
+            "Tas diletakkan di meja aesthetic",
+            "Tas disandarkan pada kursi atau properti"
+          ]
+        },
+        "Aksesoris": {
+          "Pegang 1 Tangan Wanita": ["Tangan memegang produk"],
+          "Pegang 2 Tangan Wanita": ["Dua tangan menampilkan produk"],
+          "Pegang 1 Tangan Pria": ["Tangan memegang produk"],
+          "Pegang 2 Tangan Pria": ["Dua tangan menampilkan produk"],
+          "Tanpa Interaksi": [
+            "Produk di meja aesthetic",
+            "Detail tekstur close-up",
+            "Flatlay aksesoris"
+          ]
+        },
+        "Home Living": {
+          "Pegang 1 Tangan Wanita": ["Tangan memegang produk"],
+          "Pegang 2 Tangan Wanita": ["Dua tangan menampilkan produk"],
+          "Pegang 1 Tangan Pria": ["Tangan memegang produk"],
+          "Pegang 2 Tangan Pria": ["Dua tangan menampilkan produk"],
+          "Tanpa Interaksi": [
+            "Produk diletakkan di meja",
+            "Produk diletakkan di lantai",
+            "Detail tekstur produk",
+            "Flatlay produk home living"
+          ]
+        },
+        "Food & Beverage": {
+          "Pegang 1 Tangan Wanita": ["Tangan memegang produk"],
+          "Pegang 2 Tangan Wanita": ["Dua tangan menampilkan produk"],
+          "Pegang 1 Tangan Pria": ["Tangan memegang produk"],
+          "Pegang 2 Tangan Pria": ["Dua tangan menampilkan produk"],
+          "Tanpa Interaksi": [
+            "Produk diletakkan di meja",
+            "Close-up tekstur makanan atau minuman",
+            "Flatlay food and beverage"
+          ]
+        }
+      };
+      const categoryMap = nonModelPoseByInteraction[state.options.category];
+      const posesForInteraction = categoryMap?.[state.options.interactionType];
+      if (posesForInteraction) {
+        return posesForInteraction;
+      }
+    }
     
     if (isNonModel && isTanpaInteraksi) {
       const humanKeywords = ["tangan", "kaki", "pegang", "angkat", "hanger", "melangkah", "naik tangga", "mengenakan"];

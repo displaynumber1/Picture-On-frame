@@ -143,6 +143,7 @@ export const POSE_MAP: Record<string, Record<string, string[]>> = {
     ],
     "Aksesoris": [
       "Tangan memegang produk",
+      "Dua tangan menampilkan produk",
       "Produk di meja aesthetic",
       "Detail tekstur close-up",
       "Flatlay aksesoris"
