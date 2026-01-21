@@ -200,6 +200,7 @@ export const MAPPING: Record<string, string> = {
   'Kaki wanita melangkah': 'female foot stepping with natural movement, showing clear product visibility',
   'Kaki wanita dengan tumit terangkat': 'female foot with raised heel, displaying clear product presentation',
   'Kaki wanita naik tangga': 'female foot on stairs with natural movement, showing clear product visibility',
+  'Kaki wanita berdiri simetris (dua kaki sejajar)': 'female feet standing symmetrically with both feet parallel, showing balanced stance and clear product visibility',
   'Kaki pria berdiri tegap mengenakan sepatu': 'male foot standing while wearing shoes, showing neutral posture and clear product visibility',
   'Kaki pria melangkah santai': 'male foot walking with natural movement, showing clear product visibility and everyday usage',
   'Kaki pria satu kaki maju ke depan': 'male foot with one foot forward, displaying clear product presentation',

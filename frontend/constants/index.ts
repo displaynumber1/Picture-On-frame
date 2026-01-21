@@ -131,6 +131,7 @@ export const POSE_MAP: Record<string, Record<string, string[]>> = {
       "Kaki wanita melangkah",
       "Kaki wanita dengan tumit terangkat",
       "Kaki wanita naik tangga",
+      "Kaki wanita berdiri simetris (dua kaki sejajar)",
       "Kaki pria berdiri tegap mengenakan sepatu",
       "Kaki pria melangkah santai",
       "Kaki pria satu kaki maju ke depan",

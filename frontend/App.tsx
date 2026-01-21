@@ -1305,6 +1305,32 @@ export default function App() {
       return ["Close-Up Portrait"];
     }
     let poses = POSE_MAP[state.options.contentType]?.[state.options.category] || [];
+
+    if (isNonModel && state.options.category === "Sandal/Sepatu") {
+      const sandalPoseByInteraction: Record<string, string[]> = {
+        "Pegang 1 Tangan Wanita": ["Tangan Memegang Sepasang Sandal/Sepatu"],
+        "Pegang 2 Tangan Wanita": ["Dua tangan menampilkan sepatu"],
+        "Pegang 1 Tangan Pria": ["Tangan Memegang Sepasang Sandal/Sepatu"],
+        "Pegang 2 Tangan Pria": ["Dua tangan menampilkan sepatu"],
+        "Kaki Wanita": [
+          "Kaki wanita berdiri natural mengenakan sepatu",
+          "Kaki wanita melangkah",
+          "Kaki wanita dengan tumit terangkat",
+          "Kaki wanita naik tangga",
+          "Kaki wanita berdiri simetris (dua kaki sejajar)"
+        ],
+        "Kaki Pria": [
+          "Kaki pria berdiri tegap mengenakan sepatu",
+          "Kaki pria melangkah santai",
+          "Kaki pria satu kaki maju ke depan",
+          "Kaki pria berada di jalan atau tangga"
+        ]
+      };
+      const posesForInteraction = sandalPoseByInteraction[state.options.interactionType];
+      if (posesForInteraction) {
+        return posesForInteraction;
+      }
+    }
     
     if (isNonModel && isTanpaInteraksi) {
       const humanKeywords = ["tangan", "kaki", "pegang", "angkat", "hanger", "melangkah", "naik tangga", "mengenakan"];
@@ -3034,7 +3060,7 @@ export default function App() {
           </h1>
           
           <div className="text-[10px] sm:text-sm md:text-base uppercase tracking-[0.6em] sm:tracking-[1.2em] font-medium text-white/80 mt-4">
-            Exclusive AI Rendering
+            Exclusive AI Renderings
           </div>
         </div>
       </div>
