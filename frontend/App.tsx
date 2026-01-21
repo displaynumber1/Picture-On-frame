@@ -2098,11 +2098,11 @@ export default function App() {
       `Aspect Ratio: ${aspect}`,
       isFootwear
         ? [
-            `Mode: The Detailed Close-up (Macro Slide).`,
-            `Detik 0-2: slow zoom-in ke detail tekstur sepatu (lace atau bahan kulit), fokus tajam pada material dan jahitan.`,
-            `Detik 2-5: panning perlahan dari ujung depan (toe) ke arah tumit (heel), memperlihatkan sisi per sisi.`,
-            `Tujuan: menonjolkan kualitas bahan dan kerapihan jahitan secara sinematik tanpa mengganggu fokus produk.`,
-            `Gerakan sangat stabil, no jitter, no scale shift, lighting natural, detail tekstur tajam, warna akurat.`
+            `Mode: The Action to Static Detail.`,
+            `Detik 0-2 (The Action): kamera low angle, model melakukan gerakan kecil (melangkah pelan atau memutar pergelangan kaki).`,
+            `Detik 2-5 (The Static Detail): gerakan berhenti, kamera slow panning mengelilingi sepatu yang diam, dari samping ke depan.`,
+            `Tujuan: menonjolkan bentuk sepatu dari berbagai sudut tanpa mengganggu fokus produk.`,
+            `Gerakan sangat stabil, no jitter, no scale shift, lighting natural, detail tajam, warna akurat.`
           ].join(' ')
         : [
             `Buat video sinematik 5 detik dengan 2 fase gerakan.`,
