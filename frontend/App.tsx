@@ -3034,7 +3034,7 @@ export default function App() {
           </h1>
           
           <div className="text-[10px] sm:text-sm md:text-base uppercase tracking-[0.6em] sm:tracking-[1.2em] font-medium text-white/80 mt-4">
-            BY <span className="text-white font-semibold">SLSTARI</span>
+            Exclusive AI Rendering
           </div>
         </div>
       </div>
@@ -3901,7 +3901,7 @@ export default function App() {
       <footer className="mt-52 text-center space-y-12 flex flex-col items-center">
         <div className="w-48 h-px bg-gradient-to-r from-transparent via-purple-100 to-transparent"></div>
         <p className="text-[11px] font-black tracking-[1.5em] text-gray-300 uppercase">PREMIUM AI STUDIO</p>
-        <p className="text-3xl font-black tracking-tighter luxury-text italic uppercase">Picture on Frame by SLSTARI</p>
+        <p className="text-3xl font-black tracking-tighter luxury-text italic uppercase">Picture on Frame AI Generate Image Video and Auto-Post</p>
       </footer>
 
       {/* Coin Balance Modal */}
