@@ -458,7 +458,10 @@ def _category_label_map() -> Dict[str, str]:
     return {
         "fashion": "Fashion",
         "apparel": "Apparel",
-        "shoes": "Shoes",
+        "shoes": "Sandal",
+        "footwear": "Sandal",
+        "sandal": "Sandal",
+        "sepatu": "Sandal",
         "bag": "Bag",
         "beauty": "Beauty",
         "accessories": "Accessories",
@@ -1447,7 +1450,7 @@ def _score_video_metadata(
                     score += 0.3
                     details["signals"].append("trend_hashtag_match")
 
-        if category and category.lower() in ["fashion", "apparel", "accessories", "bag", "shoes", "beauty"]:
+        if category and category.lower() in ["fashion", "apparel", "accessories", "bag", "shoes", "footwear", "sandal", "sepatu", "beauty"]:
             score += 0.2
             details["signals"].append("category_match")
 
@@ -3521,7 +3524,7 @@ async def create_videos_batch(
                             category_lower = (category or "").strip().lower()
                             center_x = "iw/2-(iw/zoom/2)"
                             center_y = "ih/2-(ih/zoom/2)"
-                            if "shoe" in category_lower or "sepatu" in category_lower:
+                            if "shoe" in category_lower or "sepatu" in category_lower or "sandal" in category_lower or "footwear" in category_lower:
                                 x_expr_override = center_x
                                 y_expr_override = f"{center_y}-0.03*ih*on/{total_frames}"
                             elif "bag" in category_lower or "tas" in category_lower:
@@ -3660,7 +3663,7 @@ async def create_videos_batch(
                             category_lower = (category or "").strip().lower()
                             center_x = "iw/2-(iw/zoom/2)"
                             center_y = "ih/2-(ih/zoom/2)"
-                            if "shoe" in category_lower or "sepatu" in category_lower:
+                            if "shoe" in category_lower or "sepatu" in category_lower or "sandal" in category_lower or "footwear" in category_lower:
                                 x_expr_override = center_x
                                 y_expr_override = f"{center_y}-0.03*ih*on/{total_frames}"
                             elif "bag" in category_lower or "tas" in category_lower:

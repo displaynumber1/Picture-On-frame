@@ -372,7 +372,7 @@ def generate_product_photo(
         "Fashion": "high-end editorial fashion photography, textile excellence",
         "Beauty": "luxury cosmetic campaign, skin radiance, vanity aesthetics",
         "Tas": "premium leather goods showcase, boutique lighting",
-        "Sandal/Sepatu": "designer footwear campaign, dynamic textures, urban luxury",
+        "Sandal/Sepatu": "designer sandal footwear campaign, refined materials, clean artisan textures",
         "Aksesoris": "jewelry macro photography, diamond refraction, sparkles",
         "Home Living": "architectural digest interior, cozy lifestyle vibes",
         "Food & Beverage": "professional culinary art, appetizing freshness, gourmet lighting"
@@ -710,12 +710,12 @@ def generate_product_video(
     elif category == "Sandal/Sepatu":
         if is_non_model:
             visual_direction = (
-                "The footwear is placed naturally on a high-end floor. Slow macro zoom."
+                "The sandal is placed naturally on a high-end floor. Slow macro zoom on material and stitching."
                 if is_tanpa_interaksi
-                else "Hands or feet are elegantly showing the footwear."
+                else "Hands or feet are elegantly showing the sandal."
             )
         else:
-            visual_direction = "The model is walking or standing naturally wearing the shoes."
+            visual_direction = "The model is walking or standing naturally wearing the sandals."
     elif category == "Home Living":
         visual_direction = "Focus on function and detail in a cozy interior. Gentle light shifts."
     elif category == "Food & Beverage":

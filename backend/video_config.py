@@ -144,7 +144,7 @@ VIDEO_PRESETS: Dict[str, List[Dict]] = {
             "hook_text": "Step in Style",
             "hook_position": "top",
             "hook_timing": (0.0, 1.2),
-            "cta_text": "Shop Shoes",
+            "cta_text": "Shop Sandals",
             "cta_position": "bottom",
             "cta_timing": (3.0, 5.0),
             "description": "Focus zoom on footwear"
@@ -157,7 +157,7 @@ VIDEO_PRESETS: Dict[str, List[Dict]] = {
             "hook_text": "Comfort & Style",
             "hook_position": "center",
             "hook_timing": (0.0, 1.5),
-            "cta_text": "Try On",
+            "cta_text": "Try Sandals",
             "cta_position": "bottom",
             "cta_timing": (3.5, 5.0),
             "description": "Comfort-focused zoom"
@@ -170,7 +170,7 @@ VIDEO_PRESETS: Dict[str, List[Dict]] = {
             "hook_text": "Unique Design",
             "hook_position": "top",
             "hook_timing": (0.0, 1.0),
-            "cta_text": "Discover",
+            "cta_text": "Discover Sandals",
             "cta_position": "center",
             "cta_timing": (3.0, 5.0),
             "description": "Design highlight zoom"

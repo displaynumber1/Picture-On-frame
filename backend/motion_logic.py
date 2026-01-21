@@ -112,7 +112,7 @@ def compute_category_bias_y(
     if not combined:
         return 0.5
 
-    if "shoe" in combined or "sepatu" in combined:
+    if "shoe" in combined or "sepatu" in combined or "sandal" in combined or "footwear" in combined:
         return 0.65
     if "bag" in combined or "tas" in combined:
         return 0.58
@@ -162,6 +162,8 @@ def detect_focal_point(image_path: str, category: Optional[str] = None) -> Optio
             bias_map = {
                 "sepatu": 0.08,
                 "shoes": 0.08,
+                "sandal": 0.08,
+                "footwear": 0.08,
                 "tas": 0.03,
                 "bag": 0.03,
                 "beauty": -0.05,
