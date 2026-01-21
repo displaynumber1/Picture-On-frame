@@ -274,7 +274,7 @@ const LoginPage: React.FC = () => {
           </h1>
 
           {/* Subtitle */}
-          <div className="text-[9px] sm:text-[10px] uppercase tracking-[0.6em] sm:tracking-[1em] font-medium text-white/70 mb-6 sm:mb-8 text-center">
+          <div className="text-[8px] sm:text-[9px] uppercase tracking-[0.45em] sm:tracking-[0.7em] font-medium text-white/70 mb-6 sm:mb-8 text-center">
             <span className="text-white">Exclusive AI Renderings</span>
           </div>
 
