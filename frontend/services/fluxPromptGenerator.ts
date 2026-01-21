@@ -342,17 +342,48 @@ export function generateFluxPromptV2(
       'full product in frame'
     );
 
-    if (/tangan|kaki/i.test(interactionType)) {
+    const isHandInteraction = /tangan/i.test(interactionType);
+    const isFootInteraction = /kaki/i.test(interactionType);
+    const isSingleHand = /Pegang\s*1/i.test(interactionType);
+    const isTwoHands = /Pegang\s*2/i.test(interactionType);
+
+    if (isHandInteraction) {
       clauses.push(
-        'hands or feet only',
+        'hands only',
+        'no feet',
+        'no legs',
+        'no shoes worn on feet',
         'realistic skin texture',
         'natural skin tone',
-        'lifelike hand/foot anatomy',
+        'lifelike hand anatomy',
         'visible skin pores',
-        'natural finger/foot proportions',
+        'natural finger proportions',
         'no full body',
         'no face visible'
       );
+      if (isSingleHand) {
+        clauses.push('single hand only', 'one hand holding product');
+        negative.push('two hands', 'both hands');
+      } else if (isTwoHands) {
+        clauses.push('two hands only', 'both hands holding product');
+        negative.push('single hand', 'one hand only');
+      }
+      negative.push('extra hands', 'extra fingers', 'extra legs', 'extra feet', 'detached limbs', 'floating limbs');
+    }
+
+    if (isFootInteraction) {
+      clauses.push(
+        'feet only',
+        'no hands',
+        'realistic skin texture',
+        'natural skin tone',
+        'lifelike foot anatomy',
+        'visible skin pores',
+        'natural foot proportions',
+        'no full body',
+        'no face visible'
+      );
+      negative.push('extra feet', 'extra legs', 'extra hands', 'detached limbs', 'floating limbs');
     }
   }
   
