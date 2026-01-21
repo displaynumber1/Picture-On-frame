@@ -90,15 +90,10 @@ CREATE POLICY "Users can view own profile"
     USING (auth.uid() = user_id);
 
 -- Admin dapat melihat semua profile
-DROP POLICY IF EXISTS "Admin can view all profiles" ON profiles;
-CREATE POLICY "Admin can view all profiles"
-    ON profiles FOR SELECT
-    USING (
-      EXISTS (
-        SELECT 1 FROM public.profiles p
-        WHERE p.user_id = auth.uid() AND p.role_user = 'admin'
-      )
-    );
+-- NOTE:
+-- Jangan membuat policy yang melakukan subquery ke tabel `profiles` lagi (misal cek admin via SELECT ke profiles),
+-- karena bisa memicu error "infinite recursion detected in policy for relation \"profiles\"".
+-- Untuk kebutuhan admin melihat semua profiles, gunakan Service Role di backend (service_role bypass RLS).
 
 DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
 CREATE POLICY "Users can update own profile"
