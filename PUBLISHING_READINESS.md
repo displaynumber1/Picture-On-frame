@@ -45,7 +45,7 @@ Backend uses a fixed package map for Midtrans (`MIDTRANS_COIN_PACKAGES`). Webhoo
 
 ### Coins Deduction Rules
 - Image batch generation costs 75 coins.
-- Pro Video generation costs 220 coins.
+- Pro Video generation costs 180 coins.
 - Auto-post video upload costs 90 coins.
 - Coins are deducted only after a successful generation.
 
