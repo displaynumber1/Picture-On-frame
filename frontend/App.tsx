@@ -28,7 +28,8 @@ import {
   Wallet,
   Coins,
   X,
-  Lightbulb
+  Lightbulb,
+  Save
 } from 'lucide-react';
 import { generateProductPhoto, generateProductVideo } from './services/geminiService';
 import { generateImagesWithFal, buildPromptFromOptions, createVideoFromImage, createVideoBatchFromImage, createKlingVideoFromImage } from './services/falService';
