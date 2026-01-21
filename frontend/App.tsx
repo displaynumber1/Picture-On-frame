@@ -1368,7 +1368,30 @@ export default function App() {
     }
   }, []);
 
-  const handleSaveVariant = useCallback(() => {
+  const fetchVariants = useCallback(async () => {
+    if (!session) return;
+    try {
+      const { data, error } = await supabaseService.supabase
+        .from('variant_presets')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) {
+        console.error('Error fetching variants:', error);
+        return;
+      }
+      const mapped = (data || []).map((row: any) => ({
+        id: row.id,
+        name: row.name,
+        options: row.options,
+        createdAt: row.created_at
+      })) as VariantPreset[];
+      setVariants(mapped);
+    } catch (error) {
+      console.error('Error fetching variants:', error);
+    }
+  }, [session]);
+
+  const handleSaveVariant = useCallback(async () => {
     const name = variantName.trim();
     if (!name) {
       setState(prev => ({
@@ -1377,18 +1400,52 @@ export default function App() {
       }));
       return;
     }
+    if (!session) {
+      setState(prev => ({
+        ...prev,
+        error: "Sesi Anda telah berakhir. Silakan login ulang."
+      }));
+      return;
+    }
     const snapshot = JSON.parse(JSON.stringify(state.options)) as GenerationOptions;
-    setVariants(prev => [
-      {
-        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-        name,
-        options: snapshot,
-        createdAt: new Date().toISOString()
-      },
-      ...prev
-    ]);
-    setVariantName('');
-  }, [state.options, variantName]);
+    try {
+      const { data, error } = await supabaseService.supabase
+        .from('variant_presets')
+        .insert({
+          user_id: session.user.id,
+          name,
+          options: snapshot
+        })
+        .select('*')
+        .single();
+      if (error) {
+        console.error('Error saving variant:', error);
+        setState(prev => ({
+          ...prev,
+          error: "Gagal menyimpan varian. Silakan coba lagi."
+        }));
+        return;
+      }
+      if (data) {
+        setVariants(prev => [
+          {
+            id: data.id,
+            name: data.name,
+            options: data.options,
+            createdAt: data.created_at
+          },
+          ...prev
+        ]);
+      }
+      setVariantName('');
+    } catch (error) {
+      console.error('Error saving variant:', error);
+      setState(prev => ({
+        ...prev,
+        error: "Gagal menyimpan varian. Silakan coba lagi."
+      }));
+    }
+  }, [session, state.options, variantName]);
 
   const handleApplyVariant = useCallback((variant: VariantPreset) => {
     setState(prev => ({
@@ -1400,8 +1457,16 @@ export default function App() {
     }));
   }, []);
 
-  const handleDeleteVariant = useCallback((id: string) => {
+  const handleDeleteVariant = useCallback(async (id: string) => {
     setVariants(prev => prev.filter(variant => variant.id !== id));
+    try {
+      await supabaseService.supabase
+        .from('variant_presets')
+        .delete()
+        .eq('id', id);
+    } catch (error) {
+      console.error('Error deleting variant:', error);
+    }
   }, []);
 
   const ensureRegisteredUser = useCallback(async () => {
@@ -1441,6 +1506,9 @@ export default function App() {
         subscription = {
           unsubscribe: supabaseService.subscribeToAuthChanges(async (_event, session) => {
             setSession(session ?? null);
+            if (!session) {
+              setVariants([]);
+            }
             if (!authInitializedRef.current) {
               authInitializedRef.current = true;
               setAuthReady(true);
@@ -1449,6 +1517,7 @@ export default function App() {
               const isRegistered = await ensureRegisteredUser();
               if (!isRegistered) return;
               await refreshCoins();
+              await fetchVariants();
             }
           })
         };
@@ -1465,7 +1534,7 @@ export default function App() {
         subscription.unsubscribe();
       }
     };
-  }, [ensureRegisteredUser, refreshCoins]);
+  }, [ensureRegisteredUser, refreshCoins, fetchVariants]);
 
   useEffect(() => {
     if (!authReady) return;
