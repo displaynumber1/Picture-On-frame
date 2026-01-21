@@ -90,7 +90,7 @@ export const MAPPING: Record<string, string> = {
   'Pegang 2 Tangan Wanita': 'female model holding the product with both hands, displaying clear product presentation',
   'Pegang 1 Tangan Pria': 'male model holding the product with one hand, demonstrating clear grip and product visibility',
   'Pegang 2 Tangan Pria': 'male model holding the product with both hands, showing clear product presentation',
-  'Kaki Wanita': 'female model\'s foot positioned, showing product interaction with leg and foot',
+  'Kaki Wanita': 'female model\'s foot positioned, wearing straight-leg jeans, showing product interaction with leg and foot',
   'Kaki Pria': 'male model\'s foot positioned, demonstrating product interaction with leg and foot',
   'Pegang Hanger dengan Produk': 'holding hanger with product, displaying clear product presentation and professional staging',
   'Tanpa Interaksi': 'product-focused composition without human interaction, emphasizing product details and design',

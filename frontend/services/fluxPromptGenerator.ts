@@ -372,6 +372,10 @@ export function generateFluxPromptV2(
     }
 
     if (isFootInteraction) {
+      if (/wanita/i.test(interactionType)) {
+        clauses.push('straight-leg jeans', 'denim straight-leg pants');
+        negative.push('bare legs', 'bare skin legs', 'shorts', 'mini skirt');
+      }
       clauses.push(
         'feet only',
         'no hands',
