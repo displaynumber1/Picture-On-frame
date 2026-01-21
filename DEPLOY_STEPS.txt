@@ -1,0 +1,54 @@
+DEPLOY STEPS (Vercel + Render) - PowerShell (Windows)
+=====================================================
+
+1) UPDATE FRONTEND (Vercel)
+---------------------------
+A. Commit & push perubahan frontend ke GitHub:
+
+  cd C:\PICTURE-ON-FRAME-AI-STUDIO
+  git status
+  git add frontend
+  git commit -m "Update frontend"
+  git push
+
+B. Deploy ke Vercel:
+  - Biasanya auto-deploy setelah git push.
+  - Jika tidak otomatis / ingin ulang:
+    Vercel → Project → Deployments → Redeploy
+    (jika masih error: Clear cache and redeploy)
+
+Catatan penting Vercel:
+  - Framework Preset: Next.js
+  - Root Directory: frontend
+  - Env wajib:
+    NEXT_PUBLIC_SUPABASE_URL
+    NEXT_PUBLIC_SUPABASE_ANON_KEY
+    NEXT_PUBLIC_API_URL
+    NEXT_PUBLIC_GOOGLE_CLIENT_ID
+
+
+2) UPDATE BACKEND (Render)
+-------------------------
+A. Commit & push perubahan backend ke GitHub:
+
+  cd C:\PICTURE-ON-FRAME-AI-STUDIO
+  git status
+  git add backend
+  git commit -m "Update backend"
+  git push
+
+B. Deploy ke Render:
+  - Biasanya auto-deploy setelah git push.
+  - Jika tidak otomatis:
+    Render → Service → Manual Deploy → Deploy latest commit
+
+
+3) UPDATE SUPABASE (SQL)
+-----------------------
+Perubahan di file setup.sql TIDAK otomatis mengubah Supabase.
+Jika ada perubahan policy/tabel, jalankan SQL-nya di:
+Supabase → SQL Editor → New query → Run
+
+Contoh fix login infinite recursion (sekali saja jika policy sudah terlanjur ada):
+  DROP POLICY IF EXISTS "Admin can view all profiles" ON public.profiles;
+
