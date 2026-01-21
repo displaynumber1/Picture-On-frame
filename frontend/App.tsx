@@ -1298,6 +1298,13 @@ export default function App() {
     .sort((a, b) => a - b);
 
   const isAnimalModel = state.options.contentType === "Model" && state.options.modelType === "Hewan";
+  const getFilteredInteractions = () => {
+    let interactions = [...INTERACTION_OPTIONS];
+    if (state.options.contentType === "Non Model" && state.options.category !== "Sandal/Sepatu") {
+      interactions = interactions.filter(option => !option.toLowerCase().includes("kaki"));
+    }
+    return interactions;
+  };
   const getFilteredPoses = () => {
     const isNonModel = state.options.contentType === "Non Model";
     const isTanpaInteraksi = state.options.interactionType === "Tanpa Interaksi";
@@ -1424,6 +1431,7 @@ export default function App() {
   };
 
   const currentPoses = getFilteredPoses();
+  const currentInteractions = getFilteredInteractions();
 
   useEffect(() => {
     if (!isAnimalModel) return;
@@ -1677,6 +1685,16 @@ export default function App() {
       window.removeEventListener('focus', handleFocus);
     };
   }, [refreshCoins]);
+
+  useEffect(() => {
+    if (!currentInteractions.includes(state.options.interactionType)) {
+      const fallback = currentInteractions.find(option => option === "Tanpa Interaksi") || currentInteractions[0];
+      if (fallback) {
+        updateOption('interactionType', fallback);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.options.contentType, state.options.category]);
 
   useEffect(() => {
     if (currentPoses.length > 0 && !currentPoses.includes(state.options.pose)) {
@@ -3455,7 +3473,7 @@ export default function App() {
               <div className="mb-8 animate-in slide-in-from-top duration-500">
                 <SectionHeader step="5" title="Interaksi Tangan & Kaki" icon={Hand} />
                 <div className="flex flex-wrap gap-2 w-full mt-2 mb-6">
-                  {INTERACTION_OPTIONS.map(i => (
+                  {currentInteractions.map(i => (
                     <OptionChip 
                       key={i} 
                       label={i} 
