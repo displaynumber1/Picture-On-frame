@@ -20,8 +20,23 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS role_user TEXT NOT NULL DEFAULT 'u
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS display_name TEXT;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 
+-- 1c. Tabel variant presets untuk simpan kombinasi input user (variants hanya milik user tsb)
+CREATE TABLE IF NOT EXISTS variant_presets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    options JSONB NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Jika tabel sudah terlanjur dibuat tanpa kolom tertentu
+ALTER TABLE variant_presets ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+
 -- 2. Buat index untuk performa query
 CREATE INDEX IF NOT EXISTS idx_profiles_user_id ON profiles(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_variant_presets_user_id ON variant_presets(user_id);
 
 -- 3. Buat function untuk update updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -36,6 +51,12 @@ $$ language 'plpgsql';
 DROP TRIGGER IF EXISTS update_profiles_updated_at ON profiles;
 CREATE TRIGGER update_profiles_updated_at
     BEFORE UPDATE ON profiles
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_variant_presets_updated_at ON variant_presets;
+CREATE TRIGGER update_variant_presets_updated_at
+    BEFORE UPDATE ON variant_presets
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
@@ -59,6 +80,9 @@ CREATE TRIGGER on_auth_user_created
 -- 7. Enable Row Level Security (RLS) untuk profiles
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
+-- Enable RLS untuk variant_presets
+ALTER TABLE variant_presets ENABLE ROW LEVEL SECURITY;
+
 -- 8. Buat policy untuk user hanya bisa membaca dan update profile mereka sendiri
 DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
 CREATE POLICY "Users can view own profile"
@@ -81,10 +105,36 @@ CREATE POLICY "Users can update own profile"
     ON profiles FOR UPDATE
     USING (auth.uid() = user_id);
 
+-- Variant presets policies (user scoped)
+DROP POLICY IF EXISTS "Users can view own variants" ON variant_presets;
+CREATE POLICY "Users can view own variants"
+    ON variant_presets FOR SELECT
+    USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert own variants" ON variant_presets;
+CREATE POLICY "Users can insert own variants"
+    ON variant_presets FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update own variants" ON variant_presets;
+CREATE POLICY "Users can update own variants"
+    ON variant_presets FOR UPDATE
+    USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete own variants" ON variant_presets;
+CREATE POLICY "Users can delete own variants"
+    ON variant_presets FOR DELETE
+    USING (auth.uid() = user_id);
+
 -- 9. Buat policy untuk service role (backend) bisa melakukan semua operasi
 DROP POLICY IF EXISTS "Service role can do everything" ON profiles;
 CREATE POLICY "Service role can do everything"
     ON profiles FOR ALL
+    USING (auth.jwt()->>'role' = 'service_role');
+
+DROP POLICY IF EXISTS "Service role can do everything" ON variant_presets;
+CREATE POLICY "Service role can do everything"
+    ON variant_presets FOR ALL
     USING (auth.jwt()->>'role' = 'service_role');
 
 -- Catatan:
