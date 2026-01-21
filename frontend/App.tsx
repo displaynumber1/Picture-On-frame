@@ -1190,7 +1190,7 @@ export default function App() {
   const router = useRouter();
   const IMAGE_BATCH_COINS = 75;
   const VIDEO_BATCH_COINS = 5;
-  const PRO_VIDEO_COINS = 180;
+  const PRO_VIDEO_COINS = 185;
   const toSafeErrorMessage = (error: any, fallback: string) => {
     const message = typeof error?.message === 'string' ? error.message : '';
     if (/pal\.ai|fal\.ai|fal/gi.test(message)) {
@@ -3953,7 +3953,7 @@ export default function App() {
                       <Video size={16} className="text-amber-500" />
                       <span className="text-sm text-gray-700">Generate Pro Video</span>
                     </div>
-                    <span className="text-sm font-semibold text-amber-600">180 Coins</span>
+                    <span className="text-sm font-semibold text-amber-600">185 Coins</span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center gap-2">

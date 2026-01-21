@@ -3839,11 +3839,11 @@ async def create_kling_video(
         if not profile:
             raise HTTPException(status_code=404, detail="Profile not found")
         coins = profile.get("coins_balance", 0)
-        pro_video_cost = 180
+        pro_video_cost = 185
         if coins < pro_video_cost:
             raise HTTPException(
                 status_code=403,
-                detail="Insufficient coins. You need at least 180 coins to generate a Pro Video. Please top up."
+                detail="Insufficient coins. You need at least 185 coins to generate a Pro Video. Please top up."
             )
         body = await request.json()
         image_url = body.get("image_url")
