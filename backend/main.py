@@ -5023,16 +5023,32 @@ async def admin_subscription_update(
 @app.get("/api/admin/audit-logs")
 async def admin_audit_logs(
     limit: int = 100,
+    actor: Optional[str] = None,
+    target: Optional[str] = None,
+    action: Optional[str] = None,
     _: Dict[str, Any] = Depends(require_admin)
 ):
     conn = get_db_connection()
+    conditions = []
+    params: List[Any] = []
+    if actor:
+        conditions.append("(actor_user_id LIKE ? OR actor_email LIKE ?)")
+        params.extend([f"%{actor}%", f"%{actor}%"])
+    if target:
+        conditions.append("target_user_id LIKE ?")
+        params.append(f"%{target}%")
+    if action:
+        conditions.append("action = ?")
+        params.append(action)
+    where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
     rows = conn.execute(
-        """
+        f"""
         SELECT * FROM admin_audit_logs
+        {where_clause}
         ORDER BY created_at DESC
         LIMIT ?
         """,
-        (max(1, min(limit, 500)),)
+        (*params, max(1, min(limit, 500)))
     ).fetchall()
     conn.close()
     items = []

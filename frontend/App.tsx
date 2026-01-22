@@ -406,6 +406,9 @@ const DashboardView: React.FC<{
   const [showMetricsInfo, setShowMetricsInfo] = useState(false);
   const [showUploadInfo, setShowUploadInfo] = useState(false);
   const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
+  const [adminAuditActor, setAdminAuditActor] = useState('');
+  const [adminAuditTarget, setAdminAuditTarget] = useState('');
+  const [adminAuditAction, setAdminAuditAction] = useState('ALL');
   const isTrialExpired = !isSubscribed && typeof trialRemaining === 'number' && trialRemaining <= 0;
 
   const formatCountdown = (nextCheckAt?: string | null) => {
@@ -1274,12 +1277,57 @@ const DashboardView: React.FC<{
             <div className="bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
                 <span className="text-sm font-semibold text-slate-700">Admin Audit Log</span>
-                <button
-                  onClick={onAdminAuditRefresh}
-                  className="px-3 py-1.5 text-xs rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
-                >
-                  Refresh
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    value={adminAuditActor}
+                    onChange={(event) => setAdminAuditActor(event.target.value)}
+                    placeholder="Actor"
+                    className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-600 focus:outline-none"
+                  />
+                  <input
+                    value={adminAuditTarget}
+                    onChange={(event) => setAdminAuditTarget(event.target.value)}
+                    placeholder="Target"
+                    className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-600 focus:outline-none"
+                  />
+                  <select
+                    value={adminAuditAction}
+                    onChange={(event) => setAdminAuditAction(event.target.value)}
+                    className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-600 focus:outline-none"
+                  >
+                    <option value="ALL">Semua aksi</option>
+                    <option value="subscription_update">subscription_update</option>
+                  </select>
+                  <button
+                    onClick={onAdminAuditRefresh}
+                    className="px-3 py-1.5 text-xs rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
+                  >
+                    Refresh
+                  </button>
+                  <button
+                    onClick={() => {
+                      const csv = [
+                        ['id', 'actor', 'action', 'target', 'details', 'created_at'].join(','),
+                        ...adminAuditLogs.map((row) => [
+                          row.id,
+                          row.actor_email || row.actor_user_id,
+                          row.action,
+                          row.target_user_id || '',
+                          JSON.stringify(row.details || {}),
+                          row.created_at || ''
+                        ].map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+                      ].join('\n');
+                      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                      const link = document.createElement('a');
+                      link.href = URL.createObjectURL(blob);
+                      link.download = 'admin-audit-logs.csv';
+                      link.click();
+                    }}
+                    className="px-3 py-1.5 text-xs rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition"
+                  >
+                    Export CSV
+                  </button>
+                </div>
               </div>
               {adminAuditLoading && (
                 <div className="px-6 py-6 text-sm text-slate-500">Memuat audit log...</div>
@@ -1648,6 +1696,9 @@ export default function App() {
   const [adminAuditLogs, setAdminAuditLogs] = useState<AdminAuditLog[]>([]);
   const [adminAuditLoading, setAdminAuditLoading] = useState(false);
   const [adminAuditError, setAdminAuditError] = useState<string | null>(null);
+  const [adminAuditActor, setAdminAuditActor] = useState('');
+  const [adminAuditTarget, setAdminAuditTarget] = useState('');
+  const [adminAuditAction, setAdminAuditAction] = useState('ALL');
   const [adminLogsStatus, setAdminLogsStatus] = useState('ALL');
   const [adminLogsUserQuery, setAdminLogsUserQuery] = useState('');
   const [adminLogsDateFrom, setAdminLogsDateFrom] = useState('');
@@ -2915,7 +2966,11 @@ export default function App() {
         setAdminAuditError('Sesi kamu telah berakhir. Silakan login ulang.');
         return;
       }
-      const response = await fetch(`${API_URL}/api/admin/audit-logs?limit=100`, {
+      const params = new URLSearchParams({ limit: '100' });
+      if (adminAuditActor.trim()) params.set('actor', adminAuditActor.trim());
+      if (adminAuditTarget.trim()) params.set('target', adminAuditTarget.trim());
+      if (adminAuditAction !== 'ALL') params.set('action', adminAuditAction);
+      const response = await fetch(`${API_URL}/api/admin/audit-logs?${params.toString()}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -2940,7 +2995,7 @@ export default function App() {
     } finally {
       setAdminAuditLoading(false);
     }
-  }, [isAdmin]);
+  }, [isAdmin, adminAuditActor, adminAuditTarget, adminAuditAction]);
 
   const fetchMidtransStatus = useCallback(async () => {
     if (!isAdmin) return;
