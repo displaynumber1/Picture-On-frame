@@ -914,7 +914,7 @@ export function generateFluxPromptV2(
   /* --------------------------------------------------
    * GARMENT HARD LOCK
    * -------------------------------------------------- */
-  if (garmentType && (normalizedInput.hasSubject || normalizedInput.hasOptionalSubject)) {
+  if (garmentType && normalizedInput.hasHuman && (normalizedInput.hasSubject || normalizedInput.hasOptionalSubject)) {
     const hasMultipleProducts = normalizedInput.hasSubject && normalizedInput.hasOptionalSubject;
     const isFootwearCategory = normalizedInput.category === 'Sandal/Sepatu' || 
                                garmentType?.toLowerCase().includes('footwear') || 
