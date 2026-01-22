@@ -388,7 +388,20 @@ export function generateFluxPromptV2(
           negative.push('two sandals in one hand', 'crowded grip', 'mismatched shoes');
         }
       } else if (isTwoHands) {
-        clauses.push('two hands only', 'both hands holding product');
+        clauses.push(
+          'two hands only',
+          'both hands holding product',
+          'symmetrical hand placement',
+          'both hands visible',
+          'balanced grip',
+          'gently cradling with both hands',
+          'cupping the product',
+          'hands meeting at the center',
+          'arms reaching from the bottom corners',
+          'sleeves covering both wrists',
+          'fingers wrapped naturally around the edges',
+          'thumbs visible on top'
+        );
         negative.push('single hand', 'one hand only');
         if (isFootwearCategory) {
           clauses.push('both hands holding a pair of sandals/shoes', 'matched pair, both shoes visible');

@@ -2088,6 +2088,7 @@ export default function App() {
     }
 
     const isHandInteraction = /tangan/i.test(interaction.toLowerCase());
+    const isTwoHandInteraction = /Pegang\s*2/i.test(interaction);
     const prompt = [
       `Pro Video prompt:`,
       `Tipe Konten: ${contentType}`,
@@ -2099,12 +2100,20 @@ export default function App() {
       `Aspect Ratio: ${aspect}`,
       isFootwear
         ? isHandInteraction
-          ? [
-              `Professional e-commerce video, start with a single hand holding one sandal as per reference image.`,
-              `The hand slowly rotates or tilts to reveal the second matching sandal tucked behind the first one.`,
-              `Camera zooms out slightly, revealing a perfect matching pair, consistent product design.`,
-              `Soft golden hour lighting, subtle hand movement, use "reveal" not "appear", 5 seconds.`
-            ].join(' ')
+          ? isTwoHandInteraction
+            ? [
+                `Professional e-commerce video, hands symmetrically reaching from bottom corners.`,
+                `Gently cradling with both hands, subtle and slow upward lift, long sleeves covering both wrists.`,
+                `0-2 detik: fokus pada impresi pertama (estetika tangan dan sweater yang hangat).`,
+                `2-5 detik: fokus pada fungsionalitas produk (tekstur sandal dan kemewahan material saat digerakkan perlahan).`,
+                `Balanced grip, both hands visible, no jitter, soft golden hour lighting, 5 seconds.`
+              ].join(' ')
+            : [
+                `Professional e-commerce video, start with a single hand holding one sandal as per reference image.`,
+                `The hand slowly rotates or tilts to reveal the second matching sandal tucked behind the first one.`,
+                `Camera zooms out slightly, revealing a perfect matching pair, consistent product design.`,
+                `Soft golden hour lighting, subtle hand movement, use "reveal" not "appear", 5 seconds.`
+              ].join(' ')
           : [
               `Mode: The Action to Static Detail.`,
               `Detik 0-2 (The Action): kamera low angle, model melakukan gerakan kecil (melangkah pelan atau memutar pergelangan kaki).`,

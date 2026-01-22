@@ -87,7 +87,7 @@ export const MAPPING: Record<string, string> = {
 
   // ========== INTERACTION TYPES ==========
   'Pegang 1 Tangan Wanita': 'female model holding a single sandal with one hand, clean presentation and clear product focus',
-  'Pegang 2 Tangan Wanita': 'female model holding a pair of sandals/shoes with both hands, showing a matched pair clearly',
+  'Pegang 2 Tangan Wanita': 'female model holding a pair of sandals/shoes with both hands, symmetrical hand placement, both hands visible, balanced grip, gently cradling with both hands, cupping the product',
   'Pegang 1 Tangan Pria': 'male model holding the product with one hand, demonstrating clear grip and product visibility',
   'Pegang 2 Tangan Pria': 'male model holding the product with both hands, showing clear product presentation',
   'Kaki Wanita': 'female model\'s foot positioned, wearing straight-leg jeans, showing product interaction with leg and foot',
