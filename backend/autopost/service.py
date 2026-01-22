@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Dict, Optional
 import json
+import logging
 import os
 
 from fastapi import BackgroundTasks, HTTPException, UploadFile  # type: ignore
@@ -15,6 +16,7 @@ from .scheduler import get_best_posting_window, resolve_schedule_time
 
 
 BroadcastFn = Callable[[str, str, Dict[str, Any]], Awaitable[None]]
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -234,3 +236,120 @@ class AutopostService:
             item["credit_used"] = item.get("credit_used") if "credit_used" in item else 0
             items.append(item)
         return {"items": items}
+
+    def regenerate_metadata(self, user_id: str, video_id: int) -> Dict[str, Any]:
+        if not user_id:
+            raise HTTPException(status_code=400, detail="User ID not found in token")
+
+        conn = self.deps.get_db_connection()
+        row = conn.execute(
+            "SELECT * FROM autopost_videos WHERE id = ? AND user_id = ?",
+            (video_id, user_id)
+        ).fetchone()
+        if not row:
+            conn.close()
+            raise HTTPException(status_code=404, detail="Video not found")
+
+        category = row["category"]
+        caption = row["caption"]
+        file_path = row["file_path"]
+        current_status = row["status"]
+
+        trend_list, _, _ = self.deps.get_trend_context(None, caption, None, None, None, category)
+        trend_tag = trend_list[0] if trend_list else None
+        generated = generate_metadata(None, None, None, None, category, trend_tag=trend_tag)
+
+        title = generated.title
+        hook_text = generated.hook_text
+        cta_text = generated.cta_text
+        hashtags = generated.hashtags
+
+        logger.info(f"[AI GENERATE] video_id={video_id}")
+        logger.info(f"Generated hook: {hook_text}")
+
+        scene_signals = self.deps.get_scene_signals(str(file_path)) if file_path else None
+        details = self.deps.score_video_metadata(
+            title,
+            caption,
+            hook_text,
+            cta_text,
+            hashtags,
+            category,
+            user_id,
+            scene_signals
+        )
+        score = float(details.get("score", 0.0))
+        threshold = self.deps.adjust_threshold_with_feedback(
+            self.deps.default_threshold,
+            details.get("feedback") or {},
+            float(details.get("trend_similarity") or 0.0)
+        )
+        details["threshold"] = threshold
+        score_reasons = build_score_reasons(details, title, hook_text, cta_text, hashtags, category)
+        logger.info(f"Score after regenerate: {score}")
+
+        compliance_blocked = bool(details.get("compliance_blocked"))
+        next_check_at = None
+        scheduled_at = None
+        status_note = None
+        new_status = current_status
+
+        if current_status in ("QUEUED", "WAITING_RECHECK"):
+            if compliance_blocked:
+                new_status = "WAITING_RECHECK"
+                next_check_at = self.deps.schedule_next_check()
+            else:
+                new_status = "QUEUED" if score >= threshold else "WAITING_RECHECK"
+                next_check_at = None if new_status == "QUEUED" else self.deps.schedule_next_check()
+
+            if new_status == "QUEUED":
+                preferred_window = get_best_posting_window(conn, user_id)
+                scheduled_at_dt = resolve_schedule_time(datetime.now(), preferred_window)
+                if scheduled_at_dt:
+                    scheduled_at = scheduled_at_dt.isoformat()
+                    status_note = "scheduled"
+
+        conn.execute(
+            """
+            UPDATE autopost_videos
+            SET title = ?, hook_text = ?, cta_text = ?, hashtags = ?,
+                title_source = ?, hook_source = ?, cta_source = ?, hashtags_source = ?,
+                score = ?, score_details = ?, score_reasons = ?, threshold = ?,
+                status = ?, next_check_at = ?, scheduled_at = ?, status_note = ?,
+                updated_at = ?
+            WHERE id = ? AND user_id = ?
+            """,
+            (
+                title,
+                hook_text,
+                cta_text,
+                hashtags,
+                "ai_generated",
+                "ai_generated",
+                "ai_generated",
+                "ai_generated",
+                score,
+                json.dumps(details),
+                json.dumps(score_reasons),
+                threshold,
+                new_status,
+                next_check_at,
+                scheduled_at,
+                status_note,
+                self.deps.now_iso(),
+                video_id,
+                user_id
+            )
+        )
+        conn.commit()
+        conn.close()
+
+        hashtag_list = [tag for tag in (hashtags or "").split() if tag]
+        return {
+            "title": title,
+            "hook": hook_text,
+            "cta": cta_text,
+            "hashtags": hashtag_list,
+            "score": score,
+            "score_reasons": score_reasons
+        }

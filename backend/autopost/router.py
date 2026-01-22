@@ -45,4 +45,12 @@ def create_autopost_router(
         user_id = current_user.get("id")
         return service.dashboard(user_id, status)
 
+    @router.post("/api/autopost/{video_id}/generate")
+    async def autopost_regenerate(
+        video_id: int,
+        current_user: Dict[str, Any] = Depends(get_current_user)
+    ):
+        user_id = current_user.get("id")
+        return service.regenerate_metadata(user_id, video_id)
+
     return router
