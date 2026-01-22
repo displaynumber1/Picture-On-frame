@@ -379,8 +379,13 @@ export function generateFluxPromptV2(
         clauses.push('single hand only', 'one hand holding product');
         negative.push('two hands', 'both hands');
         if (isFootwearCategory) {
-          clauses.push('single hand holding a pair of sandals/shoes', 'paired footwear, both shoes visible');
-          negative.push('single shoe', 'missing pair', 'mismatched shoes');
+          clauses.push(
+            'single hand holding a single sandal',
+            'clean single-sandal presentation',
+            'focus on stitching, logo, and material texture',
+            'no second sandal in the hand'
+          );
+          negative.push('two sandals in one hand', 'crowded grip', 'mismatched shoes');
         }
       } else if (isTwoHands) {
         clauses.push('two hands only', 'both hands holding product');

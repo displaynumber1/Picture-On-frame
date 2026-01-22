@@ -2100,11 +2100,10 @@ export default function App() {
       isFootwear
         ? isHandInteraction
           ? [
-              `Mode: Hand Product Detail Rotation.`,
-              `0-2 detik: tangan muncul perlahan dari bawah bingkai menuju ke tengah (slow vertical rise), fokus ke tekstur bahan.`,
-              `2-5 detik: tangan memutar telapak secara halus (subtle rotation) untuk memperlihatkan sisi samping sandal secara detail.`,
-              `Tujuan: menonjolkan kualitas bahan dan detail bentuk sandal tanpa mengganggu fokus produk.`,
-              `Gerakan sangat stabil, no jitter, no scale shift, lighting natural, detail tajam, warna akurat.`
+              `Professional e-commerce video, start with a single hand holding one sandal as per reference image.`,
+              `The hand slowly rotates or tilts to reveal the second matching sandal tucked behind the first one.`,
+              `Camera zooms out slightly, revealing a perfect matching pair, consistent product design.`,
+              `Soft golden hour lighting, subtle hand movement, use "reveal" not "appear", 5 seconds.`
             ].join(' ')
           : [
               `Mode: The Action to Static Detail.`,
