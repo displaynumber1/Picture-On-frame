@@ -2101,9 +2101,9 @@ export default function App() {
         ? isHandInteraction
           ? [
               `Mode: Hand Product Detail Rotation.`,
-              `Detik 0-2: slow zoom-in pada tangan yang memegang sepatu (fokus ke tekstur bahan).`,
-              `Detik 2-5: tangan melakukan gerakan memutar sepatu secara perlahan (slow rotation) untuk menunjukkan sisi samping dan alas sepatu.`,
-              `Tujuan: menonjolkan kualitas bahan dan detail bentuk sepatu tanpa mengganggu fokus produk.`,
+              `0-2 detik: tangan muncul perlahan dari bawah bingkai menuju ke tengah (slow vertical rise), fokus ke tekstur bahan.`,
+              `2-5 detik: tangan memutar telapak secara halus (subtle rotation) untuk memperlihatkan sisi samping sandal secara detail.`,
+              `Tujuan: menonjolkan kualitas bahan dan detail bentuk sandal tanpa mengganggu fokus produk.`,
               `Gerakan sangat stabil, no jitter, no scale shift, lighting natural, detail tajam, warna akurat.`
             ].join(' ')
           : [

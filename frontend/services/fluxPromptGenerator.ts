@@ -360,6 +360,9 @@ export function generateFluxPromptV2(
         );
       }
       clauses.push(
+        'reaching from the bottom center of the frame',
+        'palm facing upwards to support the product',
+        'hand gently cradling the product',
         'hands only',
         'no feet',
         'no legs',

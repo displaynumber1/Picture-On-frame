@@ -194,8 +194,8 @@ export const MAPPING: Record<string, string> = {
   'Tas disandarkan pada kursi atau properti': 'bag leaning against chair or prop, displaying clear product presentation',
 
   // Non Model - Sandal/Sepatu
-  'Tangan Memegang Sepasang Sandal/Sepatu': 'hand holding a pair of sandals/shoes, displaying clear grip and product presentation',
-  'Dua tangan menampilkan sepatu': 'two hands displaying a pair of sandals/shoes, showing a matched pair clearly and professional staging',
+  'Tangan Memegang Sepasang Sandal/Sepatu': 'reaching from the bottom center of the frame, palm facing upwards to support the product, hand gently cradling a pair of sandals/shoes, showing a matched pair clearly with refined presentation',
+  'Dua tangan menampilkan sepatu': 'reaching from the bottom center of the frame, palms facing upwards to support the product, hands gently cradling a pair of sandals/shoes, showing a matched pair clearly with refined staging',
   'Kaki wanita berdiri natural mengenakan sepatu': 'female foot standing while wearing shoes, showing neutral posture and clear product visibility',
   'Kaki wanita melangkah': 'female foot stepping with natural movement, showing clear product visibility',
   'Kaki wanita dengan tumit terangkat': 'female foot with raised heel, displaying clear product presentation',
