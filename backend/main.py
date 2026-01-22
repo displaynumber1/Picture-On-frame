@@ -54,9 +54,13 @@ from supabase_service import (
     is_admin_user,
     update_user_trial_remaining,
     update_user_subscription,
+    update_user_subscription_expires,
+    update_user_admin_flag,
+    upsert_subscription_record,
     update_user_quota,
     update_user_coins,
     get_profile_by_user_id,
+    list_auth_users,
     verify_user_token,
     upload_image_to_supabase_storage,
     convert_base64_to_image_bytes,
@@ -137,8 +141,10 @@ async def require_admin(current_user: Dict[str, Any] = Depends(get_current_user)
     user_id = current_user.get("id")
     if not user_id:
         raise HTTPException(status_code=403, detail="Admin access required")
+    profile = get_user_profile(user_id)
+    is_admin_flag = bool(profile.get("is_admin")) if profile else False
     role = get_user_role_from_profile(user_id) or "user"
-    if role != "admin":
+    if not is_admin_flag and role != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     return current_user
 
@@ -494,6 +500,8 @@ def get_user_role_from_profile(user_id: str) -> Optional[str]:
         profile = get_user_profile(user_id)
         if not profile:
             return None
+        if bool(profile.get("is_admin")):
+            return "admin"
         role = profile.get("role_user") or profile.get("role")
         return role if isinstance(role, str) else None
     except Exception as e:
@@ -5060,6 +5068,164 @@ async def admin_audit_logs(
             item["details"] = {}
         items.append(item)
     return {"items": items}
+
+
+def _parse_iso_dt(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except Exception:
+        return None
+
+
+def _serialize_admin_user(user: Dict[str, Any], profile: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    return {
+        "id": user.get("id"),
+        "email": user.get("email"),
+        "trial_upload_remaining": int(profile.get("trial_upload_remaining") or 0) if profile else 0,
+        "subscribed": bool(profile.get("subscribed")) if profile else False,
+        "subscription_expires_at": profile.get("subscription_expires_at") if profile else None,
+        "is_admin": bool(profile.get("is_admin")) if profile else False
+    }
+
+
+@app.get("/api/admin/users")
+async def admin_list_users(
+    page: int = 1,
+    per_page: int = 20,
+    _: Dict[str, Any] = Depends(require_admin)
+):
+    users, total = list_auth_users(page=page, per_page=per_page)
+    items = []
+    for user in users:
+        user_id = user.get("id")
+        profile = get_profile_by_user_id(user_id) if user_id else None
+        items.append(_serialize_admin_user(user, profile))
+    return {
+        "items": items,
+        "page": page,
+        "per_page": per_page,
+        "total": total
+    }
+
+
+@app.get("/api/admin/users/search")
+async def admin_search_users(
+    q: str,
+    _: Dict[str, Any] = Depends(require_admin)
+):
+    users, _ = list_auth_users(page=1, per_page=200)
+    query = q.strip().lower()
+    matched = []
+    for user in users:
+        email = (user.get("email") or "").lower()
+        if query and query in email:
+            user_id = user.get("id")
+            profile = get_profile_by_user_id(user_id) if user_id else None
+            matched.append(_serialize_admin_user(user, profile))
+    return {"items": matched}
+
+
+@app.post("/api/admin/users/{user_id}/set-subscription")
+async def admin_set_subscription(
+    user_id: str,
+    payload: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(require_admin)
+):
+    active = bool(payload.get("active"))
+    days = int(payload.get("days") or 0)
+
+    profile = get_profile_by_user_id(user_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+
+    now = datetime.utcnow()
+    current_exp = _parse_iso_dt(profile.get("subscription_expires_at"))
+    if active:
+        base = current_exp if current_exp and current_exp > now else now
+        new_exp = base + timedelta(days=days) if days > 0 else base
+        update_user_subscription(user_id, True)
+        update_user_subscription_expires(user_id, new_exp.isoformat())
+        upsert_subscription_record(user_id, True, new_exp.isoformat())
+    else:
+        update_user_subscription(user_id, False)
+        update_user_subscription_expires(user_id, None)
+        upsert_subscription_record(user_id, False, None)
+
+    updated = get_profile_by_user_id(user_id)
+    conn = get_db_connection()
+    _log_admin_audit(
+        conn,
+        actor_user_id=current_user.get("id") or "unknown",
+        actor_email=current_user.get("email"),
+        action="set_subscription",
+        target_user_id=user_id,
+        details={
+            "active": active,
+            "days": days,
+            "subscription_expires_at": updated.get("subscription_expires_at") if updated else None
+        }
+    )
+    conn.commit()
+    conn.close()
+    return {
+        "id": user_id,
+        "trial_upload_remaining": int(updated.get("trial_upload_remaining") or 0),
+        "subscribed": bool(updated.get("subscribed")),
+        "subscription_expires_at": updated.get("subscription_expires_at"),
+        "is_admin": bool(updated.get("is_admin"))
+    }
+
+
+@app.post("/api/admin/users/{user_id}/reset-trial")
+async def admin_reset_trial(
+    user_id: str,
+    current_user: Dict[str, Any] = Depends(require_admin)
+):
+    update_user_trial_remaining(user_id, 3)
+    updated = get_profile_by_user_id(user_id)
+    conn = get_db_connection()
+    _log_admin_audit(
+        conn,
+        actor_user_id=current_user.get("id") or "unknown",
+        actor_email=current_user.get("email"),
+        action="reset_trial",
+        target_user_id=user_id,
+        details={"trial_upload_remaining": 3}
+    )
+    conn.commit()
+    conn.close()
+    return {
+        "id": user_id,
+        "trial_upload_remaining": int(updated.get("trial_upload_remaining") or 0)
+    }
+
+
+@app.post("/api/admin/users/{user_id}/set-admin")
+async def admin_set_admin(
+    user_id: str,
+    payload: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(require_admin)
+):
+    is_admin = bool(payload.get("is_admin"))
+    update_user_admin_flag(user_id, is_admin)
+    updated = get_profile_by_user_id(user_id)
+    conn = get_db_connection()
+    _log_admin_audit(
+        conn,
+        actor_user_id=current_user.get("id") or "unknown",
+        actor_email=current_user.get("email"),
+        action="set_admin",
+        target_user_id=user_id,
+        details={"is_admin": is_admin}
+    )
+    conn.commit()
+    conn.close()
+    return {
+        "id": user_id,
+        "is_admin": bool(updated.get("is_admin"))
+    }
 
 
 @app.websocket("/ws/autopost")

@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS profiles (
     coins_balance INTEGER NOT NULL DEFAULT 0,
     trial_upload_remaining INTEGER NOT NULL DEFAULT 3,
     subscribed BOOLEAN NOT NULL DEFAULT FALSE,
+    subscription_expires_at TIMESTAMP WITH TIME ZONE,
+    is_admin BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(user_id)
@@ -23,6 +25,19 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS display_name TEXT;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS trial_upload_remaining INTEGER NOT NULL DEFAULT 3;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS subscribed BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS subscription_expires_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- 1e. Tabel subscriptions untuk tracking status langganan
+CREATE TABLE IF NOT EXISTS subscriptions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    active BOOLEAN NOT NULL DEFAULT FALSE,
+    expires_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id)
+);
 
 -- 1c. Tabel variant presets untuk simpan kombinasi input user (variants hanya milik user tsb)
 CREATE TABLE IF NOT EXISTS variant_presets (
@@ -50,6 +65,7 @@ CREATE INDEX IF NOT EXISTS idx_profiles_user_id ON profiles(user_id);
 
 CREATE INDEX IF NOT EXISTS idx_variant_presets_user_id ON variant_presets(user_id);
 CREATE INDEX IF NOT EXISTS idx_admin_users_user_id ON admin_users(user_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);
 
 -- 3. Buat function untuk update updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -70,6 +86,12 @@ CREATE TRIGGER update_profiles_updated_at
 DROP TRIGGER IF EXISTS update_variant_presets_updated_at ON variant_presets;
 CREATE TRIGGER update_variant_presets_updated_at
     BEFORE UPDATE ON variant_presets
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_subscriptions_updated_at ON subscriptions;
+CREATE TRIGGER update_subscriptions_updated_at
+    BEFORE UPDATE ON subscriptions
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
@@ -98,6 +120,7 @@ ALTER TABLE variant_presets ENABLE ROW LEVEL SECURITY;
 
 -- Enable RLS untuk admin_users
 ALTER TABLE admin_users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
 
 -- 8. Buat policy untuk user hanya bisa membaca dan update profile mereka sendiri
 DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
@@ -143,6 +166,12 @@ CREATE POLICY "Users can view own admin record"
     ON admin_users FOR SELECT
     USING (auth.uid() = user_id);
 
+-- Subscriptions policies (user scoped)
+DROP POLICY IF EXISTS "Users can view own subscriptions" ON subscriptions;
+CREATE POLICY "Users can view own subscriptions"
+    ON subscriptions FOR SELECT
+    USING (auth.uid() = user_id);
+
 -- 9. Buat policy untuk service role (backend) bisa melakukan semua operasi
 DROP POLICY IF EXISTS "Service role can do everything" ON profiles;
 CREATE POLICY "Service role can do everything"
@@ -157,6 +186,11 @@ CREATE POLICY "Service role can do everything"
 DROP POLICY IF EXISTS "Service role can do everything" ON admin_users;
 CREATE POLICY "Service role can do everything"
     ON admin_users FOR ALL
+    USING (auth.jwt()->>'role' = 'service_role');
+
+DROP POLICY IF EXISTS "Service role can do everything" ON subscriptions;
+CREATE POLICY "Service role can do everything"
+    ON subscriptions FOR ALL
     USING (auth.jwt()->>'role' = 'service_role');
 
 -- Catatan:

@@ -29,6 +29,8 @@ export interface UserProfile {
   coins_balance: number;
   trial_upload_remaining?: number | null;
   subscribed?: boolean | null;
+  subscription_expires_at?: string | null;
+  is_admin?: boolean | null;
   created_at: string;
   updated_at: string;
 }

@@ -105,6 +105,38 @@ def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
         return None
 
 
+def list_auth_users(page: int = 1, per_page: int = 20) -> Tuple[List[Dict[str, Any]], Optional[int]]:
+    """
+    List users via Supabase Admin API.
+    """
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        raise ValueError("Supabase credentials not initialized")
+    try:
+        url = f"{SUPABASE_URL}/auth/v1/admin/users"
+        headers = {
+            "apikey": SUPABASE_SERVICE_KEY,
+            "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}"
+        }
+        response = httpx.get(url, headers=headers, params={"page": page, "per_page": per_page}, timeout=15)
+        if response.status_code != 200:
+            logger.warning(f"Failed to list users: {response.status_code} - {response.text}")
+            return [], None
+        data = response.json()
+        if isinstance(data, dict):
+            users = data.get("users") or data.get("data") or []
+            total = data.get("total")
+        elif isinstance(data, list):
+            users = data
+            total = None
+        else:
+            users = []
+            total = None
+        return users, total if isinstance(total, int) else None
+    except Exception as e:
+        logger.error(f"Error listing users: {str(e)}", exc_info=True)
+        return [], None
+
+
 def get_user_id_by_email(email: str) -> Optional[str]:
     """
     Resolve Supabase user_id from email using Admin API.
@@ -172,6 +204,7 @@ def ensure_admin_users_by_email(emails: List[str]) -> int:
             response = supabase.table("admin_users").upsert({"user_id": user_id}, on_conflict="user_id").execute()
             if response.data:
                 updated += 1
+            supabase.table("profiles").update({"is_admin": True}).eq("user_id", user_id).execute()
         except Exception as e:
             logger.error(f"Bootstrap admin_users failed for {email}: {str(e)}", exc_info=True)
     return updated
@@ -297,6 +330,62 @@ def update_user_subscription(user_id: str, subscribed: bool) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Error updating subscription: {str(e)}", exc_info=True)
         raise
+
+
+def update_user_admin_flag(user_id: str, is_admin: bool) -> Dict[str, Any]:
+    """
+    Update user's is_admin flag and keep admin_users table in sync.
+    """
+    if not supabase:
+        raise ValueError("Supabase client not initialized")
+    try:
+        response = supabase.table("profiles").update({
+            "is_admin": bool(is_admin)
+        }).eq("user_id", user_id).execute()
+        if bool(is_admin):
+            supabase.table("admin_users").upsert({"user_id": user_id}, on_conflict="user_id").execute()
+        else:
+            supabase.table("admin_users").delete().eq("user_id", user_id).execute()
+        if response.data and len(response.data) > 0:
+            return response.data[0]
+        raise ValueError("Failed to update admin flag")
+    except Exception as e:
+        logger.error(f"Error updating admin flag: {str(e)}", exc_info=True)
+        raise
+
+
+def update_user_subscription_expires(user_id: str, expires_at: Optional[str]) -> Dict[str, Any]:
+    """
+    Update user's subscription_expires_at.
+    """
+    if not supabase:
+        raise ValueError("Supabase client not initialized")
+    try:
+        response = supabase.table("profiles").update({
+            "subscription_expires_at": expires_at
+        }).eq("user_id", user_id).execute()
+        if response.data and len(response.data) > 0:
+            return response.data[0]
+        raise ValueError("Failed to update subscription_expires_at")
+    except Exception as e:
+        logger.error(f"Error updating subscription expiry: {str(e)}", exc_info=True)
+        raise
+
+
+def upsert_subscription_record(user_id: str, active: bool, expires_at: Optional[str]) -> None:
+    """
+    Upsert subscriptions table record.
+    """
+    if not supabase:
+        raise ValueError("Supabase client not initialized")
+    try:
+        supabase.table("subscriptions").upsert({
+            "user_id": user_id,
+            "active": bool(active),
+            "expires_at": expires_at
+        }, on_conflict="user_id").execute()
+    except Exception as e:
+        logger.error(f"Error upserting subscriptions: {str(e)}", exc_info=True)
 
 
 def get_profile_by_user_id(user_id: str) -> Optional[Dict[str, Any]]:
