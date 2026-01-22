@@ -35,6 +35,11 @@ from motion_logic import (
     detect_focus_y_from_edges,
     compute_category_bias_y
 )
+from autopost.generator import generate_metadata
+from autopost.scoring import build_score_reasons
+from autopost.scheduler import get_best_posting_window, resolve_schedule_time
+from autopost.service import AutopostService, AutopostDeps
+from autopost.router import create_autopost_router
 from supabase_service import (
     get_user_profile,
     get_user_id_by_email,
@@ -245,16 +250,38 @@ def init_database():
                 cta_text TEXT,
                 hashtags TEXT,
                 category TEXT,
+                title_source TEXT,
+                hook_source TEXT,
+                cta_source TEXT,
+                hashtags_source TEXT,
                 status TEXT NOT NULL,
                 score REAL,
                 score_details TEXT,
+                score_reasons TEXT,
                 threshold REAL,
                 next_check_at TEXT,
+                scheduled_at TEXT,
+                status_note TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
                 error TEXT
             )
         ''')
+
+        # Ensure new columns exist for older databases
+        for column_def in [
+            "title_source TEXT",
+            "hook_source TEXT",
+            "cta_source TEXT",
+            "hashtags_source TEXT",
+            "score_reasons TEXT",
+            "scheduled_at TEXT",
+            "status_note TEXT",
+        ]:
+            try:
+                cursor.execute(f"ALTER TABLE autopost_videos ADD COLUMN {column_def}")
+            except sqlite3.OperationalError:
+                pass
 
         # Create autopost_metrics table
         cursor.execute('''
@@ -4169,6 +4196,14 @@ def _recheck_due_videos(conn: sqlite3.Connection, user_id: str) -> int:
             scene_signals
         )
         score = float(details.get("score", 0.0))
+        score_reasons = build_score_reasons(
+            details,
+            row["title"],
+            row["hook_text"],
+            row["cta_text"],
+            row["hashtags"],
+            row["category"]
+        )
         threshold = _adjust_threshold_with_feedback(
             row["threshold"] or DEFAULT_AUTPOST_THRESHOLD,
             details.get("feedback") or {},
@@ -4184,17 +4219,27 @@ def _recheck_due_videos(conn: sqlite3.Connection, user_id: str) -> int:
                 status="WAITING_RECHECK",
                 score=score,
                 score_details=json.dumps(details),
+                score_reasons=json.dumps(score_reasons),
                 next_check_at=_schedule_next_check(),
+                scheduled_at=None,
+                status_note=None,
                 threshold=threshold
             )
         elif score >= threshold:
+            preferred_window = get_best_posting_window(conn, user_id)
+            scheduled_at_dt = resolve_schedule_time(datetime.now(), preferred_window)
+            scheduled_at = scheduled_at_dt.isoformat() if scheduled_at_dt else None
+            status_note = "scheduled" if scheduled_at else None
             _update_autopost_record(
                 conn,
                 row["id"],
                 status="QUEUED",
                 score=score,
                 score_details=json.dumps(details),
+                score_reasons=json.dumps(score_reasons),
                 next_check_at=None,
+                scheduled_at=scheduled_at,
+                status_note=status_note,
                 threshold=threshold
             )
         else:
@@ -4204,7 +4249,10 @@ def _recheck_due_videos(conn: sqlite3.Connection, user_id: str) -> int:
                 status="WAITING_RECHECK",
                 score=score,
                 score_details=json.dumps(details),
+                score_reasons=json.dumps(score_reasons),
                 next_check_at=_schedule_next_check(),
+                scheduled_at=None,
+                status_note=None,
                 threshold=threshold
             )
         updated += 1
@@ -4213,171 +4261,29 @@ def _recheck_due_videos(conn: sqlite3.Connection, user_id: str) -> int:
     return updated
 
 
-@app.post("/api/autopost/upload")
-async def autopost_upload_video(
-    file: UploadFile = File(...),
-    title: Optional[str] = Form(None),
-    caption: Optional[str] = Form(None),
-    hook_text: Optional[str] = Form(None),
-    cta_text: Optional[str] = Form(None),
-    hashtags: Optional[str] = Form(None),
-    category: Optional[str] = Form(None),
-    background_tasks: BackgroundTasks = None,
-    current_user: Dict[str, Any] = Depends(get_current_user)
-):
-    try:
-        user_id = current_user.get("id")
-        if not user_id:
-            raise HTTPException(status_code=400, detail="User ID not found in token")
-        _enforce_rate_limit(user_id)
-        profile = get_user_profile(user_id)
-        if not profile:
-            raise HTTPException(status_code=404, detail="Profile not found")
-        coins = profile.get("coins_balance", 0)
-        autopost_upload_cost = 90
-        if coins < autopost_upload_cost:
-            raise HTTPException(
-                status_code=403,
-                detail={
-                    "code": "INSUFFICIENT_COINS",
-                    "required_coins": autopost_upload_cost,
-                    "action": "topup",
-                    "message": "Coins kamu tidak cukup."
-                }
-            )
-        if not file.filename:
-            raise HTTPException(status_code=400, detail="Filename is required")
-
-        file_ext = Path(file.filename).suffix or ".mp4"
-        safe_name = f"{user_id}_{int(datetime.now().timestamp())}_{os.urandom(4).hex()}{file_ext}"
-        file_path = AUTPOST_TEMP_DIR / safe_name
-
-        content = await file.read()
-        with open(file_path, "wb") as f:
-            f.write(content)
-
-        scene_signals = _get_scene_signals(str(file_path))
-        details = _score_video_metadata(
-            title,
-            caption,
-            hook_text,
-            cta_text,
-            hashtags,
-            category,
-            user_id,
-            scene_signals
-        )
-        score = float(details.get("score", 0.0))
-        threshold = _adjust_threshold_with_feedback(
-            DEFAULT_AUTPOST_THRESHOLD,
-            details.get("feedback") or {},
-            float(details.get("trend_similarity") or 0.0)
-        )
-        details["threshold"] = threshold
-        _log_score_details(f"user={user_id} video={file.filename}", details)
-        compliance_blocked = bool(details.get("compliance_blocked"))
-        if compliance_blocked:
-            status = "WAITING_RECHECK"
-            next_check_at = _schedule_next_check()
-        else:
-            status = "QUEUED" if score >= threshold else "WAITING_RECHECK"
-            next_check_at = None if status == "QUEUED" else _schedule_next_check()
-
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            INSERT INTO autopost_videos
-            (user_id, file_name, file_path, title, caption, hook_text, cta_text, hashtags, category,
-             status, score, score_details, threshold, next_check_at, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                user_id,
-                file.filename,
-                str(file_path),
-                title,
-                caption,
-                hook_text,
-                cta_text,
-                hashtags,
-                category,
-                status,
-                score,
-                json.dumps(details),
-                threshold,
-                next_check_at,
-                _now_iso(),
-                _now_iso()
-            )
-        )
-        record_id = cursor.lastrowid
-        conn.commit()
-        record_id = cursor.lastrowid
-        updated_profile = update_user_coins(user_id, -autopost_upload_cost)
-        remaining_coins = updated_profile.get("coins_balance", 0) if updated_profile else coins - autopost_upload_cost
-
-        if AUTPOST_SCENE_PROVIDER != "none" and background_tasks is not None:
-            background_tasks.add_task(_async_scene_analysis, record_id, str(file_path), user_id)
-        conn.close()
-
-        response_payload = {
-            "id": record_id,
-            "status": status,
-            "score": score,
-            "threshold": threshold,
-            "next_check_at": next_check_at,
-            "remaining_coins": remaining_coins
-        }
-        _cleanup_old_temp_videos()
-        await _broadcast_autopost_event(
-            user_id,
-            "autopost.updated",
-            {"id": record_id, "status": status, "score": score, "next_check_at": next_check_at, "video_name": file.filename}
-        )
-        return response_payload
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error uploading autopost video: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Failed to upload video")
-
-
-@app.get("/api/autopost/dashboard")
-async def autopost_dashboard(
-    status: Optional[str] = None,
-    current_user: Dict[str, Any] = Depends(get_current_user)
-):
-    user_id = current_user.get("id")
-    if not user_id:
-        raise HTTPException(status_code=400, detail="User ID not found in token")
-
-    conn = get_db_connection()
-    _recheck_due_videos(conn, user_id)
-    _cleanup_old_temp_videos()
-    if status:
-        rows = conn.execute(
-            "SELECT * FROM autopost_videos WHERE user_id = ? AND status = ? ORDER BY created_at DESC",
-            (user_id, status)
-        ).fetchall()
-    else:
-        rows = conn.execute(
-            "SELECT * FROM autopost_videos WHERE user_id = ? ORDER BY created_at DESC",
-            (user_id,)
-        ).fetchall()
-    conn.close()
-
-    items = []
-    for row in rows:
-        item = dict(row)
-        try:
-            item["score_details"] = json.loads(item.get("score_details") or "{}")
-        except Exception:
-            item["score_details"] = {}
-        item["video_name"] = item.get("file_name")
-        item["credit_used"] = item.get("credit_used") if "credit_used" in item else 0
-        items.append(item)
-    return {"items": items}
+autopost_service = AutopostService(
+    AutopostDeps(
+        temp_dir=AUTPOST_TEMP_DIR,
+        default_threshold=DEFAULT_AUTPOST_THRESHOLD,
+        scene_provider=AUTPOST_SCENE_PROVIDER,
+        get_db_connection=get_db_connection,
+        enforce_rate_limit=_enforce_rate_limit,
+        get_user_profile=get_user_profile,
+        update_user_coins=update_user_coins,
+        get_trend_context=_get_trend_context,
+        get_scene_signals=_get_scene_signals,
+        score_video_metadata=_score_video_metadata,
+        adjust_threshold_with_feedback=_adjust_threshold_with_feedback,
+        schedule_next_check=_schedule_next_check,
+        now_iso=_now_iso,
+        log_score_details=_log_score_details,
+        broadcast_event=_broadcast_autopost_event,
+        cleanup_old_temp_videos=_cleanup_old_temp_videos,
+        async_scene_analysis=_async_scene_analysis,
+        recheck_due_videos=_recheck_due_videos
+    )
+)
+app.include_router(create_autopost_router(autopost_service, get_current_user))
 
 
 @app.post("/api/autopost/recheck")
