@@ -2087,6 +2087,7 @@ export default function App() {
       transition = 'Transisi cepat namun smooth, tanpa perubahan arah mendadak';
     }
 
+    const isHandInteraction = /tangan/i.test(interaction.toLowerCase());
     const prompt = [
       `Pro Video prompt:`,
       `Tipe Konten: ${contentType}`,
@@ -2097,13 +2098,21 @@ export default function App() {
       `Background: ${background}`,
       `Aspect Ratio: ${aspect}`,
       isFootwear
-        ? [
-            `Mode: The Action to Static Detail.`,
-            `Detik 0-2 (The Action): kamera low angle, model melakukan gerakan kecil (melangkah pelan atau memutar pergelangan kaki).`,
-            `Detik 2-5 (The Static Detail): gerakan berhenti, kamera slow panning mengelilingi sepatu yang diam, dari samping ke depan.`,
-            `Tujuan: menonjolkan bentuk sepatu dari berbagai sudut tanpa mengganggu fokus produk.`,
-            `Gerakan sangat stabil, no jitter, no scale shift, lighting natural, detail tajam, warna akurat.`
-          ].join(' ')
+        ? isHandInteraction
+          ? [
+              `Mode: Hand Product Detail Rotation.`,
+              `Detik 0-2: slow zoom-in pada tangan yang memegang sepatu (fokus ke tekstur bahan).`,
+              `Detik 2-5: tangan melakukan gerakan memutar sepatu secara perlahan (slow rotation) untuk menunjukkan sisi samping dan alas sepatu.`,
+              `Tujuan: menonjolkan kualitas bahan dan detail bentuk sepatu tanpa mengganggu fokus produk.`,
+              `Gerakan sangat stabil, no jitter, no scale shift, lighting natural, detail tajam, warna akurat.`
+            ].join(' ')
+          : [
+              `Mode: The Action to Static Detail.`,
+              `Detik 0-2 (The Action): kamera low angle, model melakukan gerakan kecil (melangkah pelan atau memutar pergelangan kaki).`,
+              `Detik 2-5 (The Static Detail): gerakan berhenti, kamera slow panning mengelilingi sepatu yang diam, dari samping ke depan.`,
+              `Tujuan: menonjolkan bentuk sepatu dari berbagai sudut tanpa mengganggu fokus produk.`,
+              `Gerakan sangat stabil, no jitter, no scale shift, lighting natural, detail tajam, warna akurat.`
+            ].join(' ')
         : [
             `Buat video sinematik 5 detik dengan 2 fase gerakan.`,
             `Fase 1 (0-2.5s): ${phase1}.`,
