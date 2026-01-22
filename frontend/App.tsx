@@ -914,13 +914,25 @@ const DashboardView: React.FC<{
                           row.score_reasons?.map((reason, idx) => (
                             <li key={`reason-${row.id}-${idx}`} className="flex items-start gap-2">
                               <span className="text-emerald-500">✓</span>
-                              <span>{reason}</span>
+                              <span>{reason.replace(/\(\s*<=\s*10\s*kata\s*\)/gi, '').trim()}</span>
                             </li>
                           ))
                         ) : (
                           <li className="text-slate-500">—</li>
                         )}
                       </ul>
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                      <span className="font-semibold text-slate-600">AI Confidence:</span>
+                      <span>
+                        {typeof row.score === 'number'
+                          ? row.score >= 8
+                            ? 'High'
+                            : row.score >= 6
+                              ? 'Medium'
+                              : 'Low'
+                          : '—'}
+                      </span>
                     </div>
                   </div>
                 </div>
