@@ -31,6 +31,11 @@ export default function AdminPanelPage() {
   const [total, setTotal] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [subscribedFilter, setSubscribedFilter] = useState('ALL');
+  const [adminFilter, setAdminFilter] = useState('ALL');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDays, setBulkDays] = useState(30);
   const [confirmState, setConfirmState] = useState<ConfirmState>(null);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -50,6 +55,14 @@ export default function AdminPanelPage() {
     }
   }, [toast]);
 
+  const buildFilters = () => {
+    const params = new URLSearchParams();
+    if (statusFilter !== 'ALL') params.set('status', statusFilter);
+    if (subscribedFilter !== 'ALL') params.set('subscribed', subscribedFilter === 'true' ? 'true' : 'false');
+    if (adminFilter !== 'ALL') params.set('is_admin', adminFilter === 'true' ? 'true' : 'false');
+    return params;
+  };
+
   const fetchUsers = useCallback(async (nextPage: number) => {
     try {
       setLoading(true);
@@ -58,7 +71,10 @@ export default function AdminPanelPage() {
         setToast('Sesi kamu telah berakhir. Silakan login ulang.');
         return;
       }
-      const response = await fetch(`${API_URL}/api/admin/users?page=${nextPage}&per_page=${perPage}`, {
+      const params = buildFilters();
+      params.set('page', String(nextPage));
+      params.set('per_page', String(perPage));
+      const response = await fetch(`${API_URL}/api/admin/users?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!response.ok) {
@@ -69,14 +85,15 @@ export default function AdminPanelPage() {
       setTotal(typeof data?.total === 'number' ? data.total : null);
       setPage(nextPage);
       setIsSearching(false);
+      setSelectedIds(new Set());
     } catch {
       setToast('Gagal memuat users.');
     } finally {
       setLoading(false);
     }
-  }, [perPage]);
+  }, [perPage, statusFilter, subscribedFilter, adminFilter]);
 
-  const searchUsers = useCallback(async () => {
+  const searchUsers = useCallback(async (nextPage?: number) => {
     if (!searchQuery.trim()) {
       fetchUsers(1);
       return;
@@ -88,7 +105,11 @@ export default function AdminPanelPage() {
         setToast('Sesi kamu telah berakhir. Silakan login ulang.');
         return;
       }
-      const response = await fetch(`${API_URL}/api/admin/users/search?q=${encodeURIComponent(searchQuery.trim())}`, {
+      const params = buildFilters();
+      params.set('q', searchQuery.trim());
+      params.set('page', String(nextPage ?? page));
+      params.set('per_page', String(perPage));
+      const response = await fetch(`${API_URL}/api/admin/users/search?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!response.ok) {
@@ -97,12 +118,14 @@ export default function AdminPanelPage() {
       const data = await response.json();
       setUsers(Array.isArray(data?.items) ? data.items : []);
       setIsSearching(true);
+      setPage(nextPage ?? page);
+      setSelectedIds(new Set());
     } catch {
       setToast('Gagal mencari users.');
     } finally {
       setLoading(false);
     }
-  }, [fetchUsers, searchQuery]);
+  }, [fetchUsers, searchQuery, page, perPage, statusFilter, subscribedFilter, adminFilter]);
 
   useEffect(() => {
     if (!authChecked || !isAdmin) return;
@@ -143,6 +166,40 @@ export default function AdminPanelPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleSelectAll = (checked: boolean) => {
+    if (!checked) {
+      setSelectedIds(new Set());
+      return;
+    }
+    const next = new Set<string>();
+    users.forEach((user) => next.add(user.id));
+    setSelectedIds(next);
+  };
+
+  const toggleSelectUser = (userId: string) => {
+    const next = new Set(selectedIds);
+    if (next.has(userId)) {
+      next.delete(userId);
+    } else {
+      next.add(userId);
+    }
+    setSelectedIds(next);
+  };
+
+  const handleBulkPro = () => {
+    if (selectedIds.size === 0) {
+      setToast('Pilih user terlebih dulu.');
+      return;
+    }
+    confirm(`Give ${bulkDays} days Pro for ${selectedIds.size} user?`, () =>
+      handleAction('/api/admin/users/bulk-set-subscription', {
+        user_ids: Array.from(selectedIds),
+        active: true,
+        days: bulkDays
+      })
+    );
   };
 
   const totalPages = useMemo(() => {
@@ -205,6 +262,63 @@ export default function AdminPanelPage() {
           </div>
         </div>
 
+        <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+            className="border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-700"
+          >
+            <option value="ALL">All status</option>
+            <option value="active">Active</option>
+            <option value="expired">Expired</option>
+            <option value="inactive">Inactive</option>
+          </select>
+          <select
+            value={subscribedFilter}
+            onChange={(event) => setSubscribedFilter(event.target.value)}
+            className="border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-700"
+          >
+            <option value="ALL">All subscribed</option>
+            <option value="true">Subscribed</option>
+            <option value="false">Not subscribed</option>
+          </select>
+          <select
+            value={adminFilter}
+            onChange={(event) => setAdminFilter(event.target.value)}
+            className="border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-700"
+          >
+            <option value="ALL">All admin</option>
+            <option value="true">Admin</option>
+            <option value="false">Non admin</option>
+          </select>
+          <button
+            onClick={() => (isSearching ? searchUsers(1) : fetchUsers(1))}
+            className="border border-gray-200 hover:bg-gray-50 rounded-xl px-4 py-2 text-sm text-gray-700"
+          >
+            Apply Filter
+          </button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={1}
+              value={bulkDays}
+              onChange={(event) => setBulkDays(Number(event.target.value || 0))}
+              className="border border-gray-200 rounded-xl px-3 py-2 w-24 text-sm text-gray-700"
+            />
+            <span>days</span>
+          </div>
+          <button
+            onClick={handleBulkPro}
+            className="bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl px-4 py-2 text-sm"
+          >
+            Give Pro (Bulk)
+          </button>
+          <span className="text-xs text-gray-500">Selected: {selectedIds.size}</span>
+        </div>
+
         {toast && (
           <div className="text-sm text-emerald-600">{toast}</div>
         )}
@@ -213,6 +327,13 @@ export default function AdminPanelPage() {
           <table className="w-full text-sm">
             <thead className="text-xs text-gray-400 uppercase tracking-wide">
               <tr className="text-left">
+                <th className="py-3">
+                  <input
+                    type="checkbox"
+                    checked={users.length > 0 && selectedIds.size === users.length}
+                    onChange={(event) => toggleSelectAll(event.target.checked)}
+                  />
+                </th>
                 <th className="py-3">Email</th>
                 <th className="py-3">Trial remaining</th>
                 <th className="py-3">Subscribed</th>
@@ -224,16 +345,23 @@ export default function AdminPanelPage() {
             <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={6} className="py-6 text-gray-500">Memuat data...</td>
+                  <td colSpan={7} className="py-6 text-gray-500">Memuat data...</td>
                 </tr>
               )}
               {!loading && users.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-6 text-gray-500">Belum ada user.</td>
+                  <td colSpan={7} className="py-6 text-gray-500">Belum ada user.</td>
                 </tr>
               )}
               {!loading && users.map((user) => (
                 <tr key={user.id} className="border-t border-gray-100">
+                  <td className="py-4">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(user.id)}
+                      onChange={() => toggleSelectUser(user.id)}
+                    />
+                  </td>
                   <td className="py-4 text-gray-900">{user.email || '—'}</td>
                   <td className="py-4 text-gray-700">{user.trial_upload_remaining}</td>
                   <td className="py-4">
@@ -288,6 +416,26 @@ export default function AdminPanelPage() {
                 onClick={() => fetchUsers(Math.min(totalPages, page + 1))}
                 className="border border-gray-200 hover:bg-gray-50 rounded-xl px-4 py-2"
                 disabled={page >= totalPages}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+        {isSearching && (
+          <div className="flex items-center justify-between text-sm text-gray-500">
+            <span>Page {page}</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => searchUsers(Math.max(1, page - 1))}
+                className="border border-gray-200 hover:bg-gray-50 rounded-xl px-4 py-2"
+                disabled={page <= 1}
+              >
+                Prev
+              </button>
+              <button
+                onClick={() => searchUsers(page + 1)}
+                className="border border-gray-200 hover:bg-gray-50 rounded-xl px-4 py-2"
               >
                 Next
               </button>

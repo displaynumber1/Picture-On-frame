@@ -5079,6 +5079,17 @@ def _parse_iso_dt(value: Optional[str]) -> Optional[datetime]:
         return None
 
 
+def _subscription_status(profile: Optional[Dict[str, Any]]) -> str:
+    if not profile:
+        return "inactive"
+    if not bool(profile.get("subscribed")):
+        return "inactive"
+    expires_at = _parse_iso_dt(profile.get("subscription_expires_at"))
+    if expires_at and expires_at <= datetime.utcnow():
+        return "expired"
+    return "active"
+
+
 def _serialize_admin_user(user: Dict[str, Any], profile: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     return {
         "id": user.get("id"),
@@ -5086,22 +5097,61 @@ def _serialize_admin_user(user: Dict[str, Any], profile: Optional[Dict[str, Any]
         "trial_upload_remaining": int(profile.get("trial_upload_remaining") or 0) if profile else 0,
         "subscribed": bool(profile.get("subscribed")) if profile else False,
         "subscription_expires_at": profile.get("subscription_expires_at") if profile else None,
-        "is_admin": bool(profile.get("is_admin")) if profile else False
+        "is_admin": bool(profile.get("is_admin")) if profile else False,
+        "subscription_status": _subscription_status(profile)
     }
+
+
+def _matches_filters(
+    profile: Optional[Dict[str, Any]],
+    subscribed: Optional[bool],
+    is_admin: Optional[bool],
+    status: Optional[str]
+) -> bool:
+    if subscribed is not None and bool(profile.get("subscribed")) != subscribed:
+        return False
+    if is_admin is not None and bool(profile.get("is_admin")) != is_admin:
+        return False
+    if status:
+        status_norm = status.lower()
+        if _subscription_status(profile) != status_norm:
+            return False
+    return True
 
 
 @app.get("/api/admin/users")
 async def admin_list_users(
     page: int = 1,
     per_page: int = 20,
+    subscribed: Optional[bool] = None,
+    is_admin: Optional[bool] = None,
+    status: Optional[str] = None,
     _: Dict[str, Any] = Depends(require_admin)
 ):
-    users, total = list_auth_users(page=page, per_page=per_page)
-    items = []
-    for user in users:
-        user_id = user.get("id")
-        profile = get_profile_by_user_id(user_id) if user_id else None
-        items.append(_serialize_admin_user(user, profile))
+    per_page = max(1, min(per_page, 100))
+    page = max(1, page)
+    target_start = (page - 1) * per_page
+    target_end = target_start + per_page
+
+    matched: List[Dict[str, Any]] = []
+    current_page = 1
+    total = None
+
+    while len(matched) < target_end:
+        users, total = list_auth_users(page=current_page, per_page=per_page)
+        if not users:
+            break
+        for user in users:
+            user_id = user.get("id")
+            profile = get_profile_by_user_id(user_id) if user_id else None
+            if not _matches_filters(profile, subscribed, is_admin, status):
+                continue
+            matched.append(_serialize_admin_user(user, profile))
+        current_page += 1
+        if total is not None and current_page > ((total // per_page) + 2):
+            break
+
+    items = matched[target_start:target_end]
     return {
         "items": items,
         "page": page,
@@ -5113,18 +5163,49 @@ async def admin_list_users(
 @app.get("/api/admin/users/search")
 async def admin_search_users(
     q: str,
+    page: int = 1,
+    per_page: int = 20,
+    subscribed: Optional[bool] = None,
+    is_admin: Optional[bool] = None,
+    status: Optional[str] = None,
     _: Dict[str, Any] = Depends(require_admin)
 ):
-    users, _ = list_auth_users(page=1, per_page=200)
+    per_page = max(1, min(per_page, 100))
+    page = max(1, page)
     query = q.strip().lower()
-    matched = []
-    for user in users:
-        email = (user.get("email") or "").lower()
-        if query and query in email:
+    if not query:
+        return {"items": [], "page": page, "per_page": per_page, "total": 0}
+
+    target_start = (page - 1) * per_page
+    target_end = target_start + per_page
+    matched: List[Dict[str, Any]] = []
+    current_page = 1
+    total = None
+
+    while len(matched) < target_end:
+        users, total = list_auth_users(page=current_page, per_page=per_page)
+        if not users:
+            break
+        for user in users:
+            email = (user.get("email") or "").lower()
+            if query not in email:
+                continue
             user_id = user.get("id")
             profile = get_profile_by_user_id(user_id) if user_id else None
+            if not _matches_filters(profile, subscribed, is_admin, status):
+                continue
             matched.append(_serialize_admin_user(user, profile))
-    return {"items": matched}
+        current_page += 1
+        if total is not None and current_page > ((total // per_page) + 2):
+            break
+
+    items = matched[target_start:target_end]
+    return {
+        "items": items,
+        "page": page,
+        "per_page": per_page,
+        "total": total
+    }
 
 
 @app.post("/api/admin/users/{user_id}/set-subscription")
@@ -5176,6 +5257,61 @@ async def admin_set_subscription(
         "subscription_expires_at": updated.get("subscription_expires_at"),
         "is_admin": bool(updated.get("is_admin"))
     }
+
+
+@app.post("/api/admin/users/bulk-set-subscription")
+async def admin_bulk_set_subscription(
+    payload: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(require_admin)
+):
+    user_ids = payload.get("user_ids") or []
+    emails = payload.get("emails") or []
+    active = bool(payload.get("active"))
+    days = int(payload.get("days") or 0)
+
+    resolved_ids: List[str] = []
+    for item in user_ids:
+        if isinstance(item, str) and item:
+            resolved_ids.append(item)
+    for email in emails:
+        if not isinstance(email, str) or not email:
+            continue
+        resolved = get_user_id_by_email(email)
+        if resolved:
+            resolved_ids.append(resolved)
+
+    unique_ids = list(dict.fromkeys(resolved_ids))
+    updated_count = 0
+    for uid in unique_ids:
+        profile = get_profile_by_user_id(uid)
+        if not profile:
+            continue
+        now = datetime.utcnow()
+        current_exp = _parse_iso_dt(profile.get("subscription_expires_at"))
+        if active:
+            base = current_exp if current_exp and current_exp > now else now
+            new_exp = base + timedelta(days=days) if days > 0 else base
+            update_user_subscription(uid, True)
+            update_user_subscription_expires(uid, new_exp.isoformat())
+            upsert_subscription_record(uid, True, new_exp.isoformat())
+        else:
+            update_user_subscription(uid, False)
+            update_user_subscription_expires(uid, None)
+            upsert_subscription_record(uid, False, None)
+        updated_count += 1
+
+    conn = get_db_connection()
+    _log_admin_audit(
+        conn,
+        actor_user_id=current_user.get("id") or "unknown",
+        actor_email=current_user.get("email"),
+        action="bulk_set_subscription",
+        target_user_id=None,
+        details={"active": active, "days": days, "count": updated_count}
+    )
+    conn.commit()
+    conn.close()
+    return {"updated": updated_count}
 
 
 @app.post("/api/admin/users/{user_id}/reset-trial")
