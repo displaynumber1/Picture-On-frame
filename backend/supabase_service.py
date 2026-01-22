@@ -138,7 +138,8 @@ def upsert_user_role(user_id: str, role_user: str) -> Optional[Dict[str, Any]]:
 
 def ensure_admin_roles_by_email(emails: List[str]) -> int:
     """
-    Ensure role_user=admin for a list of emails. Returns count of updated profiles.
+    Legacy: Ensure role_user=admin for a list of emails. Returns count of updated profiles.
+    Prefer using ensure_admin_users_by_email to avoid changing auth-facing roles.
     """
     updated = 0
     for email in emails:
@@ -152,6 +153,44 @@ def ensure_admin_roles_by_email(emails: List[str]) -> int:
         except Exception as e:
             logger.error(f"Bootstrap admin failed for {email}: {str(e)}", exc_info=True)
     return updated
+
+
+def ensure_admin_users_by_email(emails: List[str]) -> int:
+    """
+    Ensure user_id exists in admin_users table for a list of emails.
+    Returns count of upserted rows.
+    """
+    if not supabase:
+        raise ValueError("Supabase client not initialized")
+    updated = 0
+    for email in emails:
+        user_id = get_user_id_by_email(email)
+        if not user_id:
+            logger.warning(f"Bootstrap admin skipped: user not found for email {email}")
+            continue
+        try:
+            response = supabase.table("admin_users").upsert({"user_id": user_id}, on_conflict="user_id").execute()
+            if response.data:
+                updated += 1
+        except Exception as e:
+            logger.error(f"Bootstrap admin_users failed for {email}: {str(e)}", exc_info=True)
+    return updated
+
+
+def is_admin_user(user_id: str) -> bool:
+    """
+    Check if user_id is listed in admin_users table.
+    """
+    if not supabase:
+        raise ValueError("Supabase client not initialized")
+    if not user_id:
+        return False
+    try:
+        response = supabase.table("admin_users").select("user_id").eq("user_id", user_id).limit(1).execute()
+        return bool(response.data)
+    except Exception as e:
+        logger.error(f"Error checking admin_users: {str(e)}", exc_info=True)
+        return False
 
 
 def update_user_quota(user_id: str, quota_change: int) -> Dict[str, Any]:

@@ -36,11 +36,12 @@ from motion_logic import (
     compute_category_bias_y
 )
 from supabase_service import (
-    get_user_profile, 
+    get_user_profile,
     get_user_id_by_email,
-    ensure_admin_roles_by_email,
-    update_user_quota, 
-    update_user_coins, 
+    ensure_admin_users_by_email,
+    is_admin_user,
+    update_user_quota,
+    update_user_coins,
     verify_user_token,
     upload_image_to_supabase_storage,
     convert_base64_to_image_bytes,
@@ -305,12 +306,12 @@ def init_database():
         raise
 
 def bootstrap_admin_profiles() -> None:
-    """Ensure admin roles in Supabase profiles for bootstrap emails"""
+    """Ensure admin user records in Supabase for bootstrap emails"""
     if not BOOTSTRAP_ADMIN_ENABLED or not BOOTSTRAP_ADMIN_EMAILS:
         return
     try:
-        updated = ensure_admin_roles_by_email(BOOTSTRAP_ADMIN_EMAILS)
-        logger.info(f"Bootstrap admin profiles updated: {updated}")
+        updated = ensure_admin_users_by_email(BOOTSTRAP_ADMIN_EMAILS)
+        logger.info(f"Bootstrap admin_users updated: {updated}")
     except Exception as e:
         logger.warning(f"Bootstrap admin profiles skipped: {str(e)}")
 
@@ -374,6 +375,8 @@ def get_user_role(email: str) -> Optional[str]:
 def get_user_role_from_profile(user_id: str) -> Optional[str]:
     """Get user role from Supabase profile"""
     try:
+        if is_admin_user(user_id):
+            return "admin"
         profile = get_user_profile(user_id)
         if not profile:
             return None
