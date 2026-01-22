@@ -111,6 +111,16 @@ type AdminSubscriptionInfo = {
   trial_upload_remaining: number;
 };
 
+type AdminAuditLog = {
+  id: number;
+  actor_user_id: string;
+  actor_email?: string | null;
+  action: string;
+  target_user_id?: string | null;
+  details?: Record<string, any> | null;
+  created_at?: string | null;
+};
+
 type AdminMidtransStatus = {
   midtrans_is_production: boolean;
   server_key_configured: boolean;
@@ -279,9 +289,14 @@ const DashboardView: React.FC<{
   subscriptionInfo: AdminSubscriptionInfo | null;
   subscriptionLoading: boolean;
   subscriptionError: string | null;
+  subscriptionStatus: string | null;
   onSubscriptionQueryChange: (value: string) => void;
   onSubscriptionLookup: () => void;
   onSubscriptionUpdate: (payload: Record<string, any>) => void;
+  adminAuditLogs: AdminAuditLog[];
+  adminAuditLoading: boolean;
+  adminAuditError: string | null;
+  onAdminAuditRefresh: () => void;
 }> = ({
   items,
   loading,
@@ -379,9 +394,14 @@ const DashboardView: React.FC<{
   subscriptionInfo,
   subscriptionLoading,
   subscriptionError,
+  subscriptionStatus,
   onSubscriptionQueryChange,
   onSubscriptionLookup,
-  onSubscriptionUpdate
+  onSubscriptionUpdate,
+  adminAuditLogs,
+  adminAuditLoading,
+  adminAuditError,
+  onAdminAuditRefresh
 }) => {
   const [showMetricsInfo, setShowMetricsInfo] = useState(false);
   const [showUploadInfo, setShowUploadInfo] = useState(false);
@@ -1162,6 +1182,9 @@ const DashboardView: React.FC<{
                       Set Trial 0
                     </button>
                   </div>
+                  {subscriptionStatus && (
+                    <div className="text-[11px] text-emerald-600">{subscriptionStatus}</div>
+                  )}
                 </div>
               )}
             </div>
@@ -1246,6 +1269,39 @@ const DashboardView: React.FC<{
                 </span>
               </div>
             ))}
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                <span className="text-sm font-semibold text-slate-700">Admin Audit Log</span>
+                <button
+                  onClick={onAdminAuditRefresh}
+                  className="px-3 py-1.5 text-xs rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
+                >
+                  Refresh
+                </button>
+              </div>
+              {adminAuditLoading && (
+                <div className="px-6 py-6 text-sm text-slate-500">Memuat audit log...</div>
+              )}
+              {adminAuditError && (
+                <div className="px-6 py-6 text-sm text-red-600">{adminAuditError}</div>
+              )}
+              {!adminAuditLoading && !adminAuditError && adminAuditLogs.length === 0 && (
+                <div className="px-6 py-6 text-sm text-slate-500">Belum ada aktivitas admin.</div>
+              )}
+              {!adminAuditLoading && !adminAuditError && adminAuditLogs.map((row: AdminAuditLog) => (
+                <div key={`audit-${row.id}`} className="grid grid-cols-[1.2fr_1.2fr_1fr_1.2fr] gap-3 px-6 py-4 text-xs border-t border-slate-100 items-center">
+                  <span className="text-slate-600 truncate">{row.actor_email || row.actor_user_id}</span>
+                  <span className="text-slate-700">{row.action}</span>
+                  <span className="text-slate-600 truncate">{row.target_user_id || '—'}</span>
+                  <span className="text-slate-500 truncate">
+                    {row.details?.subscribed !== undefined
+                      ? `subscribed=${row.details.subscribed} trial=${row.details.trial_upload_remaining}`
+                      : '—'}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -1588,6 +1644,10 @@ export default function App() {
   const [subscriptionInfo, setSubscriptionInfo] = useState<AdminSubscriptionInfo | null>(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
   const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
+  const [adminAuditLogs, setAdminAuditLogs] = useState<AdminAuditLog[]>([]);
+  const [adminAuditLoading, setAdminAuditLoading] = useState(false);
+  const [adminAuditError, setAdminAuditError] = useState<string | null>(null);
   const [adminLogsStatus, setAdminLogsStatus] = useState('ALL');
   const [adminLogsUserQuery, setAdminLogsUserQuery] = useState('');
   const [adminLogsDateFrom, setAdminLogsDateFrom] = useState('');
@@ -2781,6 +2841,7 @@ export default function App() {
     try {
       setSubscriptionLoading(true);
       setSubscriptionError(null);
+      setSubscriptionStatus(null);
       const token = await supabaseService.getAccessToken();
       if (!token) {
         setSubscriptionError('Sesi kamu telah berakhir. Silakan login ulang.');
@@ -2804,6 +2865,7 @@ export default function App() {
       }
       const data = await response.json();
       setSubscriptionInfo(data);
+      setSubscriptionStatus('Status user berhasil dimuat.');
     } catch (error: any) {
       setSubscriptionError('Gagal memuat subscription user.');
     } finally {
@@ -2816,6 +2878,7 @@ export default function App() {
     try {
       setSubscriptionLoading(true);
       setSubscriptionError(null);
+      setSubscriptionStatus(null);
       const token = await supabaseService.getAccessToken();
       if (!token) {
         setSubscriptionError('Sesi kamu telah berakhir. Silakan login ulang.');
@@ -2834,10 +2897,48 @@ export default function App() {
       }
       const data = await response.json();
       setSubscriptionInfo(data);
+      setSubscriptionStatus('Perubahan berhasil disimpan.');
     } catch (error: any) {
       setSubscriptionError('Gagal update subscription.');
     } finally {
       setSubscriptionLoading(false);
+    }
+  }, [isAdmin]);
+
+  const fetchAdminAuditLogs = useCallback(async () => {
+    if (!isAdmin) return;
+    try {
+      setAdminAuditLoading(true);
+      setAdminAuditError(null);
+      const token = await supabaseService.getAccessToken();
+      if (!token) {
+        setAdminAuditError('Sesi kamu telah berakhir. Silakan login ulang.');
+        return;
+      }
+      const response = await fetch(`${API_URL}/api/admin/audit-logs?limit=100`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      if (!response.ok) {
+        throw new Error('Gagal memuat audit log.');
+      }
+      const data = await response.json();
+      const items = Array.isArray(data?.items) ? data.items : [];
+      const mapped: AdminAuditLog[] = items.map((item: any) => ({
+        id: item.id,
+        actor_user_id: item.actor_user_id,
+        actor_email: item.actor_email,
+        action: item.action,
+        target_user_id: item.target_user_id,
+        details: item.details || null,
+        created_at: item.created_at || null
+      }));
+      setAdminAuditLogs(mapped);
+    } catch (error: any) {
+      setAdminAuditError('Gagal memuat audit log.');
+    } finally {
+      setAdminAuditLoading(false);
     }
   }, [isAdmin]);
 
@@ -3557,7 +3658,8 @@ export default function App() {
     if (!showDashboard || !isAdmin) return;
     fetchAdminLogs();
     fetchMidtransStatus();
-  }, [showDashboard, isAdmin, fetchAdminLogs, fetchMidtransStatus]);
+    fetchAdminAuditLogs();
+  }, [showDashboard, isAdmin, fetchAdminLogs, fetchMidtransStatus, fetchAdminAuditLogs]);
 
   const handleCoinClick = () => {
     setShowCoinModal(!showCoinModal);
@@ -3675,9 +3777,14 @@ export default function App() {
         subscriptionInfo={subscriptionInfo}
         subscriptionLoading={subscriptionLoading}
         subscriptionError={subscriptionError}
+        subscriptionStatus={subscriptionStatus}
         onSubscriptionQueryChange={setSubscriptionQuery}
         onSubscriptionLookup={fetchSubscriptionInfo}
         onSubscriptionUpdate={updateSubscription}
+        adminAuditLogs={adminAuditLogs}
+        adminAuditLoading={adminAuditLoading}
+        adminAuditError={adminAuditError}
+        onAdminAuditRefresh={fetchAdminAuditLogs}
       />
     );
   }

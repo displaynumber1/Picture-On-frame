@@ -346,6 +346,19 @@ def init_database():
                 UNIQUE(pattern_type, pattern_key)
             )
         ''')
+
+        # Create admin audit logs table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS admin_audit_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                actor_user_id TEXT NOT NULL,
+                actor_email TEXT,
+                action TEXT NOT NULL,
+                target_user_id TEXT,
+                details TEXT,
+                created_at TEXT NOT NULL
+            )
+        ''')
         
         # Bootstrap authorized admins from environment (optional)
         if BOOTSTRAP_ADMIN_ENABLED and BOOTSTRAP_ADMIN_EMAILS:
@@ -396,6 +409,30 @@ def _trial_guard(profile: Dict[str, Any], user_id: str) -> None:
                 "message": "Trial kamu sudah habis. Upgrade ke Pro untuk melanjutkan."
             }
         )
+
+
+def _log_admin_audit(
+    conn: sqlite3.Connection,
+    actor_user_id: str,
+    actor_email: Optional[str],
+    action: str,
+    target_user_id: Optional[str],
+    details: Optional[Dict[str, Any]] = None
+) -> None:
+    conn.execute(
+        """
+        INSERT INTO admin_audit_logs (actor_user_id, actor_email, action, target_user_id, details, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (
+            actor_user_id,
+            actor_email,
+            action,
+            target_user_id,
+            json.dumps(details or {}),
+            _now_iso()
+        )
+    )
 
 # Database helper functions
 def get_db_connection():
@@ -4942,7 +4979,7 @@ async def admin_subscription_lookup(
 @app.post("/api/admin/subscription/update")
 async def admin_subscription_update(
     payload: Dict[str, Any],
-    _: Dict[str, Any] = Depends(require_admin)
+    current_user: Dict[str, Any] = Depends(require_admin)
 ):
     target_user_id = payload.get("user_id")
     email = payload.get("email")
@@ -4962,11 +4999,51 @@ async def admin_subscription_update(
     profile = get_profile_by_user_id(target_user_id)
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
+    conn = get_db_connection()
+    _log_admin_audit(
+        conn,
+        actor_user_id=current_user.get("id") or "unknown",
+        actor_email=current_user.get("email"),
+        action="subscription_update",
+        target_user_id=target_user_id,
+        details={
+            "subscribed": bool(profile.get("subscribed")),
+            "trial_upload_remaining": int(profile.get("trial_upload_remaining") or 0)
+        }
+    )
+    conn.commit()
+    conn.close()
     return {
         "user_id": target_user_id,
         "subscribed": bool(profile.get("subscribed")),
         "trial_upload_remaining": int(profile.get("trial_upload_remaining") or 0)
     }
+
+
+@app.get("/api/admin/audit-logs")
+async def admin_audit_logs(
+    limit: int = 100,
+    _: Dict[str, Any] = Depends(require_admin)
+):
+    conn = get_db_connection()
+    rows = conn.execute(
+        """
+        SELECT * FROM admin_audit_logs
+        ORDER BY created_at DESC
+        LIMIT ?
+        """,
+        (max(1, min(limit, 500)),)
+    ).fetchall()
+    conn.close()
+    items = []
+    for row in rows:
+        item = dict(row)
+        try:
+            item["details"] = json.loads(item.get("details") or "{}")
+        except Exception:
+            item["details"] = {}
+        items.append(item)
+    return {"items": items}
 
 
 @app.websocket("/ws/autopost")
