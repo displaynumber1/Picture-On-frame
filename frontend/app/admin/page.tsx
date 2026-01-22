@@ -202,6 +202,36 @@ export default function AdminPanelPage() {
     );
   };
 
+  const handleBulkResetTrial = () => {
+    if (selectedIds.size === 0) {
+      setToast('Pilih user terlebih dulu.');
+      return;
+    }
+    confirm(`Reset trial untuk ${selectedIds.size} user?`, () =>
+      handleAction('/api/admin/users/bulk-reset-trial', {
+        user_ids: Array.from(selectedIds)
+      })
+    );
+  };
+
+  const exportCsv = () => {
+    const rows = [
+      ['email', 'trial_remaining', 'subscribed', 'expires_at', 'is_admin'].join(','),
+      ...users.map((user) => [
+        user.email || '',
+        user.trial_upload_remaining,
+        user.subscribed,
+        user.subscription_expires_at || '',
+        user.is_admin
+      ].map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ];
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `admin-users-${isSearching ? 'search' : 'page'}-${page}.csv`;
+    link.click();
+  };
+
   const totalPages = useMemo(() => {
     if (!total) return null;
     return Math.max(1, Math.ceil(total / perPage));
@@ -316,6 +346,18 @@ export default function AdminPanelPage() {
           >
             Give Pro (Bulk)
           </button>
+          <button
+            onClick={handleBulkResetTrial}
+            className="border border-red-200 text-red-600 hover:bg-red-50 rounded-xl px-4 py-2 text-sm"
+          >
+            Reset Trial (Bulk)
+          </button>
+          <button
+            onClick={exportCsv}
+            className="border border-gray-200 hover:bg-gray-50 rounded-xl px-4 py-2 text-sm text-gray-700"
+          >
+            Export CSV
+          </button>
           <span className="text-xs text-gray-500">Selected: {selectedIds.size}</span>
         </div>
 
@@ -424,7 +466,10 @@ export default function AdminPanelPage() {
         )}
         {isSearching && (
           <div className="flex items-center justify-between text-sm text-gray-500">
-            <span>Page {page}</span>
+            <span>
+              Page {page}
+              {typeof total === 'number' ? ` · Total ${total}` : ''}
+            </span>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => searchUsers(Math.max(1, page - 1))}

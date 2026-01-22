@@ -5338,6 +5338,44 @@ async def admin_reset_trial(
     }
 
 
+@app.post("/api/admin/users/bulk-reset-trial")
+async def admin_bulk_reset_trial(
+    payload: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(require_admin)
+):
+    user_ids = payload.get("user_ids") or []
+    emails = payload.get("emails") or []
+    resolved_ids: List[str] = []
+    for item in user_ids:
+        if isinstance(item, str) and item:
+            resolved_ids.append(item)
+    for email in emails:
+        if not isinstance(email, str) or not email:
+            continue
+        resolved = get_user_id_by_email(email)
+        if resolved:
+            resolved_ids.append(resolved)
+
+    unique_ids = list(dict.fromkeys(resolved_ids))
+    updated_count = 0
+    for uid in unique_ids:
+        update_user_trial_remaining(uid, 3)
+        updated_count += 1
+
+    conn = get_db_connection()
+    _log_admin_audit(
+        conn,
+        actor_user_id=current_user.get("id") or "unknown",
+        actor_email=current_user.get("email"),
+        action="bulk_reset_trial",
+        target_user_id=None,
+        details={"count": updated_count}
+    )
+    conn.commit()
+    conn.close()
+    return {"updated": updated_count}
+
+
 @app.post("/api/admin/users/{user_id}/set-admin")
 async def admin_set_admin(
     user_id: str,
