@@ -383,9 +383,30 @@ export function generateFluxPromptV2(
             'single hand holding a single sandal',
             'clean single-sandal presentation',
             'focus on stitching, logo, and material texture',
-            'no second sandal in the hand'
+            'no second sandal in the hand',
+            'realistic product scale, true-to-life size',
+            'slightly upright orientation, tilted diagonal',
+            'not horizontal, not fully vertical',
+            'toe slightly raised',
+            'clean product silhouette',
+            'no finger shadow on product'
           );
-          negative.push('two sandals in one hand', 'crowded grip', 'mismatched shoes');
+          negative.push(
+            'two sandals in one hand',
+            'crowded grip',
+            'mismatched shoes',
+            'wearing footwear',
+            'shoes on feet',
+            'finger shadow on product',
+            'hand shadow cast on product',
+            'ghost shadow',
+            'unrealistic scale',
+            'tiny product',
+            'oversized hand',
+            'horizontal flat orientation',
+            'flat lay',
+            'top-down'
+          );
         }
       } else if (isTwoHands) {
         clauses.push(
