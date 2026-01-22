@@ -380,19 +380,17 @@ export function generateFluxPromptV2(
         negative.push('two hands', 'both hands');
         if (isFootwearCategory) {
           clauses.push(
-            'single hand holding a single sandal',
-            'clean single-sandal presentation',
+            'single hand holding a matched pair of sandals',
+            'paired sandals stacked with slight overlap',
             'focus on stitching, logo, and material texture',
-            'no second sandal in the hand',
             'realistic product scale, true-to-life size',
-            'slightly upright orientation, tilted diagonal',
-            'not horizontal, not fully vertical',
+            'slightly upright orientation, tilted diagonal to the left',
+            'not horizontal, not fully vertical, not tilted to the right',
             'toe slightly raised',
             'clean product silhouette',
             'no finger shadow on product'
           );
           negative.push(
-            'two sandals in one hand',
             'crowded grip',
             'mismatched shoes',
             'wearing footwear',
@@ -405,7 +403,9 @@ export function generateFluxPromptV2(
             'oversized hand',
             'horizontal flat orientation',
             'flat lay',
-            'top-down'
+            'top-down',
+            'pair separated far apart',
+            'pair at different angles'
           );
         }
       } else if (isTwoHands) {
