@@ -9,7 +9,7 @@ MIN_WEIGHT = 0.6
 MAX_WEIGHT = 1.6
 MIN_STRENGTH = 0.5
 MAX_STRENGTH = 1.4
-DECAY_FACTOR = 0.985
+WEEKLY_DECAY = 0.88
 
 
 def _clamp(value: float, low: float, high: float) -> float:
@@ -91,13 +91,28 @@ def get_learning_strength(conn, user_id: str) -> float:
 
 
 def _apply_decay(conn, table: str, where_clause: str = "", params: Tuple = ()) -> None:
-    sql = f"""
-        UPDATE {table}
-        SET weight = MIN(MAX(weight * ?, ?), ?),
-            updated_at = ?
+    rows = conn.execute(
+        f"""
+        SELECT id, weight, updated_at
+        FROM {table}
         {where_clause}
-    """
-    conn.execute(sql, (DECAY_FACTOR, MIN_WEIGHT, MAX_WEIGHT, datetime.utcnow().isoformat(), *params))
+        """,
+        params
+    ).fetchall()
+    now = datetime.utcnow()
+    for row in rows:
+        updated_at = row["updated_at"]
+        try:
+            last = datetime.fromisoformat(updated_at) if updated_at else now
+        except Exception:
+            last = now
+        weeks = max(0.0, (now - last).days / 7.0)
+        factor = WEEKLY_DECAY ** weeks
+        new_weight = _clamp(float(row["weight"] or 1.0) * factor, MIN_WEIGHT, MAX_WEIGHT)
+        conn.execute(
+            f"UPDATE {table} SET weight = ?, updated_at = ? WHERE id = ?",
+            (new_weight, now.isoformat(), row["id"])
+        )
 
 
 def refresh_feedback_weights(conn, user_id: str) -> Dict[str, Dict[str, float]]:
@@ -283,7 +298,7 @@ def get_global_feedback_weights(conn) -> Dict[str, Dict[str, float]]:
 
 
 def merge_weights(global_weights: Dict[str, Dict[str, float]], user_weights: Dict[str, Dict[str, float]], strength: float) -> Dict[str, Dict[str, float]]:
-    alpha = _clamp(0.4 + (strength - MIN_STRENGTH) / max(0.1, (MAX_STRENGTH - MIN_STRENGTH)) * 0.4, 0.4, 0.8)
+    alpha = 0.4
     merged: Dict[str, Dict[str, float]] = {}
     for group in ("hook", "cta", "hashtag"):
         merged[group] = {}
