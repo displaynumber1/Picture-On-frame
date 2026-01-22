@@ -287,14 +287,14 @@ def init_database():
         # Bootstrap authorized admins from environment (optional)
         if BOOTSTRAP_ADMIN_ENABLED and BOOTSTRAP_ADMIN_EMAILS:
             for admin_email in BOOTSTRAP_ADMIN_EMAILS:
-                cursor.execute('SELECT id FROM authorized_users WHERE email = ?', (admin_email,))
-                if cursor.fetchone() is None:
-                    cursor.execute('''
-                        INSERT INTO authorized_users (email, role, created_at)
-                        VALUES (?, ?, ?)
-                    ''', (admin_email, 'admin', datetime.now().isoformat()))
+        cursor.execute('SELECT id FROM authorized_users WHERE email = ?', (admin_email,))
+        if cursor.fetchone() is None:
+            cursor.execute('''
+                INSERT INTO authorized_users (email, role, created_at)
+                VALUES (?, ?, ?)
+            ''', (admin_email, 'admin', datetime.now().isoformat()))
                     logger.info(f"Bootstrap admin '{admin_email}' added to authorized_users")
-                else:
+        else:
                     logger.info(f"Bootstrap admin '{admin_email}' already exists in authorized_users")
         
         conn.commit()
@@ -1728,7 +1728,6 @@ def _get_cors_origins() -> List[str]:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_get_cors_origins(),
-    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
