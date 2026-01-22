@@ -18,6 +18,7 @@ import {
   Package,
   CheckCircle2,
   User,
+  Lock,
   Hand,
   Tag,
   Monitor,
@@ -189,6 +190,8 @@ const DashboardView: React.FC<{
   onRecheck: () => void;
   onRegenerate: (id: number) => void;
   regeneratingId: number | null;
+  trialRemaining: number | null;
+  isSubscribed: boolean;
   onUploadClick: () => void;
   onUploadChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   uploadInputRef: React.RefObject<HTMLInputElement>;
@@ -280,6 +283,8 @@ const DashboardView: React.FC<{
   onRecheck,
   onRegenerate,
   regeneratingId,
+  trialRemaining,
+  isSubscribed,
   onUploadClick,
   onUploadChange,
   uploadInputRef,
@@ -361,6 +366,7 @@ const DashboardView: React.FC<{
   const [showMetricsInfo, setShowMetricsInfo] = useState(false);
   const [showUploadInfo, setShowUploadInfo] = useState(false);
   const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
+  const isTrialExpired = !isSubscribed && typeof trialRemaining === 'number' && trialRemaining <= 0;
 
   const formatCountdown = (nextCheckAt?: string | null) => {
     if (!nextCheckAt) return '—';
@@ -490,7 +496,8 @@ const DashboardView: React.FC<{
             </button>
             <button
               onClick={onUploadClick}
-              className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-sm font-semibold"
+              className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isTrialExpired}
             >
               <Upload size={16} />
               Upload Video
@@ -783,6 +790,19 @@ const DashboardView: React.FC<{
               <p className="text-xs text-slate-500 mt-1">
                 AI sedang menganalisis dan mengoptimasi video kamu agar performanya maksimal.
               </p>
+              {!isSubscribed && (
+                <div className="mt-2">
+                  {isTrialExpired ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-red-50 text-red-600">
+                      🔒 Trial habis – Upgrade ke Pro
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700">
+                      🎁 Sisa trial: {trialRemaining ?? 0} dari 3 upload gratis
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
             <button
               onClick={onRecheck}
@@ -859,7 +879,7 @@ const DashboardView: React.FC<{
                   <button
                     onClick={() => onRegenerate(row.id)}
                     className="px-3 py-1.5 text-xs rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 shadow-sm disabled:opacity-60"
-                    disabled={regeneratingId === row.id}
+                    disabled={regeneratingId === row.id || isTrialExpired}
                   >
                     ✨ {regeneratingId === row.id ? 'Memproses...' : 'Regenerate AI'}
                   </button>
@@ -1153,7 +1173,7 @@ const DashboardView: React.FC<{
             <button
               onClick={onMetricsUploadClick}
               className="px-3 py-1.5 text-xs rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition disabled:opacity-60"
-              disabled={metricsUploading}
+              disabled={metricsUploading || isTrialExpired}
             >
               {metricsUploading ? 'Uploading...' : 'Upload Data'}
             </button>
@@ -1418,6 +1438,20 @@ export default function App() {
     return safeMessages.has(message) ? message : fallback;
   };
 
+  const UPGRADE_LINK = 'https://wa.me/6285190049996?text=Halo%20saya%20ingin%20upgrade%20Pro%20Rp49.000%2Fbulan';
+
+  const handleUpgradeClick = () => {
+    window.open(UPGRADE_LINK, '_blank');
+  };
+
+  const handleTrialExpired = (payload: any) => {
+    if (payload?.error === 'TRIAL_EXPIRED') {
+      setShowUpgradeModal(true);
+      return true;
+    }
+    return false;
+  };
+
   const [state, setState] = useState<AppState>({
     productImage: null,
     productImage2: null,
@@ -1440,6 +1474,7 @@ export default function App() {
 
   const [coins, setCoins] = useState<number>(0);
   const [showCoinModal, setShowCoinModal] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [displayName, setDisplayName] = useState('User');
@@ -1449,6 +1484,8 @@ export default function App() {
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [dashboardErrorNeedsTopUp, setDashboardErrorNeedsTopUp] = useState(false);
+  const [trialRemaining, setTrialRemaining] = useState<number | null>(null);
+  const [isSubscribed, setIsSubscribed] = useState(false);
   const [dashboardRegeneratingId, setDashboardRegeneratingId] = useState<number | null>(null);
   const [variantName, setVariantName] = useState('');
   const [variants, setVariants] = useState<VariantPreset[]>([]);
@@ -1668,6 +1705,12 @@ export default function App() {
       const profile = await supabaseService.getProfile();
       if (profile && typeof profile.coins_balance === 'number') {
         setCoins(profile.coins_balance);
+      }
+      if (profile?.trial_upload_remaining !== undefined && profile?.trial_upload_remaining !== null) {
+        setTrialRemaining(profile.trial_upload_remaining);
+      }
+      if (profile?.subscribed !== undefined && profile?.subscribed !== null) {
+        setIsSubscribed(Boolean(profile.subscribed));
       }
       if (profile?.display_name) {
         setDisplayName(profile.display_name);
@@ -2714,7 +2757,7 @@ export default function App() {
     } catch (error: any) {
       setDashboardError('Gagal melakukan recheck. Silakan coba lagi.');
     }
-  }, [fetchDashboard]);
+  }, [fetchDashboard, refreshCoins]);
 
   const handleDashboardRetry = useCallback(async (id: number) => {
     try {
@@ -2753,9 +2796,14 @@ export default function App() {
         }
       });
       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        if (handleTrialExpired(errorData)) {
+          return;
+        }
         throw new Error('Gagal regenerate metadata.');
       }
       await fetchDashboard();
+      refreshCoins();
     } catch (error: any) {
       setDashboardError('Gagal regenerate metadata. Silakan coba lagi.');
     } finally {
@@ -2803,8 +2851,11 @@ export default function App() {
       });
 
       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        if (handleTrialExpired(errorData)) {
+          return;
+        }
         if (response.status === 403) {
-          const errorData = await response.json().catch(() => ({}));
           const detail = errorData.detail;
           const requiredCoins =
             detail && typeof detail === 'object' && typeof detail.required_coins === 'number'
@@ -2826,6 +2877,7 @@ export default function App() {
         setCoins(data.remaining_coins);
       }
       await fetchDashboard();
+      refreshCoins();
     } catch (error: any) {
       setDashboardError('Gagal upload video. Silakan coba lagi.');
       setDashboardErrorNeedsTopUp(false);
@@ -3051,6 +3103,14 @@ export default function App() {
       });
 
       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        if (handleTrialExpired(errorData)) {
+          setMetricsUploadResult({
+            status: 'error',
+            message: 'Trial kamu sudah habis. Upgrade ke Pro untuk melanjutkan.'
+          });
+          return;
+        }
         setMetricsUploadResult({
           status: 'error',
           message: 'Gagal mengupload data metrics. Periksa format file.'
@@ -3375,6 +3435,8 @@ export default function App() {
         onRecheck={handleDashboardRecheck}
         onRegenerate={handleDashboardRegenerate}
         regeneratingId={dashboardRegeneratingId}
+        trialRemaining={trialRemaining}
+        isSubscribed={isSubscribed}
         onUploadClick={handleDashboardUploadClick}
         onUploadChange={handleDashboardUploadChange}
         uploadInputRef={dashboardUploadRef}
@@ -4426,6 +4488,60 @@ export default function App() {
                   <span>Top Up Coins</span>
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upgrade Modal */}
+      {showUpgradeModal && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          onClick={() => setShowUpgradeModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-purple-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center border border-purple-200">
+                <Lock size={20} className="text-purple-500" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-800">🔒 Trial Kamu Sudah Habis</h3>
+                <p className="text-xs text-slate-500">Upgrade ke Pro untuk lanjut.</p>
+              </div>
+            </div>
+            <div className="text-sm text-slate-600 space-y-3">
+              <p>Kamu sudah menggunakan 3x upload gratis.</p>
+              <div className="space-y-1 text-xs text-slate-600">
+                <div>• AI generate hook, CTA, hashtag otomatis</div>
+                <div>• FYP Score + penjelasan skor</div>
+                <div>• Auto schedule posting</div>
+                <div>• AI belajar dari performa akun</div>
+                <div>• Regenerate metadata tanpa batas</div>
+              </div>
+              <div className="mt-3 text-sm font-semibold text-slate-800">
+                💳 Rp49.000 / bulan
+                <span className="block text-xs text-slate-500 font-normal">Bisa dibatalkan kapan saja</span>
+              </div>
+            </div>
+            <div className="mt-6 flex flex-col gap-2">
+              <button
+                onClick={() => {
+                  handleUpgradeClick();
+                  setShowUpgradeModal(false);
+                }}
+                className="w-full px-4 py-2 rounded-xl bg-purple-600 text-white font-semibold hover:bg-purple-700 transition"
+              >
+                🚀 Upgrade ke Pro
+              </button>
+              <button
+                onClick={() => setShowUpgradeModal(false)}
+                className="w-full px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition"
+              >
+                Nanti dulu
+              </button>
             </div>
           </div>
         </div>

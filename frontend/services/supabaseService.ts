@@ -27,6 +27,8 @@ export interface UserProfile {
   avatar_url?: string | null;
   free_image_quota: number;
   coins_balance: number;
+  trial_upload_remaining?: number | null;
+  subscribed?: boolean | null;
   created_at: string;
   updated_at: string;
 }

@@ -263,6 +263,24 @@ def update_user_coins(user_id: str, coins_change: int) -> Dict[str, Any]:
         raise
 
 
+def update_user_trial_remaining(user_id: str, trial_remaining: int) -> Dict[str, Any]:
+    """
+    Update user's trial_upload_remaining.
+    """
+    if not supabase:
+        raise ValueError("Supabase client not initialized")
+    try:
+        response = supabase.table("profiles").update({
+            "trial_upload_remaining": max(0, int(trial_remaining))
+        }).eq("user_id", user_id).execute()
+        if response.data and len(response.data) > 0:
+            return response.data[0]
+        raise ValueError("Failed to update trial remaining")
+    except Exception as e:
+        logger.error(f"Error updating trial remaining: {str(e)}", exc_info=True)
+        raise
+
+
 def insert_midtrans_transaction_log(payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """
     Insert Midtrans transaction log into Supabase table `midtrans_transactions`.

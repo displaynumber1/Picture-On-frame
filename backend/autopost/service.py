@@ -35,6 +35,7 @@ class AutopostDeps:
     get_db_connection: Callable[[], Any]
     enforce_rate_limit: Callable[[str], None]
     get_user_profile: Callable[[str], Dict[str, Any]]
+    update_user_trial_remaining: Callable[[str, int], Dict[str, Any]]
     update_user_coins: Callable[[str, int], Dict[str, Any]]
     get_trend_context: Callable[..., Any]
     get_scene_signals: Callable[[str], Optional[Dict[str, Any]]]
@@ -52,6 +53,22 @@ class AutopostDeps:
 class AutopostService:
     def __init__(self, deps: AutopostDeps):
         self.deps = deps
+
+    def _trial_guard(self, profile: Dict[str, Any], user_id: str, decrement: bool = False) -> None:
+        subscribed = bool(profile.get("subscribed"))
+        remaining = int(profile.get("trial_upload_remaining") or 0)
+        if subscribed:
+            return
+        if remaining <= 0:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "TRIAL_EXPIRED",
+                    "message": "Trial kamu sudah habis. Upgrade ke Pro untuk melanjutkan."
+                }
+            )
+        if decrement:
+            self.deps.update_user_trial_remaining(user_id, remaining - 1)
 
     async def upload_video(
         self,
@@ -72,6 +89,8 @@ class AutopostService:
         profile = self.deps.get_user_profile(user_id)
         if not profile:
             raise HTTPException(status_code=404, detail="Profile not found")
+
+        self._trial_guard(profile, user_id, decrement=False)
 
         coins = profile.get("coins_balance", 0)
         autopost_upload_cost = 90
@@ -229,6 +248,8 @@ class AutopostService:
 
         if self.deps.scene_provider != "none" and background_tasks is not None:
             background_tasks.add_task(self.deps.async_scene_analysis, record_id, str(file_path), user_id)
+        if not bool(profile.get("subscribed")):
+            self._trial_guard(profile, user_id, decrement=True)
         conn.close()
 
         response_payload = {
@@ -288,6 +309,11 @@ class AutopostService:
     def regenerate_metadata(self, user_id: str, video_id: int) -> Dict[str, Any]:
         if not user_id:
             raise HTTPException(status_code=400, detail="User ID not found in token")
+
+        profile = self.deps.get_user_profile(user_id)
+        if not profile:
+            raise HTTPException(status_code=404, detail="Profile not found")
+        self._trial_guard(profile, user_id, decrement=False)
 
         conn = self.deps.get_db_connection()
         row = conn.execute(
@@ -417,6 +443,8 @@ class AutopostService:
             )
         )
         conn.commit()
+        if not bool(profile.get("subscribed")):
+            self._trial_guard(profile, user_id, decrement=True)
         conn.close()
 
         hashtag_list = [tag for tag in (hashtags or "").split() if tag]

@@ -52,6 +52,7 @@ from supabase_service import (
     get_user_id_by_email,
     ensure_admin_users_by_email,
     is_admin_user,
+    update_user_trial_remaining,
     update_user_quota,
     update_user_coins,
     verify_user_token,
@@ -378,6 +379,21 @@ def bootstrap_admin_profiles() -> None:
 # Initialize database on startup
 init_database()
 bootstrap_admin_profiles()
+
+
+def _trial_guard(profile: Dict[str, Any], user_id: str) -> None:
+    subscribed = bool(profile.get("subscribed"))
+    remaining = int(profile.get("trial_upload_remaining") or 0)
+    if subscribed:
+        return
+    if remaining <= 0:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "TRIAL_EXPIRED",
+                "message": "Trial kamu sudah habis. Upgrade ke Pro untuk melanjutkan."
+            }
+        )
 
 # Database helper functions
 def get_db_connection():
@@ -4301,6 +4317,7 @@ autopost_service = AutopostService(
         get_db_connection=get_db_connection,
         enforce_rate_limit=_enforce_rate_limit,
         get_user_profile=get_user_profile,
+        update_user_trial_remaining=update_user_trial_remaining,
         update_user_coins=update_user_coins,
         get_trend_context=_get_trend_context,
         get_scene_signals=_get_scene_signals,
@@ -4340,6 +4357,10 @@ async def autopost_next_task(
     user_id = current_user.get("id")
     if not user_id:
         raise HTTPException(status_code=400, detail="User ID not found in token")
+    profile = get_user_profile(user_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    _trial_guard(profile, user_id)
 
     conn = get_db_connection()
     _recheck_due_videos(conn, user_id)
@@ -4464,6 +4485,10 @@ async def autopost_metrics(
     user_id = current_user.get("id")
     if not user_id:
         raise HTTPException(status_code=400, detail="User ID not found in token")
+    profile = get_user_profile(user_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    _trial_guard(profile, user_id)
     normalized = _normalize_metrics_payload(payload)
     video_id = normalized.get("video_id")
     if not video_id:

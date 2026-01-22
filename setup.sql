@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS profiles (
     avatar_url TEXT,
     free_image_quota INTEGER NOT NULL DEFAULT 5,
     coins_balance INTEGER NOT NULL DEFAULT 0,
+    trial_upload_remaining INTEGER NOT NULL DEFAULT 3,
+    subscribed BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(user_id)
@@ -19,6 +21,8 @@ CREATE TABLE IF NOT EXISTS profiles (
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS role_user TEXT NOT NULL DEFAULT 'user';
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS display_name TEXT;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS trial_upload_remaining INTEGER NOT NULL DEFAULT 3;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS subscribed BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- 1c. Tabel variant presets untuk simpan kombinasi input user (variants hanya milik user tsb)
 CREATE TABLE IF NOT EXISTS variant_presets (
