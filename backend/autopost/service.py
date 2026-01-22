@@ -144,7 +144,7 @@ class AutopostService:
              title_source, hook_source, cta_source, hashtags_source,
              status, score, score_details, score_reasons, threshold, next_check_at, scheduled_at, status_note,
              created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 user_id,
