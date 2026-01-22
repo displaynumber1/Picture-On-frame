@@ -55,8 +55,19 @@ type AutopostDashboardItem = {
   id: number;
   video_name: string;
   status: string;
+  title?: string | null;
+  hook_text?: string | null;
+  cta_text?: string | null;
+  hashtags?: string | null;
   score?: number | null;
+  score_reasons?: string[] | null;
   next_check_at?: string | null;
+  scheduled_at?: string | null;
+  status_note?: string | null;
+  title_source?: string | null;
+  hook_source?: string | null;
+  cta_source?: string | null;
+  hashtags_source?: string | null;
   credit_used?: number | null;
   score_details?: {
     feedback_delta?: number;
@@ -161,6 +172,8 @@ const DashboardView: React.FC<{
   dashboardErrorNeedsTopUp: boolean;
   onRetry: (id: number) => void;
   onRecheck: () => void;
+  onRegenerate: (id: number) => void;
+  regeneratingId: number | null;
   onUploadClick: () => void;
   onUploadChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   uploadInputRef: React.RefObject<HTMLInputElement>;
@@ -244,6 +257,8 @@ const DashboardView: React.FC<{
   dashboardErrorNeedsTopUp,
   onRetry,
   onRecheck,
+  onRegenerate,
+  regeneratingId,
   onUploadClick,
   onUploadChange,
   uploadInputRef,
@@ -318,6 +333,7 @@ const DashboardView: React.FC<{
 }) => {
   const [showMetricsInfo, setShowMetricsInfo] = useState(false);
   const [showUploadInfo, setShowUploadInfo] = useState(false);
+  const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
 
   const formatCountdown = (nextCheckAt?: string | null) => {
     if (!nextCheckAt) return '—';
@@ -332,6 +348,32 @@ const DashboardView: React.FC<{
       return `${hours}h ${remainingMinutes}m`;
     }
     return `${minutes}m ${seconds}s`;
+  };
+
+  const formatSchedule = (scheduledAt?: string | null, nextCheckAt?: string | null) => {
+    if (scheduledAt) {
+      const dt = new Date(scheduledAt);
+      if (!Number.isNaN(dt.getTime())) {
+        return dt.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      }
+    }
+    return formatCountdown(nextCheckAt);
+  };
+
+  const getHashtagList = (hashtags?: string | null) =>
+    (hashtags || '')
+      .split(/\s+/)
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+
+  const renderSourceBadge = (source?: string | null) => {
+    if (!source) return null;
+    const isAi = source === 'ai_generated';
+    return (
+      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${isAi ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
+        {isAi ? 'AI' : 'User'}
+      </span>
+    );
   };
 
   const statusLabel = (status: string) => {
@@ -707,26 +749,43 @@ const DashboardView: React.FC<{
           )}
         </div>
 
-        <div className="bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-            <span className="text-sm font-semibold text-slate-700">Video Queue</span>
+        <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+          <div className="px-6 py-5 border-b border-slate-200 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <span className="text-sm font-semibold text-slate-800">🤖 AI Video Queue</span>
+              <p className="text-xs text-slate-500 mt-1">
+                AI sedang menganalisis dan mengoptimasi video kamu untuk performa terbaik.
+              </p>
+            </div>
             <button
               onClick={onRecheck}
-              className="px-3 py-1.5 text-xs rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 transition"
+              className="px-3.5 py-2 text-xs rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 transition shadow-sm"
             >
               Recheck Now
             </button>
           </div>
-          <div className="grid grid-cols-[1fr_2fr_1fr_1fr_1fr_1fr] gap-3 px-6 py-3 text-xs font-semibold text-slate-400 uppercase">
+          <div className="grid grid-cols-[1fr_2fr_1fr_1fr_1fr_1.4fr] gap-3 px-6 py-3 text-xs font-semibold text-slate-400 uppercase">
             <span>Video ID</span>
             <span>Video</span>
-            <span>Status</span>
-            <span>Score</span>
-            <span>Next Check</span>
+            <span>AI Status</span>
+            <span>FYP Score</span>
+            <span>Scheduled / Recheck</span>
             <span>Action</span>
           </div>
           {loading && (
-            <div className="px-6 py-6 text-sm text-slate-500">Memuat data...</div>
+            <div className="px-6 py-6 space-y-3">
+              <div className="text-xs text-slate-500">🤖 AI sedang menganalisis video kamu...</div>
+              {[...Array(3)].map((_, idx) => (
+                <div key={`skeleton-${idx}`} className="grid grid-cols-[1fr_2fr_1fr_1fr_1fr_1.4fr] gap-3 items-center">
+                  <div className="h-4 bg-slate-100 rounded animate-pulse" />
+                  <div className="h-4 bg-slate-100 rounded animate-pulse" />
+                  <div className="h-4 bg-slate-100 rounded animate-pulse w-20" />
+                  <div className="h-4 bg-slate-100 rounded animate-pulse w-16" />
+                  <div className="h-4 bg-slate-100 rounded animate-pulse w-24" />
+                  <div className="h-8 bg-slate-100 rounded animate-pulse" />
+                </div>
+              ))}
+            </div>
           )}
           {error && (
             <div className="px-6 py-6 text-sm text-red-600">
@@ -749,51 +808,96 @@ const DashboardView: React.FC<{
             <div className="px-6 py-6 text-sm text-slate-500">Belum ada video.</div>
           )}
           {!loading && !error && items.map((row) => (
-            <div key={row.id} className="grid grid-cols-[1fr_2fr_1fr_1fr_1fr_1fr] gap-3 px-6 py-4 text-sm border-t border-slate-100 items-center">
-              <span className="font-medium text-slate-600">#{row.id}</span>
-              <span className="font-medium text-slate-700">{row.video_name}</span>
-              <span className={`text-xs px-2 py-1 rounded-full inline-flex items-center w-fit ${statusClasses(row.status)}`}>
-                {statusLabel(row.status)}
-              </span>
-              <span className="text-slate-600">
-                {typeof row.score === 'number' ? row.score.toFixed(1) : '—'}
-                {typeof row.credit_used === 'number' && row.credit_used > 0 && (
-                  <span className="ml-2 text-xs text-slate-400">Credit {row.credit_used}</span>
-                )}
-                {typeof row.score_details?.feedback_delta === 'number' && row.score_details.feedback_delta !== 0 && (
-                  <span
-                    className={`ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] ${
-                      row.score_details.feedback_delta > 0
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : 'bg-rose-100 text-rose-700'
-                    }`}
-                  >
-                    Feedback {row.score_details.feedback_delta > 0 ? '+' : ''}
-                    {row.score_details.feedback_delta.toFixed(1)}
-                    {row.score_details.feedback_summary ? ` • ${row.score_details.feedback_summary}` : ''}
-                  </span>
-                )}
-              </span>
-              <span className="text-slate-500">{formatCountdown(row.next_check_at)}</span>
-              <div className="flex items-center gap-2">
-                {row.status === 'FAILED' ? (
+            <div key={row.id} className="border-t border-slate-100">
+              <div className="grid grid-cols-[1fr_2fr_1fr_1fr_1fr_1.4fr] gap-3 px-6 py-4 text-sm items-center">
+                <span className="font-medium text-slate-600">#{row.id}</span>
+                <span className="font-medium text-slate-700">{row.video_name}</span>
+                <span className={`text-xs px-2 py-1 rounded-full inline-flex items-center w-fit ${statusClasses(row.status)}`}>
+                  {statusLabel(row.status)}
+                </span>
+                <span className="text-slate-600">
+                  {typeof row.score === 'number' ? row.score.toFixed(1) : '—'}
+                  {typeof row.credit_used === 'number' && row.credit_used > 0 && (
+                    <span className="ml-2 text-xs text-slate-400">Credit {row.credit_used}</span>
+                  )}
+                </span>
+                <span className="text-slate-500">{formatSchedule(row.scheduled_at, row.next_check_at)}</span>
+                <div className="flex items-center gap-2">
                   <button
-                    onClick={() => onRetry(row.id)}
-                    className="px-3 py-1 text-xs rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    onClick={() => setExpandedRowId(expandedRowId === row.id ? null : row.id)}
+                    className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm"
                   >
-                    Retry
+                    🔍 Details
                   </button>
-                ) : row.status === 'WAITING_RECHECK' ? (
                   <button
-                    onClick={onRecheck}
-                    className="px-3 py-1 text-xs rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200"
+                    onClick={() => onRegenerate(row.id)}
+                    className="px-3 py-1.5 text-xs rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 shadow-sm disabled:opacity-60"
+                    disabled={regeneratingId === row.id}
                   >
-                    Recheck
+                    ✨ {regeneratingId === row.id ? 'Generating...' : 'Regenerate'}
                   </button>
-                ) : (
-                  <span className="text-xs text-slate-400">—</span>
-                )}
+                  {row.status === 'FAILED' && (
+                    <button
+                      onClick={() => onRetry(row.id)}
+                      className="px-3 py-1.5 text-xs rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 shadow-sm"
+                    >
+                      Retry
+                    </button>
+                  )}
+                  {row.status === 'WAITING_RECHECK' && (
+                    <button
+                      onClick={onRecheck}
+                      className="px-3 py-1.5 text-xs rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 shadow-sm"
+                    >
+                      Recheck
+                    </button>
+                  )}
+                </div>
               </div>
+              {expandedRowId === row.id && (
+                <div className="px-6 pb-5">
+                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 text-xs text-slate-700 space-y-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold">Hook:</span>
+                      <span>{row.hook_text || '—'}</span>
+                      {renderSourceBadge(row.hook_source)}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold">CTA:</span>
+                      <span>{row.cta_text || '—'}</span>
+                      {renderSourceBadge(row.cta_source)}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold">Hashtags:</span>
+                      {getHashtagList(row.hashtags).length > 0 ? (
+                        getHashtagList(row.hashtags).map((tag) => (
+                          <span key={tag} className="px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-600">
+                            {tag}
+                          </span>
+                        ))
+                      ) : (
+                        <span>—</span>
+                      )}
+                      {renderSourceBadge(row.hashtags_source)}
+                    </div>
+                    <div className="space-y-1">
+                      <span className="font-semibold">Score reasons:</span>
+                      <ul className="grid gap-1">
+                        {(row.score_reasons || []).length > 0 ? (
+                          row.score_reasons?.map((reason, idx) => (
+                            <li key={`reason-${row.id}-${idx}`} className="flex items-start gap-2">
+                              <span className="text-emerald-500">✓</span>
+                              <span>{reason}</span>
+                            </li>
+                          ))
+                        ) : (
+                          <li className="text-slate-500">—</li>
+                        )}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -1235,6 +1339,7 @@ export default function App() {
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [dashboardErrorNeedsTopUp, setDashboardErrorNeedsTopUp] = useState(false);
+  const [dashboardRegeneratingId, setDashboardRegeneratingId] = useState<number | null>(null);
   const [variantName, setVariantName] = useState('');
   const [variants, setVariants] = useState<VariantPreset[]>([]);
   const [adminLogs, setAdminLogs] = useState<AdminAutopostLog[]>([]);
@@ -2323,8 +2428,19 @@ export default function App() {
         id: item.id,
         video_name: item.video_name || item.file_name || 'video',
         status: item.status || 'UNKNOWN',
+        title: item.title || null,
+        hook_text: item.hook_text || null,
+        cta_text: item.cta_text || null,
+        hashtags: item.hashtags || null,
         score: typeof item.score === 'number' ? item.score : null,
+        score_reasons: Array.isArray(item.score_reasons) ? item.score_reasons : null,
         next_check_at: item.next_check_at || null,
+        scheduled_at: item.scheduled_at || null,
+        status_note: item.status_note || null,
+        title_source: item.title_source || null,
+        hook_source: item.hook_source || null,
+        cta_source: item.cta_source || null,
+        hashtags_source: item.hashtags_source || null,
         credit_used: typeof item.credit_used === 'number' ? item.credit_used : 0,
         score_details: item.score_details || null
       }));
@@ -2470,6 +2586,31 @@ export default function App() {
       await fetchDashboard();
     } catch (error: any) {
       setDashboardError('Gagal retry video. Silakan coba lagi.');
+    }
+  }, [fetchDashboard]);
+
+  const handleDashboardRegenerate = useCallback(async (id: number) => {
+    try {
+      setDashboardRegeneratingId(id);
+      const token = await supabaseService.getAccessToken();
+      if (!token) {
+        setDashboardError('Sesi kamu telah berakhir. Silakan login ulang.');
+        return;
+      }
+      const response = await fetch(`${API_URL}/api/autopost/${id}/generate`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      if (!response.ok) {
+        throw new Error('Gagal regenerate metadata.');
+      }
+      await fetchDashboard();
+    } catch (error: any) {
+      setDashboardError('Gagal regenerate metadata. Silakan coba lagi.');
+    } finally {
+      setDashboardRegeneratingId(null);
     }
   }, [fetchDashboard]);
 
@@ -3083,6 +3224,8 @@ export default function App() {
         dashboardErrorNeedsTopUp={dashboardErrorNeedsTopUp}
         onRetry={handleDashboardRetry}
         onRecheck={handleDashboardRecheck}
+        onRegenerate={handleDashboardRegenerate}
+        regeneratingId={dashboardRegeneratingId}
         onUploadClick={handleDashboardUploadClick}
         onUploadChange={handleDashboardUploadChange}
         uploadInputRef={dashboardUploadRef}
