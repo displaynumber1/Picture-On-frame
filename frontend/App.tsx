@@ -826,11 +826,11 @@ const DashboardView: React.FC<{
           )}
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-          <div className="px-6 py-5 border-b border-slate-200 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-6 py-5 border-b border-gray-100 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
-              <span className="text-sm font-semibold text-slate-800">🤖 AI Video Queue</span>
-              <p className="text-xs text-slate-500 mt-1">
+              <span className="text-lg font-semibold text-gray-900">🤖 AI Video Queue</span>
+              <p className="text-sm text-gray-500 mt-1">
                 AI sedang menganalisis dan mengoptimasi video kamu agar performanya maksimal.
               </p>
               {!isSubscribed && (
@@ -840,7 +840,7 @@ const DashboardView: React.FC<{
                       🔒 Trial habis – Upgrade ke Pro
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-yellow-100 text-yellow-700">
                       🎁 Sisa trial: {trialRemaining ?? 0} dari 3 upload gratis
                     </span>
                   )}
@@ -849,30 +849,23 @@ const DashboardView: React.FC<{
             </div>
             <button
               onClick={onRecheck}
-              className="px-3.5 py-2 text-xs rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 transition shadow-sm"
+              className="border border-gray-200 hover:bg-gray-50 rounded-xl px-4 py-2 text-sm text-gray-700"
             >
               Recheck Now
             </button>
           </div>
-          <div className="grid grid-cols-[1fr_2fr_1fr_1fr_1fr_1.4fr] gap-3 px-6 py-3 text-xs font-semibold text-slate-400 uppercase">
-            <span>Video ID</span>
-            <span>Video</span>
-            <span>AI Status</span>
-            <span>FYP Score</span>
-            <span>Scheduled / Recheck</span>
-            <span>Action</span>
-          </div>
+
           {loading && (
             <div className="px-6 py-6 space-y-3">
-              <div className="text-xs text-slate-500">🤖 AI sedang memproses video kamu...</div>
+              <div className="text-sm text-gray-500">🤖 AI sedang memproses video kamu...</div>
               {[...Array(3)].map((_, idx) => (
-                <div key={`skeleton-${idx}`} className="grid grid-cols-[1fr_2fr_1fr_1fr_1fr_1.4fr] gap-3 items-center">
-                  <div className="h-4 bg-slate-100 rounded animate-pulse" />
-                  <div className="h-4 bg-slate-100 rounded animate-pulse" />
-                  <div className="h-4 bg-slate-100 rounded animate-pulse w-20" />
-                  <div className="h-4 bg-slate-100 rounded animate-pulse w-16" />
-                  <div className="h-4 bg-slate-100 rounded animate-pulse w-24" />
-                  <div className="h-8 bg-slate-100 rounded animate-pulse" />
+                <div key={`skeleton-${idx}`} className="grid grid-cols-1 md:grid-cols-[1fr_2fr_1fr_1fr_1fr_1.4fr] gap-3 items-center">
+                  <div className="h-4 bg-gray-100 rounded animate-pulse" />
+                  <div className="h-4 bg-gray-100 rounded animate-pulse" />
+                  <div className="h-4 bg-gray-100 rounded animate-pulse w-20" />
+                  <div className="h-4 bg-gray-100 rounded animate-pulse w-16" />
+                  <div className="h-4 bg-gray-100 rounded animate-pulse w-24" />
+                  <div className="h-8 bg-gray-100 rounded animate-pulse" />
                 </div>
               ))}
             </div>
@@ -895,113 +888,195 @@ const DashboardView: React.FC<{
             </div>
           )}
           {!loading && !error && items.length === 0 && (
-            <div className="px-6 py-6 text-sm text-slate-500">Belum ada video.</div>
+            <div className="px-6 py-6 text-sm text-gray-500">Belum ada video.</div>
           )}
-          {!loading && !error && items.map((row) => (
-            <div key={row.id} className="border-t border-slate-100">
-              <div className="grid grid-cols-[1fr_2fr_1fr_1fr_1fr_1.4fr] gap-3 px-6 py-4 text-sm items-center">
-                <span className="font-medium text-slate-600">#{row.id}</span>
-                <span className="font-medium text-slate-700">{row.video_name}</span>
-                <span className={`text-xs px-2 py-1 rounded-full inline-flex items-center w-fit ${statusClasses(row.status)}`}>
-                  {statusLabel(row.status)}
-                </span>
-                <span className="text-slate-600">
-                  {typeof row.score === 'number' ? row.score.toFixed(1) : '—'}
-                  {typeof row.credit_used === 'number' && row.credit_used > 0 && (
-                    <span className="ml-2 text-xs text-slate-400">Credit {row.credit_used}</span>
-                  )}
-                </span>
-                <span className="text-slate-500">{formatSchedule(row.scheduled_at, row.next_check_at)}</span>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setExpandedRowId(expandedRowId === row.id ? null : row.id)}
-                    className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm"
-                  >
-                    🔍 Lihat Detail
-                  </button>
-                  <button
-                    onClick={() => onRegenerate(row.id)}
-                    className="px-3 py-1.5 text-xs rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 shadow-sm disabled:opacity-60"
-                    disabled={regeneratingId === row.id || isTrialExpired}
-                  >
-                    ✨ {regeneratingId === row.id ? 'Memproses...' : 'Regenerate AI'}
-                  </button>
-                  {row.status === 'FAILED' && (
-                    <button
-                      onClick={() => onRetry(row.id)}
-                      className="px-3 py-1.5 text-xs rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 shadow-sm"
-                    >
-                      Retry
-                    </button>
-                  )}
-                  {row.status === 'WAITING_RECHECK' && (
-                    <button
-                      onClick={onRecheck}
-                      className="px-3 py-1.5 text-xs rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 shadow-sm"
-                    >
-                      Recheck
-                    </button>
-                  )}
+
+          {!loading && !error && (
+            <>
+              <div className="hidden md:block">
+                <div className="grid grid-cols-[1fr_2fr_1fr_1fr_1fr_1.4fr] gap-3 px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                  <span>Video ID</span>
+                  <span>Video</span>
+                  <span>AI Status</span>
+                  <span>FYP Score</span>
+                  <span>Scheduled / Recheck</span>
+                  <span>Action</span>
                 </div>
-              </div>
-              {expandedRowId === row.id && (
-                <div className="px-6 pb-5">
-                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 text-xs text-slate-700 space-y-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold">Hook:</span>
-                      <span>{row.hook_text || '—'}</span>
-                      {renderSourceBadge(row.hook_source)}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold">CTA:</span>
-                      <span>{row.cta_text || '—'}</span>
-                      {renderSourceBadge(row.cta_source)}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold">Hashtags:</span>
-                      {getHashtagList(row.hashtags).length > 0 ? (
-                        getHashtagList(row.hashtags).map((tag) => (
-                          <span key={tag} className="px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-600">
-                            {tag}
-                          </span>
-                        ))
-                      ) : (
-                        <span>—</span>
-                      )}
-                      {renderSourceBadge(row.hashtags_source)}
-                    </div>
-                    <div className="space-y-1">
-                      <span className="font-semibold">Score reasons:</span>
-                      <ul className="grid gap-1">
-                        {(row.score_reasons || []).length > 0 ? (
-                          row.score_reasons?.map((reason, idx) => (
-                            <li key={`reason-${row.id}-${idx}`} className="flex items-start gap-2">
-                              <span className="text-emerald-500">✓</span>
-                              <span>{reason.replace(/\(\s*<=\s*10\s*kata\s*\)/gi, '').trim()}</span>
-                            </li>
-                          ))
-                        ) : (
-                          <li className="text-slate-500">—</li>
-                        )}
-                      </ul>
-                    </div>
-                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                      <span className="font-semibold text-slate-600">AI Confidence:</span>
-                      <span>
-                        {typeof row.score === 'number'
-                          ? row.score >= 8
-                            ? 'High'
-                            : row.score >= 6
-                              ? 'Medium'
-                              : 'Low'
-                          : '—'}
+                {items.map((row) => (
+                  <div key={`desktop-${row.id}`} className="border-t border-gray-100">
+                    <div className="grid grid-cols-[1fr_2fr_1fr_1fr_1fr_1.4fr] gap-3 px-6 py-4 text-sm items-center hover:bg-gray-50">
+                      <span className="font-medium text-gray-600">#{row.id}</span>
+                      <span className="font-medium text-gray-800 truncate">{row.video_name}</span>
+                      <span className={`text-xs px-2 py-1 rounded-full inline-flex items-center w-fit ${statusClasses(row.status)}`}>
+                        {statusLabel(row.status)}
                       </span>
+                      <span className="text-gray-700">{typeof row.score === 'number' ? row.score.toFixed(1) : '—'}</span>
+                      <span className="text-gray-500">{formatSchedule(row.scheduled_at, row.next_check_at)}</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setExpandedRowId(expandedRowId === row.id ? null : row.id)}
+                          className="border border-gray-200 hover:bg-gray-50 rounded-xl px-4 py-2 text-sm text-gray-700"
+                        >
+                          Lihat Detail
+                        </button>
+                        <button
+                          onClick={() => onRegenerate(row.id)}
+                          className="bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl px-4 py-2 text-sm disabled:opacity-60"
+                          disabled={regeneratingId === row.id || isTrialExpired}
+                        >
+                          ✨ Regenerate AI
+                        </button>
+                      </div>
                     </div>
+                    {expandedRowId === row.id && (
+                      <div className="px-6 pb-5">
+                        <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-xs text-gray-700 space-y-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-semibold">Hook:</span>
+                            <span>{row.hook_text || '—'}</span>
+                            {renderSourceBadge(row.hook_source)}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-semibold">CTA:</span>
+                            <span>{row.cta_text || '—'}</span>
+                            {renderSourceBadge(row.cta_source)}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-semibold">Hashtags:</span>
+                            {getHashtagList(row.hashtags).length > 0 ? (
+                              getHashtagList(row.hashtags).map((tag) => (
+                                <span key={tag} className="px-2 py-0.5 rounded-full bg-white border border-gray-200 text-gray-600">
+                                  {tag}
+                                </span>
+                              ))
+                            ) : (
+                              <span>—</span>
+                            )}
+                            {renderSourceBadge(row.hashtags_source)}
+                          </div>
+                          <div className="space-y-1">
+                            <span className="font-semibold">Score reasons:</span>
+                            <ul className="grid gap-1">
+                              {(row.score_reasons || []).length > 0 ? (
+                                row.score_reasons?.map((reason, idx) => (
+                                  <li key={`reason-${row.id}-${idx}`} className="flex items-start gap-2">
+                                    <span className="text-emerald-500">✓</span>
+                                    <span>{reason.replace(/\(\s*<=\s*10\s*kata\s*\)/gi, '').trim()}</span>
+                                  </li>
+                                ))
+                              ) : (
+                                <li className="text-gray-500">—</li>
+                              )}
+                            </ul>
+                          </div>
+                          <div className="flex items-center gap-2 text-[11px] text-gray-500">
+                            <span className="font-semibold text-gray-600">AI Confidence:</span>
+                            <span>
+                              {typeof row.score === 'number'
+                                ? row.score >= 8
+                                  ? 'High'
+                                  : row.score >= 6
+                                    ? 'Medium'
+                                    : 'Low'
+                                : '—'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
-            </div>
-          ))}
+                ))}
+              </div>
+
+              <div className="block md:hidden px-4 pb-4 space-y-4">
+                {items.map((row) => (
+                  <div key={`mobile-${row.id}`} className="rounded-2xl border border-gray-100 bg-white shadow-sm p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="space-y-1">
+                        <div className="text-sm font-semibold text-gray-900 truncate">{row.video_name}</div>
+                        <span className={`text-xs px-2 py-1 rounded-full inline-flex items-center w-fit ${statusClasses(row.status)}`}>
+                          {statusLabel(row.status)}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs text-gray-500">FYP Score</div>
+                        <div className="text-lg font-semibold text-gray-900">
+                          {typeof row.score === 'number' ? row.score.toFixed(1) : '—'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      Scheduled: {formatSchedule(row.scheduled_at, row.next_check_at)}
+                    </div>
+                    <div className="grid grid-cols-1 gap-2">
+                      <button
+                        onClick={() => setExpandedRowId(expandedRowId === row.id ? null : row.id)}
+                        className="border border-gray-200 hover:bg-gray-50 rounded-xl px-4 py-2 text-sm text-gray-700"
+                      >
+                        Lihat Detail
+                      </button>
+                      <button
+                        onClick={() => onRegenerate(row.id)}
+                        className="bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl px-4 py-2 text-sm disabled:opacity-60"
+                        disabled={regeneratingId === row.id || isTrialExpired}
+                      >
+                        ✨ Regenerate AI
+                      </button>
+                    </div>
+                    {expandedRowId === row.id && (
+                      <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 text-xs text-gray-700 space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-semibold">Hook:</span>
+                          <span>{row.hook_text || '—'}</span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-semibold">CTA:</span>
+                          <span>{row.cta_text || '—'}</span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-semibold">Hashtags:</span>
+                          {getHashtagList(row.hashtags).length > 0 ? (
+                            getHashtagList(row.hashtags).map((tag) => (
+                              <span key={`${row.id}-${tag}`} className="px-2 py-0.5 rounded-full bg-white border border-gray-200 text-gray-600">
+                                {tag}
+                              </span>
+                            ))
+                          ) : (
+                            <span>—</span>
+                          )}
+                        </div>
+                        <div className="space-y-1">
+                          <span className="font-semibold">Score reasons:</span>
+                          <ul className="grid gap-1">
+                            {(row.score_reasons || []).length > 0 ? (
+                              row.score_reasons?.map((reason, idx) => (
+                                <li key={`mobile-reason-${row.id}-${idx}`} className="flex items-start gap-2">
+                                  <span className="text-emerald-500">✓</span>
+                                  <span>{reason.replace(/\(\s*<=\s*10\s*kata\s*\)/gi, '').trim()}</span>
+                                </li>
+                              ))
+                            ) : (
+                              <li className="text-gray-500">—</li>
+                            )}
+                          </ul>
+                        </div>
+                        <div className="text-[11px] text-gray-500">
+                          <span className="font-semibold text-gray-600">AI Confidence:</span>{' '}
+                          {typeof row.score === 'number'
+                            ? row.score >= 8
+                              ? 'High'
+                              : row.score >= 6
+                                ? 'Medium'
+                                : 'Low'
+                            : '—'}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         {isAdmin && (
