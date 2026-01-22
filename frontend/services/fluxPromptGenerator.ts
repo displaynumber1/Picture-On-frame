@@ -346,8 +346,19 @@ export function generateFluxPromptV2(
     const isFootInteraction = /kaki/i.test(interactionType);
     const isSingleHand = /Pegang\s*1/i.test(interactionType);
     const isTwoHands = /Pegang\s*2/i.test(interactionType);
+    const categoryKey = (normalizedInput.category || '').toLowerCase();
+    const isFootwearCategory = /sandal|sepatu|shoe|footwear/.test(categoryKey);
 
     if (isHandInteraction) {
+      if (/wanita/i.test(interactionType)) {
+        clauses.push(
+          'female model wearing a high-quality oversized cream cashmere sweater',
+          'long sleeves partially covering the hands',
+          'soft fabric texture with visible knit patterns',
+          'sleeves providing a cozy and warm aesthetic',
+          'soft natural lighting catching the fabric fibers'
+        );
+      }
       clauses.push(
         'hands only',
         'no feet',
@@ -364,9 +375,17 @@ export function generateFluxPromptV2(
       if (isSingleHand) {
         clauses.push('single hand only', 'one hand holding product');
         negative.push('two hands', 'both hands');
+        if (isFootwearCategory) {
+          clauses.push('single hand holding a pair of sandals/shoes', 'paired footwear, both shoes visible');
+          negative.push('single shoe', 'missing pair', 'mismatched shoes');
+        }
       } else if (isTwoHands) {
         clauses.push('two hands only', 'both hands holding product');
         negative.push('single hand', 'one hand only');
+        if (isFootwearCategory) {
+          clauses.push('both hands holding a pair of sandals/shoes', 'matched pair, both shoes visible');
+          negative.push('single shoe', 'missing pair', 'mismatched shoes');
+        }
       }
       negative.push('extra hands', 'extra fingers', 'extra legs', 'extra feet', 'detached limbs', 'floating limbs');
     }

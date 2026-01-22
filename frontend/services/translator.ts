@@ -87,7 +87,7 @@ export const MAPPING: Record<string, string> = {
 
   // ========== INTERACTION TYPES ==========
   'Pegang 1 Tangan Wanita': 'female model holding the product with one hand, showing clear grip and product visibility',
-  'Pegang 2 Tangan Wanita': 'female model holding the product with both hands, displaying clear product presentation',
+  'Pegang 2 Tangan Wanita': 'female model holding a pair of sandals/shoes with both hands, showing a matched pair clearly',
   'Pegang 1 Tangan Pria': 'male model holding the product with one hand, demonstrating clear grip and product visibility',
   'Pegang 2 Tangan Pria': 'male model holding the product with both hands, showing clear product presentation',
   'Kaki Wanita': 'female model\'s foot positioned, wearing straight-leg jeans, showing product interaction with leg and foot',
@@ -195,7 +195,7 @@ export const MAPPING: Record<string, string> = {
 
   // Non Model - Sandal/Sepatu
   'Tangan Memegang Sepasang Sandal/Sepatu': 'hand holding a pair of sandals/shoes, displaying clear grip and product presentation',
-  'Dua tangan menampilkan sepatu': 'two hands displaying shoes, showing clear product presentation and professional staging',
+  'Dua tangan menampilkan sepatu': 'two hands displaying a pair of sandals/shoes, showing a matched pair clearly and professional staging',
   'Kaki wanita berdiri natural mengenakan sepatu': 'female foot standing while wearing shoes, showing neutral posture and clear product visibility',
   'Kaki wanita melangkah': 'female foot stepping with natural movement, showing clear product visibility',
   'Kaki wanita dengan tumit terangkat': 'female foot with raised heel, displaying clear product presentation',
