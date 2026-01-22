@@ -370,7 +370,7 @@ const DashboardView: React.FC<{
     if (!source) return null;
     const isAi = source === 'ai_generated';
     return (
-      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${isAi ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
+      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${isAi ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
         {isAi ? 'AI' : 'User'}
       </span>
     );
@@ -384,13 +384,13 @@ const DashboardView: React.FC<{
   const statusClasses = (status: string) => {
     switch (status) {
       case 'POSTED':
-        return 'bg-emerald-100 text-emerald-700';
+        return 'bg-green-100 text-green-700';
       case 'FAILED':
         return 'bg-red-100 text-red-700';
       case 'WAITING_RECHECK':
-        return 'bg-amber-100 text-amber-700';
+        return 'bg-yellow-100 text-yellow-700';
       case 'QUEUED':
-        return 'bg-indigo-100 text-indigo-700';
+        return 'bg-blue-100 text-blue-700';
       case 'IN_PROGRESS':
         return 'bg-blue-100 text-blue-700';
       default:
@@ -754,7 +754,7 @@ const DashboardView: React.FC<{
             <div>
               <span className="text-sm font-semibold text-slate-800">🤖 AI Video Queue</span>
               <p className="text-xs text-slate-500 mt-1">
-                AI sedang menganalisis dan mengoptimasi video kamu untuk performa terbaik.
+                AI sedang menganalisis dan mengoptimasi video kamu agar performanya maksimal.
               </p>
             </div>
             <button
@@ -774,7 +774,7 @@ const DashboardView: React.FC<{
           </div>
           {loading && (
             <div className="px-6 py-6 space-y-3">
-              <div className="text-xs text-slate-500">🤖 AI sedang menganalisis video kamu...</div>
+              <div className="text-xs text-slate-500">🤖 AI sedang memproses video kamu...</div>
               {[...Array(3)].map((_, idx) => (
                 <div key={`skeleton-${idx}`} className="grid grid-cols-[1fr_2fr_1fr_1fr_1fr_1.4fr] gap-3 items-center">
                   <div className="h-4 bg-slate-100 rounded animate-pulse" />
@@ -827,14 +827,14 @@ const DashboardView: React.FC<{
                     onClick={() => setExpandedRowId(expandedRowId === row.id ? null : row.id)}
                     className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm"
                   >
-                    🔍 Details
+                    🔍 Lihat Detail
                   </button>
                   <button
                     onClick={() => onRegenerate(row.id)}
                     className="px-3 py-1.5 text-xs rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 shadow-sm disabled:opacity-60"
                     disabled={regeneratingId === row.id}
                   >
-                    ✨ {regeneratingId === row.id ? 'Generating...' : 'Regenerate'}
+                    ✨ {regeneratingId === row.id ? 'Memproses...' : 'Regenerate AI'}
                   </button>
                   {row.status === 'FAILED' && (
                     <button
