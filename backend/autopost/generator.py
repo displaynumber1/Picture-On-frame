@@ -295,6 +295,21 @@ def generate_variants(
             "Biar keliatan lebih rapi, coba ini dulu.",
             "Biar hasil makin {benefit}, pilih yang ini."
         ],
+        "offer": [
+            "Stop scroll! Lagi promo buat yang cepat.",
+            "Diskon terbatas! Jangan sampai ketinggalan.",
+            "Promo hari ini, besok bisa beda."
+        ],
+        "question": [
+            "Kenapa banyak yang pilih yang ini?",
+            "Pernah coba yang begini belum?",
+            "Mau tahu kenapa ini viral?"
+        ],
+        "social_proof": [
+            "Lagi rame banget dipakai banyak orang.",
+            "Ini lagi viral banget minggu ini.",
+            "Banyak yang rekomendasiin yang ini."
+        ],
         "other": [
             "Kecil, tapi efeknya bikin beda besar.",
             "Detail simpel yang bikin look naik level."
@@ -307,10 +322,11 @@ def generate_variants(
         "save": ["Save dulu biar nggak lupa", "Save sekarang dulu"],
         "dm": ["DM kalau mau detailnya", "DM untuk info lengkap"],
         "follow": ["Follow biar nggak ketinggalan", "Follow ya"],
+        "click": ["Cek sekarang di profil", "Klik link di bio"],
         "other": ["Lihat detailnya sekarang"]
     }
 
-    hashtag_patterns = ["fyp", "viral", "trending", "foryou", "other"]
+    hashtag_patterns = ["fyp", "viral", "trending", "foryou", "fashion", "beauty", "other"]
 
     hook_weights = weights.get("hook", {})
     cta_weights = weights.get("cta", {})

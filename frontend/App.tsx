@@ -89,6 +89,16 @@ type AdminAutopostLog = {
   shares?: number | null;
 };
 
+type AutopostFeedbackWeights = {
+  user_id: string;
+  learning_strength: number;
+  weights: {
+    hook?: Record<string, number>;
+    cta?: Record<string, number>;
+    hashtag?: Record<string, number>;
+  };
+};
+
 type AdminMidtransStatus = {
   midtrans_is_production: boolean;
   server_key_configured: boolean;
@@ -245,6 +255,12 @@ const DashboardView: React.FC<{
   metricsUploadRef: React.RefObject<HTMLInputElement>;
   onMetricsUploadClick: () => void;
   onMetricsUploadChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  feedbackWeights: AutopostFeedbackWeights | null;
+  feedbackWeightsLoading: boolean;
+  feedbackWeightsError: string | null;
+  feedbackWeightsQuery: string;
+  onFeedbackWeightsQueryChange: (value: string) => void;
+  onFeedbackWeightsRefresh: () => void;
 }> = ({
   items,
   loading,
@@ -329,7 +345,13 @@ const DashboardView: React.FC<{
   metricsUploading,
   metricsUploadRef,
   onMetricsUploadClick,
-  onMetricsUploadChange
+  onMetricsUploadChange,
+  feedbackWeights,
+  feedbackWeightsLoading,
+  feedbackWeightsError,
+  feedbackWeightsQuery,
+  onFeedbackWeightsQueryChange,
+  onFeedbackWeightsRefresh
 }) => {
   const [showMetricsInfo, setShowMetricsInfo] = useState(false);
   const [showUploadInfo, setShowUploadInfo] = useState(false);
@@ -949,6 +971,62 @@ const DashboardView: React.FC<{
             </div>
 
             <div className="bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                <span className="text-sm font-semibold text-slate-700">Feedback Weights (AI Learning)</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    value={feedbackWeightsQuery}
+                    onChange={(event) => onFeedbackWeightsQueryChange(event.target.value)}
+                    placeholder="User ID / email"
+                    className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                  />
+                  <button
+                    onClick={onFeedbackWeightsRefresh}
+                    className="px-3 py-1.5 text-xs rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
+                  >
+                    Refresh
+                  </button>
+                </div>
+              </div>
+              {feedbackWeightsLoading && (
+                <div className="px-6 py-6 text-sm text-slate-500">Memuat feedback weights...</div>
+              )}
+              {feedbackWeightsError && (
+                <div className="px-6 py-6 text-sm text-red-600">{feedbackWeightsError}</div>
+              )}
+              {!feedbackWeightsLoading && !feedbackWeightsError && feedbackWeights && (
+                <div className="px-6 py-5 space-y-4 text-xs text-slate-600">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold text-slate-700">User:</span>
+                    <span>{feedbackWeights.user_id}</span>
+                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-semibold">
+                      Strength {feedbackWeights.learning_strength.toFixed(2)}
+                    </span>
+                  </div>
+                  {(['hook', 'cta', 'hashtag'] as const).map((type) => (
+                    <div key={type} className="grid gap-2">
+                      <span className="uppercase text-[10px] font-semibold text-slate-400">{type}</span>
+                      <div className="flex flex-wrap gap-2">
+                        {feedbackWeights.weights?.[type] &&
+                          Object.entries(feedbackWeights.weights[type] || {}).map(([key, value]) => (
+                            <span
+                              key={`${type}-${key}`}
+                              className="px-2 py-1 rounded-full bg-slate-100 text-slate-600 text-[11px]"
+                            >
+                              {key} · {Number(value).toFixed(2)}
+                            </span>
+                          ))}
+                        {!feedbackWeights.weights?.[type] && (
+                          <span className="text-slate-400">Belum ada data.</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
               <span className="text-sm font-semibold text-slate-700">Admin Autopost Logs</span>
               <div className="flex items-center gap-2">
@@ -1345,6 +1423,10 @@ export default function App() {
   const [adminLogs, setAdminLogs] = useState<AdminAutopostLog[]>([]);
   const [adminLogsLoading, setAdminLogsLoading] = useState(false);
   const [adminLogsError, setAdminLogsError] = useState<string | null>(null);
+  const [feedbackWeights, setFeedbackWeights] = useState<AutopostFeedbackWeights | null>(null);
+  const [feedbackWeightsLoading, setFeedbackWeightsLoading] = useState(false);
+  const [feedbackWeightsError, setFeedbackWeightsError] = useState<string | null>(null);
+  const [feedbackWeightsQuery, setFeedbackWeightsQuery] = useState('');
   const [adminLogsStatus, setAdminLogsStatus] = useState('ALL');
   const [adminLogsUserQuery, setAdminLogsUserQuery] = useState('');
   const [adminLogsDateFrom, setAdminLogsDateFrom] = useState('');
@@ -2492,6 +2574,41 @@ export default function App() {
     }
   }, [isAdmin]);
 
+  const fetchFeedbackWeights = useCallback(async () => {
+    if (!isAdmin) return;
+    try {
+      setFeedbackWeightsLoading(true);
+      setFeedbackWeightsError(null);
+      const token = await supabaseService.getAccessToken();
+      if (!token) {
+        setFeedbackWeightsError('Sesi kamu telah berakhir. Silakan login ulang.');
+        return;
+      }
+      const params = new URLSearchParams();
+      if (feedbackWeightsQuery.trim()) {
+        if (feedbackWeightsQuery.includes('@')) {
+          params.set('email', feedbackWeightsQuery.trim());
+        } else {
+          params.set('user_id', feedbackWeightsQuery.trim());
+        }
+      }
+      const response = await fetch(`${API_URL}/api/admin/autopost/feedback-weights?${params.toString()}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Gagal memuat feedback weights (${response.status})`);
+      }
+      const data = await response.json();
+      setFeedbackWeights(data);
+    } catch (error: any) {
+      setFeedbackWeightsError('Gagal memuat feedback weights.');
+    } finally {
+      setFeedbackWeightsLoading(false);
+    }
+  }, [isAdmin, feedbackWeightsQuery]);
+
   const fetchMidtransStatus = useCallback(async () => {
     if (!isAdmin) return;
     try {
@@ -3297,6 +3414,12 @@ export default function App() {
         metricsUploadRef={metricsUploadRef}
         onMetricsUploadClick={handleMetricsUploadClick}
         onMetricsUploadChange={handleMetricsUploadChange}
+        feedbackWeights={feedbackWeights}
+        feedbackWeightsLoading={feedbackWeightsLoading}
+        feedbackWeightsError={feedbackWeightsError}
+        feedbackWeightsQuery={feedbackWeightsQuery}
+        onFeedbackWeightsQueryChange={setFeedbackWeightsQuery}
+        onFeedbackWeightsRefresh={fetchFeedbackWeights}
       />
     );
   }

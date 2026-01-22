@@ -40,6 +40,7 @@ from autopost.scoring import build_score_reasons
 from autopost.scheduler import get_best_posting_window, resolve_schedule_time
 from autopost.service import AutopostService, AutopostDeps
 from autopost.router import create_autopost_router
+from autopost.feedback import get_feedback_weights, refresh_feedback_weights, get_learning_strength
 from supabase_service import (
     get_user_profile,
     get_user_id_by_email,
@@ -4843,6 +4844,29 @@ async def admin_autopost_logs(
             item["retention_curve"] = []
         items.append(item)
     return {"items": items}
+
+
+@app.get("/api/admin/autopost/feedback-weights")
+async def admin_autopost_feedback_weights(
+    user_id: Optional[str] = None,
+    email: Optional[str] = None,
+    _: Dict[str, Any] = Depends(require_admin)
+):
+    target_user_id = user_id
+    if not target_user_id and email:
+        target_user_id = get_user_id_by_email(email)
+    if not target_user_id:
+        raise HTTPException(status_code=400, detail="user_id or email is required")
+    conn = get_db_connection()
+    refresh_feedback_weights(conn, target_user_id)
+    weights = get_feedback_weights(conn, target_user_id)
+    strength = get_learning_strength(conn, target_user_id)
+    conn.close()
+    return {
+        "user_id": target_user_id,
+        "learning_strength": round(strength, 3),
+        "weights": weights
+    }
 
 
 @app.websocket("/ws/autopost")

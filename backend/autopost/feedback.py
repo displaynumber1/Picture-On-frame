@@ -7,6 +7,8 @@ from typing import Dict, List, Optional, Tuple
 MIN_SAMPLES = 5
 MIN_WEIGHT = 0.6
 MAX_WEIGHT = 1.6
+MIN_STRENGTH = 0.5
+MAX_STRENGTH = 1.4
 
 
 def _clamp(value: float, low: float, high: float) -> float:
@@ -29,6 +31,12 @@ def _extract_hook_pattern(text: Optional[str]) -> str:
         return "realization"
     if lowered.startswith("biar"):
         return "benefit"
+    if "diskon" in lowered or "promo" in lowered:
+        return "offer"
+    if lowered.endswith("?") or lowered.startswith("kenapa"):
+        return "question"
+    if "viral" in lowered or "ramai" in lowered:
+        return "social_proof"
     return "other"
 
 
@@ -46,6 +54,8 @@ def _extract_cta_pattern(text: Optional[str]) -> str:
         return "follow"
     if "dm" in lowered:
         return "dm"
+    if "klik" in lowered or "cek" in lowered:
+        return "click"
     return "other"
 
 
@@ -61,7 +71,22 @@ def _extract_hashtag_group(hashtags: Optional[str]) -> str:
         return "ootd"
     if "#skincare" in lowered:
         return "skincare"
+    if "#fashion" in lowered or "#outfit" in lowered:
+        return "fashion"
+    if "#beauty" in lowered or "#makeup" in lowered:
+        return "beauty"
     return "other"
+
+
+def get_learning_strength(conn, user_id: str) -> float:
+    count_row = conn.execute(
+        "SELECT COUNT(*) AS total FROM autopost_metrics WHERE user_id = ?",
+        (user_id,)
+    ).fetchone()
+    total = int(count_row["total"] or 0) if count_row else 0
+    # Strength grows with data size; cap for stability
+    strength = MIN_STRENGTH + min(total / 50.0, 1.0) * (MAX_STRENGTH - MIN_STRENGTH)
+    return _clamp(strength, MIN_STRENGTH, MAX_STRENGTH)
 
 
 def refresh_feedback_weights(conn, user_id: str) -> Dict[str, Dict[str, float]]:
@@ -102,13 +127,15 @@ def refresh_feedback_weights(conn, user_id: str) -> Dict[str, Dict[str, float]]:
 
     baseline = (sum(overall_rates) / len(overall_rates)) if overall_rates else 0.0
     baseline = baseline if baseline > 0 else 0.03
+    strength = get_learning_strength(conn, user_id)
 
     def _weights_from_bucket(bucket: Dict[str, List[float]]) -> Dict[str, float]:
         weights: Dict[str, float] = {}
         for key, values in bucket.items():
             avg = sum(values) / max(1, len(values))
             ratio = avg / baseline if baseline > 0 else 1.0
-            weights[key] = _clamp(ratio, MIN_WEIGHT, MAX_WEIGHT)
+            adjusted = 1.0 + (ratio - 1.0) * strength
+            weights[key] = _clamp(adjusted, MIN_WEIGHT, MAX_WEIGHT)
         return weights
 
     hook_weights = _weights_from_bucket(hooks)

@@ -13,7 +13,7 @@ from fastapi import BackgroundTasks, HTTPException, UploadFile  # type: ignore
 from .generator import generate_metadata, generate_variants
 from .scoring import build_score_reasons
 from .scheduler import get_best_posting_window, resolve_schedule_time
-from .feedback import get_feedback_weights, refresh_feedback_weights
+from .feedback import get_feedback_weights, refresh_feedback_weights, get_learning_strength
 
 
 BroadcastFn = Callable[[str, str, Dict[str, Any]], Awaitable[None]]
@@ -96,6 +96,7 @@ class AutopostService:
         conn = self.deps.get_db_connection()
         refresh_feedback_weights(conn, user_id)
         weights = get_feedback_weights(conn, user_id)
+        strength = get_learning_strength(conn, user_id)
 
         if title or hook_text or cta_text or hashtags:
             generated = generate_metadata(title, hook_text, cta_text, hashtags, category, trend_tag=trend_tag)
@@ -124,7 +125,7 @@ class AutopostService:
                 })
             scored_variants.sort(key=lambda v: v["score"], reverse=True)
             best = scored_variants[0]["variant"]
-            logger.info(f"[AI VARIANTS] video={file.filename} scores={[round(v['score'], 2) for v in scored_variants]}")
+            logger.info(f"[AI VARIANTS] video={file.filename} scores={[round(v['score'], 2) for v in scored_variants]} strength={round(strength, 2)}")
             logger.info(f"[AI VARIANTS] selected hook_pattern={best.hook_pattern} cta_pattern={best.cta_pattern} hashtag_pattern={best.hashtag_pattern}")
             title = best.title
             hook_text = best.hook_text
@@ -296,6 +297,7 @@ class AutopostService:
         trend_tag = trend_list[0] if trend_list else None
         refresh_feedback_weights(conn, user_id)
         weights = get_feedback_weights(conn, user_id)
+        strength = get_learning_strength(conn, user_id)
 
         variants = generate_variants(category, trend_tag, weights, count=5)
         scored_variants: List[Dict[str, Any]] = []
@@ -316,7 +318,7 @@ class AutopostService:
             })
         scored_variants.sort(key=lambda v: v["score"], reverse=True)
         best = scored_variants[0]["variant"]
-        logger.info(f"[AI VARIANTS] video_id={video_id} scores={[round(v['score'], 2) for v in scored_variants]}")
+        logger.info(f"[AI VARIANTS] video_id={video_id} scores={[round(v['score'], 2) for v in scored_variants]} strength={round(strength, 2)}")
         logger.info(f"[AI VARIANTS] selected hook_pattern={best.hook_pattern} cta_pattern={best.cta_pattern} hashtag_pattern={best.hashtag_pattern}")
 
         title = best.title
