@@ -68,45 +68,120 @@ def generate_metadata(
         "lebih percaya diri",
         "lebih elegan",
         "lebih aesthetic",
-        "lebih hemat waktu"
+        "lebih hemat waktu",
+        "lebih stand out",
+        "lebih premium",
+        "lebih clean"
     ]
     benefit = random.choice(benefit_phrases)
 
-    title_templates = [
+    niche_key = _slugify(niche_text)
+
+    title_templates_generic = [
         f"{niche_text} yang bikin kamu terlihat {benefit}",
         f"Rahasia {niche_text} biar kelihatan {benefit}",
         f"{niche_text} favorit yang lagi ramai dicari",
         f"{niche_text} yang bikin penampilan makin {benefit}",
+        f"{niche_text} viral yang dipakai banyak orang",
+        f"{niche_text} yang bikin look kamu naik level"
     ]
 
-    hook_templates = [
-        "Stop scroll! Ini rahasia biar tampil lebih percaya diri.",
-        "Aku baru sadar kalau detail kecil ini bikin beda besar!",
+    title_templates_by_niche = {
+        "fashion": [
+            f"Outfit {niche_text} yang bikin look kamu {benefit}",
+            f"{niche_text} ini bikin OOTD makin {benefit}",
+            f"{niche_text} favorit buat look simpel tapi {benefit}"
+        ],
+        "beauty": [
+            f"{niche_text} yang bikin look kamu {benefit}",
+            f"{niche_text} favorit biar hasil lebih {benefit}",
+            f"{niche_text} yang bikin hasil makin {benefit}"
+        ],
+        "sandal": [
+            f"Sandal ini bikin langkahmu lebih {benefit}",
+            f"Sandal favorit yang bikin kaki kelihatan {benefit}",
+            f"Sandal ini bikin OOTD makin {benefit}"
+        ],
+        "sepatu": [
+            f"Sepatu ini bikin gaya makin {benefit}",
+            f"Sepatu favorit yang bikin look {benefit}",
+            f"Sepatu ini bikin penampilan lebih {benefit}"
+        ],
+        "tas": [
+            f"Tas ini bikin penampilan makin {benefit}",
+            f"Tas favorit yang bikin gaya {benefit}",
+            f"Tas ini bikin outfit naik level"
+        ]
+    }
+
+    title_pool = title_templates_by_niche.get(niche_key, title_templates_generic)
+
+    hook_templates_generic = [
+        "Stop scroll! Ini bikin look kamu langsung beda.",
+        "Aku baru sadar detail kecil ini bikin hasil beda banget.",
         "Biar kelihatan lebih rapi, coba ini dulu.",
-        "Stop scroll! Lihat dulu sebelum kamu pilih yang lain.",
-        "Aku baru sadar kenapa banyak yang suka yang ini!"
+        "Stop scroll! Lihat ini sebelum kamu checkout.",
+        "Aku baru sadar kenapa banyak yang cari yang ini.",
+        "Kecil, tapi efeknya bikin beda besar."
+    ]
+
+    hook_templates_by_niche = {
+        "fashion": [
+            "Stop scroll! OOTD kamu bakal naik level dengan ini.",
+            "Aku baru sadar item ini bikin outfit langsung {benefit}.",
+            "Biar OOTD keliatan {benefit}, coba item ini."
+        ],
+        "beauty": [
+            "Stop scroll! Hasil makeup jadi lebih {benefit} pakai ini.",
+            "Aku baru sadar ini bikin hasil jadi {benefit}.",
+            "Biar hasil makeup lebih {benefit}, coba ini dulu."
+        ],
+        "sandal": [
+            "Stop scroll! Sandal ini bikin langkahmu lebih {benefit}.",
+            "Aku baru sadar sandal ini bikin kaki kelihatan {benefit}.",
+            "Biar kaki keliatan {benefit}, pilih sandal ini."
+        ],
+        "sepatu": [
+            "Stop scroll! Sepatu ini bikin look kamu lebih {benefit}.",
+            "Aku baru sadar sepatu ini bikin gaya {benefit}.",
+            "Biar gaya makin {benefit}, coba sepatu ini."
+        ],
+        "tas": [
+            "Stop scroll! Tas ini bikin outfit langsung {benefit}.",
+            "Aku baru sadar tas ini bikin look lebih {benefit}.",
+            "Biar outfit keliatan {benefit}, pilih tas ini."
+        ]
+    }
+
+    hook_pool = [
+        template.format(benefit=benefit)
+        for template in hook_templates_by_niche.get(niche_key, hook_templates_generic)
     ]
 
     cta_templates = [
         "Komen MAU",
+        "Ketik MAU di komen",
         "Tag teman kamu",
-        "Save dulu"
+        "Save dulu biar nggak lupa",
+        "Share ke bestie kamu",
+        "DM kalau mau detailnya"
     ]
 
-    resolved_title = _normalize_text(title) or random.choice(title_templates)
-    resolved_hook = _normalize_text(hook_text) or random.choice(hook_templates)
+    resolved_title = _normalize_text(title) or random.choice(title_pool)
+    resolved_hook = _normalize_text(hook_text) or random.choice(hook_pool)
     resolved_cta = _normalize_text(cta_text) or random.choice(cta_templates)
 
     resolved_hashtags = _normalize_text(hashtags)
     if not resolved_hashtags:
         niche_tag = _slugify(niche_text)
         category_tag = _slugify(category or niche_text)
-        trend_clean = _slugify(trend_tag.replace("#", "")) if trend_tag else "trend"
+        trend_clean = _slugify(trend_tag.replace("#", "")) if trend_tag else "viral"
+        general_pool = ["fyp", "foryou", "viral", "trending"]
         tags = _unique_hashtags([
             niche_tag,
             category_tag,
             trend_clean,
-            "fyp"
+            random.choice(general_pool)
         ])
         # Keep 3-5 hashtags
         resolved_hashtags = " ".join(tags[:5])
