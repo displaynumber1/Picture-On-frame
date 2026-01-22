@@ -10,9 +10,10 @@ import os
 
 from fastapi import BackgroundTasks, HTTPException, UploadFile  # type: ignore
 
-from .generator import generate_metadata
+from .generator import generate_metadata, generate_variants
 from .scoring import build_score_reasons
 from .scheduler import get_best_posting_window, resolve_schedule_time
+from .feedback import get_feedback_weights, refresh_feedback_weights
 
 
 BroadcastFn = Callable[[str, str, Dict[str, Any]], Awaitable[None]]
@@ -91,13 +92,50 @@ class AutopostService:
 
         trend_list, _, _ = self.deps.get_trend_context(title, caption, hook_text, cta_text, hashtags, category)
         trend_tag = trend_list[0] if trend_list else None
-        generated = generate_metadata(title, hook_text, cta_text, hashtags, category, trend_tag=trend_tag)
 
-        title = generated.title
-        hook_text = generated.hook_text
-        cta_text = generated.cta_text
-        hashtags = generated.hashtags
-        sources = generated.sources
+        conn = self.deps.get_db_connection()
+        refresh_feedback_weights(conn, user_id)
+        weights = get_feedback_weights(conn, user_id)
+
+        if title or hook_text or cta_text or hashtags:
+            generated = generate_metadata(title, hook_text, cta_text, hashtags, category, trend_tag=trend_tag)
+            title = generated.title
+            hook_text = generated.hook_text
+            cta_text = generated.cta_text
+            hashtags = generated.hashtags
+            sources = generated.sources
+        else:
+            variants = generate_variants(category, trend_tag, weights, count=5)
+            scored_variants: List[Dict[str, Any]] = []
+            for variant in variants:
+                details = self.deps.score_video_metadata(
+                    variant.title,
+                    caption,
+                    variant.hook_text,
+                    variant.cta_text,
+                    variant.hashtags,
+                    category,
+                    user_id,
+                    None
+                )
+                scored_variants.append({
+                    "variant": variant,
+                    "score": float(details.get("score", 0.0))
+                })
+            scored_variants.sort(key=lambda v: v["score"], reverse=True)
+            best = scored_variants[0]["variant"]
+            logger.info(f"[AI VARIANTS] video={file.filename} scores={[round(v['score'], 2) for v in scored_variants]}")
+            logger.info(f"[AI VARIANTS] selected hook_pattern={best.hook_pattern} cta_pattern={best.cta_pattern} hashtag_pattern={best.hashtag_pattern}")
+            title = best.title
+            hook_text = best.hook_text
+            cta_text = best.cta_text
+            hashtags = best.hashtags
+            sources = {
+                "title_source": "ai_generated",
+                "hook_source": "ai_generated",
+                "cta_source": "ai_generated",
+                "hashtags_source": "ai_generated"
+            }
 
         scene_signals = self.deps.get_scene_signals(str(file_path))
         details = self.deps.score_video_metadata(
@@ -128,7 +166,6 @@ class AutopostService:
             status = "QUEUED" if score >= threshold else "WAITING_RECHECK"
             next_check_at = None if status == "QUEUED" else self.deps.schedule_next_check()
 
-        conn = self.deps.get_db_connection()
         cursor = conn.cursor()
         scheduled_at = None
         status_note = None
@@ -257,12 +294,35 @@ class AutopostService:
 
         trend_list, _, _ = self.deps.get_trend_context(None, caption, None, None, None, category)
         trend_tag = trend_list[0] if trend_list else None
-        generated = generate_metadata(None, None, None, None, category, trend_tag=trend_tag)
+        refresh_feedback_weights(conn, user_id)
+        weights = get_feedback_weights(conn, user_id)
 
-        title = generated.title
-        hook_text = generated.hook_text
-        cta_text = generated.cta_text
-        hashtags = generated.hashtags
+        variants = generate_variants(category, trend_tag, weights, count=5)
+        scored_variants: List[Dict[str, Any]] = []
+        for variant in variants:
+            details = self.deps.score_video_metadata(
+                variant.title,
+                caption,
+                variant.hook_text,
+                variant.cta_text,
+                variant.hashtags,
+                category,
+                user_id,
+                None
+            )
+            scored_variants.append({
+                "variant": variant,
+                "score": float(details.get("score", 0.0))
+            })
+        scored_variants.sort(key=lambda v: v["score"], reverse=True)
+        best = scored_variants[0]["variant"]
+        logger.info(f"[AI VARIANTS] video_id={video_id} scores={[round(v['score'], 2) for v in scored_variants]}")
+        logger.info(f"[AI VARIANTS] selected hook_pattern={best.hook_pattern} cta_pattern={best.cta_pattern} hashtag_pattern={best.hashtag_pattern}")
+
+        title = best.title
+        hook_text = best.hook_text
+        cta_text = best.cta_text
+        hashtags = best.hashtags
 
         logger.info(f"[AI GENERATE] video_id={video_id}")
         logger.info(f"Generated hook: {hook_text}")

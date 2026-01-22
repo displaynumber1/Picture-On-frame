@@ -311,6 +311,19 @@ def init_database():
                 created_at TEXT NOT NULL
             )
         ''')
+
+        # Create autopost_pattern_feedback table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS autopost_pattern_feedback (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                pattern_type TEXT NOT NULL,
+                pattern_key TEXT NOT NULL,
+                weight REAL NOT NULL DEFAULT 1.0,
+                updated_at TEXT NOT NULL,
+                UNIQUE(user_id, pattern_type, pattern_key)
+            )
+        ''')
         
         # Bootstrap authorized admins from environment (optional)
         if BOOTSTRAP_ADMIN_ENABLED and BOOTSTRAP_ADMIN_EMAILS:
