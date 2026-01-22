@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
+import os
 
 
 MIN_SAMPLES = 5
@@ -9,7 +10,7 @@ MIN_WEIGHT = 0.6
 MAX_WEIGHT = 1.6
 MIN_STRENGTH = 0.5
 MAX_STRENGTH = 1.4
-WEEKLY_DECAY = 0.88
+WEEKLY_DECAY = float(os.getenv("AUTPOST_WEEKLY_DECAY", "0.88"))
 
 
 def _clamp(value: float, low: float, high: float) -> float:
