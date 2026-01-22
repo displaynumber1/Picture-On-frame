@@ -105,6 +105,12 @@ type AutopostFeedbackWeights = {
   };
 };
 
+type AdminSubscriptionInfo = {
+  user_id: string;
+  subscribed: boolean;
+  trial_upload_remaining: number;
+};
+
 type AdminMidtransStatus = {
   midtrans_is_production: boolean;
   server_key_configured: boolean;
@@ -269,6 +275,13 @@ const DashboardView: React.FC<{
   feedbackWeightsQuery: string;
   onFeedbackWeightsQueryChange: (value: string) => void;
   onFeedbackWeightsRefresh: () => void;
+  subscriptionQuery: string;
+  subscriptionInfo: AdminSubscriptionInfo | null;
+  subscriptionLoading: boolean;
+  subscriptionError: string | null;
+  onSubscriptionQueryChange: (value: string) => void;
+  onSubscriptionLookup: () => void;
+  onSubscriptionUpdate: (payload: Record<string, any>) => void;
 }> = ({
   items,
   loading,
@@ -361,7 +374,14 @@ const DashboardView: React.FC<{
   feedbackWeightsError,
   feedbackWeightsQuery,
   onFeedbackWeightsQueryChange,
-  onFeedbackWeightsRefresh
+  onFeedbackWeightsRefresh,
+  subscriptionQuery,
+  subscriptionInfo,
+  subscriptionLoading,
+  subscriptionError,
+  onSubscriptionQueryChange,
+  onSubscriptionLookup,
+  onSubscriptionUpdate
 }) => {
   const [showMetricsInfo, setShowMetricsInfo] = useState(false);
   const [showUploadInfo, setShowUploadInfo] = useState(false);
@@ -1079,6 +1099,74 @@ const DashboardView: React.FC<{
             </div>
 
             <div className="bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                <span className="text-sm font-semibold text-slate-700">Trial & Subscription Control</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    value={subscriptionQuery}
+                    onChange={(event) => onSubscriptionQueryChange(event.target.value)}
+                    placeholder="User ID / email"
+                    className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                  />
+                  <button
+                    onClick={onSubscriptionLookup}
+                    className="px-3 py-1.5 text-xs rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
+                  >
+                    Lookup
+                  </button>
+                </div>
+              </div>
+              {subscriptionLoading && (
+                <div className="px-6 py-6 text-sm text-slate-500">Memuat status user...</div>
+              )}
+              {subscriptionError && (
+                <div className="px-6 py-6 text-sm text-red-600">{subscriptionError}</div>
+              )}
+              {!subscriptionLoading && !subscriptionError && subscriptionInfo && (
+                <div className="px-6 py-5 space-y-3 text-xs text-slate-600">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold text-slate-700">User:</span>
+                    <span>{subscriptionInfo.user_id}</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className={`px-2 py-1 rounded-full text-[10px] font-semibold ${subscriptionInfo.subscribed ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {subscriptionInfo.subscribed ? 'Subscribed' : 'Free Trial'}
+                    </span>
+                    <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600">
+                      Trial tersisa: {subscriptionInfo.trial_upload_remaining}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => onSubscriptionUpdate({ user_id: subscriptionInfo.user_id, subscribed: true })}
+                      className="px-3 py-1.5 text-xs rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                    >
+                      Set Pro
+                    </button>
+                    <button
+                      onClick={() => onSubscriptionUpdate({ user_id: subscriptionInfo.user_id, subscribed: false })}
+                      className="px-3 py-1.5 text-xs rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    >
+                      Set Free
+                    </button>
+                    <button
+                      onClick={() => onSubscriptionUpdate({ user_id: subscriptionInfo.user_id, trial_upload_remaining: 3 })}
+                      className="px-3 py-1.5 text-xs rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100"
+                    >
+                      Reset Trial (3)
+                    </button>
+                    <button
+                      onClick={() => onSubscriptionUpdate({ user_id: subscriptionInfo.user_id, trial_upload_remaining: 0 })}
+                      className="px-3 py-1.5 text-xs rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100"
+                    >
+                      Set Trial 0
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
               <span className="text-sm font-semibold text-slate-700">Admin Autopost Logs</span>
               <div className="flex items-center gap-2">
@@ -1496,6 +1584,10 @@ export default function App() {
   const [feedbackWeightsLoading, setFeedbackWeightsLoading] = useState(false);
   const [feedbackWeightsError, setFeedbackWeightsError] = useState<string | null>(null);
   const [feedbackWeightsQuery, setFeedbackWeightsQuery] = useState('');
+  const [subscriptionQuery, setSubscriptionQuery] = useState('');
+  const [subscriptionInfo, setSubscriptionInfo] = useState<AdminSubscriptionInfo | null>(null);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
+  const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
   const [adminLogsStatus, setAdminLogsStatus] = useState('ALL');
   const [adminLogsUserQuery, setAdminLogsUserQuery] = useState('');
   const [adminLogsDateFrom, setAdminLogsDateFrom] = useState('');
@@ -2684,6 +2776,71 @@ export default function App() {
     }
   }, [isAdmin, feedbackWeightsQuery]);
 
+  const fetchSubscriptionInfo = useCallback(async () => {
+    if (!isAdmin) return;
+    try {
+      setSubscriptionLoading(true);
+      setSubscriptionError(null);
+      const token = await supabaseService.getAccessToken();
+      if (!token) {
+        setSubscriptionError('Sesi kamu telah berakhir. Silakan login ulang.');
+        return;
+      }
+      const params = new URLSearchParams();
+      if (subscriptionQuery.trim()) {
+        if (subscriptionQuery.includes('@')) {
+          params.set('email', subscriptionQuery.trim());
+        } else {
+          params.set('user_id', subscriptionQuery.trim());
+        }
+      }
+      const response = await fetch(`${API_URL}/api/admin/subscription/lookup?${params.toString()}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Gagal memuat subscription (${response.status})`);
+      }
+      const data = await response.json();
+      setSubscriptionInfo(data);
+    } catch (error: any) {
+      setSubscriptionError('Gagal memuat subscription user.');
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  }, [isAdmin, subscriptionQuery]);
+
+  const updateSubscription = useCallback(async (payload: Record<string, any>) => {
+    if (!isAdmin) return;
+    try {
+      setSubscriptionLoading(true);
+      setSubscriptionError(null);
+      const token = await supabaseService.getAccessToken();
+      if (!token) {
+        setSubscriptionError('Sesi kamu telah berakhir. Silakan login ulang.');
+        return;
+      }
+      const response = await fetch(`${API_URL}/api/admin/subscription/update`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) {
+        throw new Error('Gagal update subscription.');
+      }
+      const data = await response.json();
+      setSubscriptionInfo(data);
+    } catch (error: any) {
+      setSubscriptionError('Gagal update subscription.');
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  }, [isAdmin]);
+
   const fetchMidtransStatus = useCallback(async () => {
     if (!isAdmin) return;
     try {
@@ -3514,6 +3671,13 @@ export default function App() {
         feedbackWeightsQuery={feedbackWeightsQuery}
         onFeedbackWeightsQueryChange={setFeedbackWeightsQuery}
         onFeedbackWeightsRefresh={fetchFeedbackWeights}
+        subscriptionQuery={subscriptionQuery}
+        subscriptionInfo={subscriptionInfo}
+        subscriptionLoading={subscriptionLoading}
+        subscriptionError={subscriptionError}
+        onSubscriptionQueryChange={setSubscriptionQuery}
+        onSubscriptionLookup={fetchSubscriptionInfo}
+        onSubscriptionUpdate={updateSubscription}
       />
     );
   }

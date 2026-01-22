@@ -281,6 +281,40 @@ def update_user_trial_remaining(user_id: str, trial_remaining: int) -> Dict[str,
         raise
 
 
+def update_user_subscription(user_id: str, subscribed: bool) -> Dict[str, Any]:
+    """
+    Update user's subscribed flag.
+    """
+    if not supabase:
+        raise ValueError("Supabase client not initialized")
+    try:
+        response = supabase.table("profiles").update({
+            "subscribed": bool(subscribed)
+        }).eq("user_id", user_id).execute()
+        if response.data and len(response.data) > 0:
+            return response.data[0]
+        raise ValueError("Failed to update subscription")
+    except Exception as e:
+        logger.error(f"Error updating subscription: {str(e)}", exc_info=True)
+        raise
+
+
+def get_profile_by_user_id(user_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Get profile by user_id using service role (admin use).
+    """
+    if not supabase:
+        raise ValueError("Supabase client not initialized")
+    try:
+        response = supabase.table("profiles").select("*").eq("user_id", user_id).limit(1).execute()
+        if response.data:
+            return response.data[0]
+        return None
+    except Exception as e:
+        logger.error(f"Error getting profile by user_id: {str(e)}", exc_info=True)
+        return None
+
+
 def insert_midtrans_transaction_log(payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """
     Insert Midtrans transaction log into Supabase table `midtrans_transactions`.

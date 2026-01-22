@@ -53,8 +53,10 @@ from supabase_service import (
     ensure_admin_users_by_email,
     is_admin_user,
     update_user_trial_remaining,
+    update_user_subscription,
     update_user_quota,
     update_user_coins,
+    get_profile_by_user_id,
     verify_user_token,
     upload_image_to_supabase_storage,
     convert_base64_to_image_bytes,
@@ -4912,6 +4914,58 @@ async def admin_autopost_feedback_weights(
         "learning_strength": round(strength, 3),
         "weights": weights,
         "global_weights": global_weights
+    }
+
+
+@app.get("/api/admin/subscription/lookup")
+async def admin_subscription_lookup(
+    user_id: Optional[str] = None,
+    email: Optional[str] = None,
+    _: Dict[str, Any] = Depends(require_admin)
+):
+    target_user_id = user_id
+    if not target_user_id and email:
+        target_user_id = get_user_id_by_email(email)
+    if not target_user_id:
+        raise HTTPException(status_code=400, detail="user_id or email is required")
+    profile = get_profile_by_user_id(target_user_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return {
+        "user_id": target_user_id,
+        "email": profile.get("email"),
+        "subscribed": bool(profile.get("subscribed")),
+        "trial_upload_remaining": int(profile.get("trial_upload_remaining") or 0)
+    }
+
+
+@app.post("/api/admin/subscription/update")
+async def admin_subscription_update(
+    payload: Dict[str, Any],
+    _: Dict[str, Any] = Depends(require_admin)
+):
+    target_user_id = payload.get("user_id")
+    email = payload.get("email")
+    if not target_user_id and email:
+        target_user_id = get_user_id_by_email(email)
+    if not target_user_id:
+        raise HTTPException(status_code=400, detail="user_id or email is required")
+
+    subscribed = payload.get("subscribed")
+    trial_remaining = payload.get("trial_upload_remaining")
+
+    if subscribed is not None:
+        update_user_subscription(target_user_id, bool(subscribed))
+    if trial_remaining is not None:
+        update_user_trial_remaining(target_user_id, int(trial_remaining))
+
+    profile = get_profile_by_user_id(target_user_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return {
+        "user_id": target_user_id,
+        "subscribed": bool(profile.get("subscribed")),
+        "trial_upload_remaining": int(profile.get("trial_upload_remaining") or 0)
     }
 
 
