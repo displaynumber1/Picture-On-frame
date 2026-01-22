@@ -93,21 +93,19 @@ export default function AdminPanelPage() {
     }
   }, [perPage, statusFilter, subscribedFilter, adminFilter]);
 
-  const searchUsers = useCallback(async (nextPage?: number) => {
+  const fetchSearchPage = useCallback(async (nextPage: number) => {
     if (!searchQuery.trim()) {
-      fetchUsers(1);
-      return;
+      return { items: [], total: 0 };
     }
     try {
-      setLoading(true);
       const token = await supabaseService.getAccessToken();
       if (!token) {
         setToast('Sesi kamu telah berakhir. Silakan login ulang.');
-        return;
+        return { items: [], total: 0 };
       }
       const params = buildFilters();
       params.set('q', searchQuery.trim());
-      params.set('page', String(nextPage ?? page));
+      params.set('page', String(nextPage));
       params.set('per_page', String(perPage));
       const response = await fetch(`${API_URL}/api/admin/users/search?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -116,16 +114,34 @@ export default function AdminPanelPage() {
         throw new Error('Gagal mencari users.');
       }
       const data = await response.json();
-      setUsers(Array.isArray(data?.items) ? data.items : []);
-      setIsSearching(true);
-      setPage(nextPage ?? page);
-      setSelectedIds(new Set());
+      return {
+        items: Array.isArray(data?.items) ? data.items : [],
+        total: typeof data?.total === 'number' ? data.total : null
+      };
     } catch {
       setToast('Gagal mencari users.');
+      return { items: [], total: 0 };
+    }
+  }, [searchQuery, perPage, statusFilter, subscribedFilter, adminFilter]);
+
+  const searchUsers = useCallback(async (nextPage?: number) => {
+    if (!searchQuery.trim()) {
+      fetchUsers(1);
+      return;
+    }
+    try {
+      setLoading(true);
+      const targetPage = nextPage ?? page;
+      const data = await fetchSearchPage(targetPage);
+      setUsers(data.items);
+      setTotal(typeof data.total === 'number' ? data.total : null);
+      setIsSearching(true);
+      setPage(targetPage);
+      setSelectedIds(new Set());
     } finally {
       setLoading(false);
     }
-  }, [fetchUsers, searchQuery, page, perPage, statusFilter, subscribedFilter, adminFilter]);
+  }, [fetchUsers, fetchSearchPage, page, searchQuery]);
 
   useEffect(() => {
     if (!authChecked || !isAdmin) return;
@@ -230,6 +246,47 @@ export default function AdminPanelPage() {
     link.href = URL.createObjectURL(blob);
     link.download = `admin-users-${isSearching ? 'search' : 'page'}-${page}.csv`;
     link.click();
+  };
+
+  const exportAllSearchCsv = async () => {
+    if (!searchQuery.trim()) {
+      setToast('Gunakan pencarian dulu.');
+      return;
+    }
+    try {
+      setLoading(true);
+      const all: AdminUser[] = [];
+      let currentPage = 1;
+      while (true) {
+        const data = await fetchSearchPage(currentPage);
+        if (!data.items.length) break;
+        all.push(...data.items);
+        if (data.items.length < perPage) break;
+        currentPage += 1;
+        if (currentPage > 50) break;
+      }
+      if (all.length === 0) {
+        setToast('Tidak ada data untuk diexport.');
+        return;
+      }
+      const rows = [
+        ['email', 'trial_remaining', 'subscribed', 'expires_at', 'is_admin'].join(','),
+        ...all.map((user) => [
+          user.email || '',
+          user.trial_upload_remaining,
+          user.subscribed,
+          user.subscription_expires_at || '',
+          user.is_admin
+        ].map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      ];
+      const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `admin-users-search-all.csv`;
+      link.click();
+    } finally {
+      setLoading(false);
+    }
   };
 
   const totalPages = useMemo(() => {
@@ -358,6 +415,14 @@ export default function AdminPanelPage() {
           >
             Export CSV
           </button>
+          {isSearching && (
+            <button
+              onClick={exportAllSearchCsv}
+              className="border border-indigo-200 text-indigo-600 hover:bg-indigo-50 rounded-xl px-4 py-2 text-sm"
+            >
+              Export Search (All)
+            </button>
+          )}
           <span className="text-xs text-gray-500">Selected: {selectedIds.size}</span>
         </div>
 
