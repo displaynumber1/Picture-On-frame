@@ -93,17 +93,6 @@ class AutopostService:
         self._trial_guard(profile, user_id, decrement=False)
 
         coins = profile.get("coins_balance", 0)
-        autopost_upload_cost = 90
-        if coins < autopost_upload_cost:
-            raise HTTPException(
-                status_code=403,
-                detail={
-                    "code": "INSUFFICIENT_COINS",
-                    "required_coins": autopost_upload_cost,
-                    "action": "topup",
-                    "message": "Coins kamu tidak cukup."
-                }
-            )
 
         if not file.filename:
             raise HTTPException(status_code=400, detail="Filename is required")
@@ -243,8 +232,7 @@ class AutopostService:
         )
         record_id = cursor.lastrowid
         conn.commit()
-        updated_profile = self.deps.update_user_coins(user_id, -autopost_upload_cost)
-        remaining_coins = updated_profile.get("coins_balance", 0) if updated_profile else coins - autopost_upload_cost
+        remaining_coins = coins
 
         if self.deps.scene_provider != "none" and background_tasks is not None:
             background_tasks.add_task(self.deps.async_scene_analysis, record_id, str(file_path), user_id)
