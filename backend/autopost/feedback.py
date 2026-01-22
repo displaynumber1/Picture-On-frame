@@ -9,6 +9,7 @@ MIN_WEIGHT = 0.6
 MAX_WEIGHT = 1.6
 MIN_STRENGTH = 0.5
 MAX_STRENGTH = 1.4
+DECAY_FACTOR = 0.985
 
 
 def _clamp(value: float, low: float, high: float) -> float:
@@ -89,7 +90,18 @@ def get_learning_strength(conn, user_id: str) -> float:
     return _clamp(strength, MIN_STRENGTH, MAX_STRENGTH)
 
 
+def _apply_decay(conn, table: str, where_clause: str = "", params: Tuple = ()) -> None:
+    sql = f"""
+        UPDATE {table}
+        SET weight = MIN(MAX(weight * ?, ?), ?),
+            updated_at = ?
+        {where_clause}
+    """
+    conn.execute(sql, (DECAY_FACTOR, MIN_WEIGHT, MAX_WEIGHT, datetime.utcnow().isoformat(), *params))
+
+
 def refresh_feedback_weights(conn, user_id: str) -> Dict[str, Dict[str, float]]:
+    _apply_decay(conn, "autopost_pattern_feedback", "WHERE user_id = ?", (user_id,))
     rows = conn.execute(
         """
         SELECT v.hook_text, v.cta_text, v.hashtags,
@@ -167,6 +179,77 @@ def refresh_feedback_weights(conn, user_id: str) -> Dict[str, Dict[str, float]]:
     }
 
 
+def refresh_global_feedback_weights(conn) -> Dict[str, Dict[str, float]]:
+    _apply_decay(conn, "autopost_pattern_feedback_global")
+    rows = conn.execute(
+        """
+        SELECT v.hook_text, v.cta_text, v.hashtags,
+               m.views, m.likes, m.comments, m.shares
+        FROM autopost_metrics m
+        JOIN autopost_videos v ON v.id = m.video_id
+        ORDER BY m.created_at DESC
+        LIMIT 500
+        """
+    ).fetchall()
+    if len(rows) < MIN_SAMPLES:
+        return {}
+
+    overall_rates: List[float] = []
+    hooks: Dict[str, List[float]] = {}
+    ctas: Dict[str, List[float]] = {}
+    hashtags: Dict[str, List[float]] = {}
+
+    for row in rows:
+        rate = _engagement_rate(
+            int(row["views"] or 0),
+            int(row["likes"] or 0),
+            int(row["comments"] or 0),
+            int(row["shares"] or 0)
+        )
+        overall_rates.append(rate)
+        hooks.setdefault(_extract_hook_pattern(row["hook_text"]), []).append(rate)
+        ctas.setdefault(_extract_cta_pattern(row["cta_text"]), []).append(rate)
+        hashtags.setdefault(_extract_hashtag_group(row["hashtags"]), []).append(rate)
+
+    baseline = (sum(overall_rates) / len(overall_rates)) if overall_rates else 0.0
+    baseline = baseline if baseline > 0 else 0.03
+
+    def _weights_from_bucket(bucket: Dict[str, List[float]]) -> Dict[str, float]:
+        weights: Dict[str, float] = {}
+        for key, values in bucket.items():
+            avg = sum(values) / max(1, len(values))
+            ratio = avg / baseline if baseline > 0 else 1.0
+            weights[key] = _clamp(ratio, MIN_WEIGHT, MAX_WEIGHT)
+        return weights
+
+    hook_weights = _weights_from_bucket(hooks)
+    cta_weights = _weights_from_bucket(ctas)
+    hashtag_weights = _weights_from_bucket(hashtags)
+
+    now = datetime.utcnow().isoformat()
+    for pattern_type, weights in (
+        ("hook", hook_weights),
+        ("cta", cta_weights),
+        ("hashtag", hashtag_weights)
+    ):
+        for key, weight in weights.items():
+            conn.execute(
+                """
+                INSERT INTO autopost_pattern_feedback_global (pattern_type, pattern_key, weight, updated_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(pattern_type, pattern_key)
+                DO UPDATE SET weight = excluded.weight, updated_at = excluded.updated_at
+                """,
+                (pattern_type, key, float(weight), now)
+            )
+    conn.commit()
+    return {
+        "hook": hook_weights,
+        "cta": cta_weights,
+        "hashtag": hashtag_weights
+    }
+
+
 def get_feedback_weights(conn, user_id: str) -> Dict[str, Dict[str, float]]:
     rows = conn.execute(
         """
@@ -182,3 +265,31 @@ def get_feedback_weights(conn, user_id: str) -> Dict[str, Dict[str, float]]:
         result.setdefault(pattern_type, {})
         result[pattern_type][row["pattern_key"]] = float(row["weight"] or 1.0)
     return result
+
+
+def get_global_feedback_weights(conn) -> Dict[str, Dict[str, float]]:
+    rows = conn.execute(
+        """
+        SELECT pattern_type, pattern_key, weight
+        FROM autopost_pattern_feedback_global
+        """
+    ).fetchall()
+    result: Dict[str, Dict[str, float]] = {}
+    for row in rows:
+        pattern_type = row["pattern_type"]
+        result.setdefault(pattern_type, {})
+        result[pattern_type][row["pattern_key"]] = float(row["weight"] or 1.0)
+    return result
+
+
+def merge_weights(global_weights: Dict[str, Dict[str, float]], user_weights: Dict[str, Dict[str, float]], strength: float) -> Dict[str, Dict[str, float]]:
+    alpha = _clamp(0.4 + (strength - MIN_STRENGTH) / max(0.1, (MAX_STRENGTH - MIN_STRENGTH)) * 0.4, 0.4, 0.8)
+    merged: Dict[str, Dict[str, float]] = {}
+    for group in ("hook", "cta", "hashtag"):
+        merged[group] = {}
+        keys = set(global_weights.get(group, {}).keys()) | set(user_weights.get(group, {}).keys())
+        for key in keys:
+            g = global_weights.get(group, {}).get(key, 1.0)
+            u = user_weights.get(group, {}).get(key, 1.0)
+            merged[group][key] = _clamp((alpha * u) + ((1 - alpha) * g), MIN_WEIGHT, MAX_WEIGHT)
+    return merged

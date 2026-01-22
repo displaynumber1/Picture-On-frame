@@ -13,7 +13,14 @@ from fastapi import BackgroundTasks, HTTPException, UploadFile  # type: ignore
 from .generator import generate_metadata, generate_variants
 from .scoring import build_score_reasons
 from .scheduler import get_best_posting_window, resolve_schedule_time
-from .feedback import get_feedback_weights, refresh_feedback_weights, get_learning_strength
+from .feedback import (
+    get_feedback_weights,
+    refresh_feedback_weights,
+    get_learning_strength,
+    refresh_global_feedback_weights,
+    get_global_feedback_weights,
+    merge_weights
+)
 
 
 BroadcastFn = Callable[[str, str, Dict[str, Any]], Awaitable[None]]
@@ -95,8 +102,11 @@ class AutopostService:
 
         conn = self.deps.get_db_connection()
         refresh_feedback_weights(conn, user_id)
-        weights = get_feedback_weights(conn, user_id)
+        refresh_global_feedback_weights(conn)
+        user_weights = get_feedback_weights(conn, user_id)
+        global_weights = get_global_feedback_weights(conn)
         strength = get_learning_strength(conn, user_id)
+        weights = merge_weights(global_weights, user_weights, strength)
 
         if title or hook_text or cta_text or hashtags:
             generated = generate_metadata(title, hook_text, cta_text, hashtags, category, trend_tag=trend_tag)
@@ -296,8 +306,11 @@ class AutopostService:
         trend_list, _, _ = self.deps.get_trend_context(None, caption, None, None, None, category)
         trend_tag = trend_list[0] if trend_list else None
         refresh_feedback_weights(conn, user_id)
-        weights = get_feedback_weights(conn, user_id)
+        refresh_global_feedback_weights(conn)
+        user_weights = get_feedback_weights(conn, user_id)
+        global_weights = get_global_feedback_weights(conn)
         strength = get_learning_strength(conn, user_id)
+        weights = merge_weights(global_weights, user_weights, strength)
 
         variants = generate_variants(category, trend_tag, weights, count=5)
         scored_variants: List[Dict[str, Any]] = []

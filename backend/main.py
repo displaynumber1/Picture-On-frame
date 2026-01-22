@@ -40,7 +40,13 @@ from autopost.scoring import build_score_reasons
 from autopost.scheduler import get_best_posting_window, resolve_schedule_time
 from autopost.service import AutopostService, AutopostDeps
 from autopost.router import create_autopost_router
-from autopost.feedback import get_feedback_weights, refresh_feedback_weights, get_learning_strength
+from autopost.feedback import (
+    get_feedback_weights,
+    refresh_feedback_weights,
+    get_learning_strength,
+    refresh_global_feedback_weights,
+    get_global_feedback_weights
+)
 from supabase_service import (
     get_user_profile,
     get_user_id_by_email,
@@ -323,6 +329,18 @@ def init_database():
                 weight REAL NOT NULL DEFAULT 1.0,
                 updated_at TEXT NOT NULL,
                 UNIQUE(user_id, pattern_type, pattern_key)
+            )
+        ''')
+
+        # Create autopost_pattern_feedback_global table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS autopost_pattern_feedback_global (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                pattern_type TEXT NOT NULL,
+                pattern_key TEXT NOT NULL,
+                weight REAL NOT NULL DEFAULT 1.0,
+                updated_at TEXT NOT NULL,
+                UNIQUE(pattern_type, pattern_key)
             )
         ''')
         
@@ -4859,13 +4877,16 @@ async def admin_autopost_feedback_weights(
         raise HTTPException(status_code=400, detail="user_id or email is required")
     conn = get_db_connection()
     refresh_feedback_weights(conn, target_user_id)
+    refresh_global_feedback_weights(conn)
     weights = get_feedback_weights(conn, target_user_id)
+    global_weights = get_global_feedback_weights(conn)
     strength = get_learning_strength(conn, target_user_id)
     conn.close()
     return {
         "user_id": target_user_id,
         "learning_strength": round(strength, 3),
-        "weights": weights
+        "weights": weights,
+        "global_weights": global_weights
     }
 
 

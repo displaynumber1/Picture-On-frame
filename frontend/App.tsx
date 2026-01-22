@@ -97,6 +97,11 @@ type AutopostFeedbackWeights = {
     cta?: Record<string, number>;
     hashtag?: Record<string, number>;
   };
+  global_weights?: {
+    hook?: Record<string, number>;
+    cta?: Record<string, number>;
+    hashtag?: Record<string, number>;
+  };
 };
 
 type AdminMidtransStatus = {
@@ -1005,18 +1010,33 @@ const DashboardView: React.FC<{
                   </div>
                   {(['hook', 'cta', 'hashtag'] as const).map((type) => (
                     <div key={type} className="grid gap-2">
-                      <span className="uppercase text-[10px] font-semibold text-slate-400">{type}</span>
+                      <span className="uppercase text-[10px] font-semibold text-slate-400">{type} · User</span>
                       <div className="flex flex-wrap gap-2">
                         {feedbackWeights.weights?.[type] &&
                           Object.entries(feedbackWeights.weights[type] || {}).map(([key, value]) => (
                             <span
-                              key={`${type}-${key}`}
+                              key={`${type}-user-${key}`}
                               className="px-2 py-1 rounded-full bg-slate-100 text-slate-600 text-[11px]"
                             >
                               {key} · {Number(value).toFixed(2)}
                             </span>
                           ))}
                         {!feedbackWeights.weights?.[type] && (
+                          <span className="text-slate-400">Belum ada data.</span>
+                        )}
+                      </div>
+                      <span className="uppercase text-[10px] font-semibold text-slate-400 mt-2">{type} · Global</span>
+                      <div className="flex flex-wrap gap-2">
+                        {feedbackWeights.global_weights?.[type] &&
+                          Object.entries(feedbackWeights.global_weights[type] || {}).map(([key, value]) => (
+                            <span
+                              key={`${type}-global-${key}`}
+                              className="px-2 py-1 rounded-full bg-indigo-50 text-indigo-600 text-[11px]"
+                            >
+                              {key} · {Number(value).toFixed(2)}
+                            </span>
+                          ))}
+                        {!feedbackWeights.global_weights?.[type] && (
                           <span className="text-slate-400">Belum ada data.</span>
                         )}
                       </div>
