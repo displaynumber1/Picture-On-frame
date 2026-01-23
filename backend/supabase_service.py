@@ -402,11 +402,18 @@ def ensure_user_profile(user_id: str, display_name: Optional[str] = None) -> Dic
     """
     if not supabase:
         raise ValueError("Supabase client not initialized")
-    payload: Dict[str, Any] = {"user_id": user_id}
-    if display_name:
-        payload["display_name"] = display_name
     try:
-        response = supabase.table("profiles").upsert(payload, on_conflict="user_id").execute()
+        existing = get_user_profile(user_id)
+        if existing:
+            return existing
+        payload: Dict[str, Any] = {
+            "user_id": user_id,
+            "coins_balance": 25,
+            "role_user": "user"
+        }
+        if display_name:
+            payload["display_name"] = display_name
+        response = supabase.table("profiles").insert(payload).execute()
         if response.data and len(response.data) > 0:
             return response.data[0]
         raise ValueError("Failed to ensure profile")

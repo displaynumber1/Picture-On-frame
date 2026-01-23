@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     display_name TEXT,
     avatar_url TEXT,
     free_image_quota INTEGER NOT NULL DEFAULT 5,
-    coins_balance INTEGER NOT NULL DEFAULT 0,
+    coins_balance INTEGER NOT NULL DEFAULT 25,
     trial_upload_remaining INTEGER NOT NULL DEFAULT 3,
     subscribed BOOLEAN NOT NULL DEFAULT FALSE,
     subscription_expires_at TIMESTAMP WITH TIME ZONE,
@@ -131,8 +131,8 @@ CREATE TRIGGER update_subscriptions_updated_at
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO public.profiles (user_id, free_image_quota, coins_balance)
-    VALUES (NEW.id, 7, 0);
+    INSERT INTO public.profiles (user_id, free_image_quota, coins_balance, role_user)
+    VALUES (NEW.id, 7, 25, 'user');
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
