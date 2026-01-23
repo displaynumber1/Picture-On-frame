@@ -2255,21 +2255,10 @@ export default function App() {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (response.status === 403) {
-        try {
-          localStorage.setItem('auth_error', 'Maaf email anda belum terdaftar di sistem kami');
-        } catch {
-          // ignore storage errors
-        }
-        setSession(null);
-        await supabaseService.signOut();
-        router.replace('/login?auth_error=1');
-        return false;
-      }
-      return true;
+      return response.ok;
     } catch (error) {
       console.error('Error validating profile:', error);
-      return true;
+      return false;
     }
   }, [router]);
 

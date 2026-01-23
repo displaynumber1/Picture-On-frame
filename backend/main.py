@@ -115,10 +115,9 @@ async def get_current_user(authorization: Optional[str] = Header(None)) -> Dict[
         user_id = user.get("id")
         if not user_id:
             raise HTTPException(status_code=401, detail="User ID not found in token")
-        # Enforce profile existence (whitelist via profiles table)
         profile = get_user_profile(user_id)
         if not profile:
-            raise HTTPException(status_code=403, detail="Email kamu belum terdaftar di sistem kami")
+            ensure_user_profile(user_id, user.get("user_metadata", {}).get("full_name"))
         return user
     except HTTPException:
         raise
@@ -149,8 +148,6 @@ async def ensure_access(current_user: Dict[str, Any] = Depends(get_current_user_
     email = (current_user.get("email") or "").lower()
     if not email:
         raise HTTPException(status_code=400, detail="Email not found in token")
-    if not is_email_authorized(email):
-        raise HTTPException(status_code=403, detail="Maaf email anda belum terdaftar di sistem kami")
     user_id = current_user.get("id")
     if user_id:
         ensure_user_profile(user_id, current_user.get("user_metadata", {}).get("full_name"))
@@ -2591,14 +2588,6 @@ async def google_login(payload: GoogleLoginRequest):
         
         email = payload.email.lower()
 
-        # 🔒 Check if email is in authorized_users database
-        if not is_email_authorized(email):
-            logger.warning(f"Unauthorized login attempt: {email}")
-            raise HTTPException(
-                status_code=403,
-                detail="Akses Ditolak: Email Anda belum terdaftar dalam sistem premium kami."
-            )
-        
         # Get user role from Supabase profile
         role = get_user_role_from_email(email) or "user"
         
@@ -2634,41 +2623,25 @@ async def verify_google_token(request: GoogleTokenRequest):
         if not email:
             raise HTTPException(status_code=400, detail="Email tidak ditemukan dalam token")
         
-        # Check if email is authorized
-        if is_email_authorized(email):
-            role = get_user_role_from_email(email)
-            return {
-                "authorized": True,
-                "email": email,
-                "role": role,
-                "name": idinfo.get('name', ''),
-                "picture": idinfo.get('picture', '')
-            }
-        else:
-            raise HTTPException(
-                status_code=403,
-                detail="Akses Ditolak: Email Anda belum terdaftar dalam sistem premium kami."
-            )
+        role = get_user_role_from_email(email) or "user"
+        return {
+            "authorized": True,
+            "email": email,
+            "role": role,
+            "name": idinfo.get('name', ''),
+            "picture": idinfo.get('picture', '')
+        }
     except ValueError:
         raise HTTPException(status_code=401, detail="Token tidak valid")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error verifikasi token: {str(e)}")
 
-# Admin endpoints
 @app.post("/admin/add-user")
 async def add_user(
-    request: AddUserRequest,
-    _: Dict[str, Any] = Depends(require_admin)
+    _: AddUserRequest,
+    __: Dict[str, Any] = Depends(require_admin)
 ):
-    """Add new user to authorized_users (Admin only)"""
-    success = add_authorized_user(request.email, request.role)
-    if success:
-        return {
-            "success": True,
-            "message": f"User {request.email} berhasil ditambahkan dengan role {request.role}"
-        }
-    else:
-        raise HTTPException(status_code=400, detail=f"Email {request.email} sudah terdaftar")
+    raise HTTPException(status_code=410, detail="Allowlist disabled. Supabase Auth handles access.")
 
 @app.post("/api/generate", response_model=List[GeneratedImage])
 async def generate_images_legacy(request: GenerateRequest):
