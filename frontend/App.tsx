@@ -442,7 +442,7 @@ const DashboardView: React.FC<{
     if (scheduledAt) {
       const dt = new Date(scheduledAt);
       if (!Number.isNaN(dt.getTime())) {
-        return dt.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        return dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
       }
     }
     return formatCountdown(nextCheckAt);
