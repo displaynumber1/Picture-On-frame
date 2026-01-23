@@ -61,6 +61,7 @@ from supabase_service import (
     update_user_coins,
     get_profile_by_user_id,
     list_auth_users,
+    list_midtrans_transactions,
     verify_user_token,
     upload_image_to_supabase_storage,
     convert_base64_to_image_bytes,
@@ -4279,6 +4280,23 @@ async def billing_webhook(request: Request):
         update_user_subscription_expires(user_id, new_exp.isoformat())
         upsert_subscription_record(user_id, True, new_exp.isoformat())
 
+        try:
+            insert_midtrans_transaction_log({
+                "user_id": user_id,
+                "order_id": order_id,
+                "item_type": "subscription",
+                "package_id": plan_id,
+                "gross_amount": int(float(gross_amount)),
+                "coins_added": None,
+                "transaction_status": transaction_status,
+                "payment_type": body.get("payment_type"),
+                "fraud_status": fraud_status,
+                "midtrans_signature": signature_key,
+                "raw_payload": body
+            })
+        except Exception:
+            logger.warning("Failed to log subscription transaction to Supabase", exc_info=True)
+
         return {
             "status": "success",
             "user_id": user_id,
@@ -4327,6 +4345,29 @@ async def billing_status(current_user: Dict[str, Any] = Depends(get_current_user
         "expires_in_days": expires_in_days,
         "renew_window": renew_window
     }
+
+
+@app.get("/api/billing/history")
+async def billing_history(
+    limit: int = 50,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    user_id = current_user.get("id")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="User ID not found in token")
+    items = list_midtrans_transactions(user_id, limit=max(1, min(limit, 200)))
+    sanitized = []
+    for item in items:
+        sanitized.append({
+            "order_id": item.get("order_id"),
+            "item_type": item.get("item_type") or "coins",
+            "package_id": item.get("package_id"),
+            "gross_amount": item.get("gross_amount"),
+            "transaction_status": item.get("transaction_status"),
+            "payment_type": item.get("payment_type"),
+            "created_at": item.get("created_at")
+        })
+    return {"items": sanitized}
 
 @app.post("/api/webhook/midtrans")
 async def midtrans_webhook(request: Request):
@@ -4408,6 +4449,7 @@ async def midtrans_webhook(request: Request):
             insert_midtrans_transaction_log({
                 "user_id": user_id,
                 "order_id": order_id,
+                "item_type": "coins",
                 "package_id": package_id,
                 "gross_amount": gross_amount_value,
                 "coins_added": coins_to_add,

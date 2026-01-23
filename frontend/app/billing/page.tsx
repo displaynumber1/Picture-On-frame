@@ -15,12 +15,24 @@ type BillingStatus = {
   renew_window: boolean;
 };
 
+type BillingHistoryItem = {
+  order_id: string;
+  item_type: string;
+  package_id?: string | null;
+  gross_amount?: number | null;
+  transaction_status?: string | null;
+  payment_type?: string | null;
+  created_at?: string | null;
+};
+
 export default function BillingPage() {
   const router = useRouter();
   const [status, setStatus] = useState<BillingStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [history, setHistory] = useState<BillingHistoryItem[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const fetchStatus = async () => {
     try {
@@ -45,8 +57,29 @@ export default function BillingPage() {
     }
   };
 
+  const fetchHistory = async () => {
+    try {
+      setHistoryLoading(true);
+      const token = await supabaseService.getAccessToken();
+      if (!token) {
+        return;
+      }
+      const response = await fetch(`${API_URL}/api/billing/history?limit=50`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!response.ok) {
+        return;
+      }
+      const data = await response.json();
+      setHistory(Array.isArray(data?.items) ? data.items : []);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchStatus();
+    fetchHistory();
   }, []);
 
   const handlePay = async () => {
@@ -135,12 +168,57 @@ export default function BillingPage() {
             {paying ? 'Memproses...' : 'Bayar via Midtrans'}
           </button>
           <button
-            onClick={fetchStatus}
+            onClick={() => {
+              fetchStatus();
+              fetchHistory();
+            }}
             className="border border-gray-200 hover:bg-gray-50 rounded-xl px-4 py-2 text-sm text-gray-700"
           >
             Refresh Status
           </button>
         </div>
+      </div>
+
+      <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 space-y-4">
+        <h2 className="text-lg font-semibold text-gray-900">Riwayat Pembayaran</h2>
+        {historyLoading && <div className="text-sm text-gray-500">Memuat riwayat...</div>}
+        {!historyLoading && history.length === 0 && (
+          <div className="text-sm text-gray-500">Belum ada transaksi.</div>
+        )}
+        {!historyLoading && history.length > 0 && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-xs text-gray-400 uppercase tracking-wide">
+                <tr className="text-left">
+                  <th className="py-2">Tanggal</th>
+                  <th className="py-2">Tipe</th>
+                  <th className="py-2">Order</th>
+                  <th className="py-2">Amount</th>
+                  <th className="py-2">Status</th>
+                  <th className="py-2">Payment</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map((item, idx) => (
+                  <tr key={`${item.order_id}-${idx}`} className="border-t border-gray-100">
+                    <td className="py-3 text-gray-600">
+                      {item.created_at ? new Date(item.created_at).toLocaleDateString('id-ID') : '—'}
+                    </td>
+                    <td className="py-3 text-gray-700">
+                      {item.item_type === 'subscription' ? 'Subscription' : 'Coins'}
+                    </td>
+                    <td className="py-3 text-gray-700">{item.order_id}</td>
+                    <td className="py-3 text-gray-700">
+                      {item.gross_amount ? `Rp ${Number(item.gross_amount).toLocaleString('id-ID')}` : '—'}
+                    </td>
+                    <td className="py-3 text-gray-600">{item.transaction_status || '—'}</td>
+                    <td className="py-3 text-gray-600">{item.payment_type || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

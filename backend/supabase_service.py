@@ -424,6 +424,25 @@ def insert_midtrans_transaction_log(payload: Dict[str, Any]) -> Optional[Dict[st
         raise
 
 
+def list_midtrans_transactions(user_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+    """
+    List Midtrans transactions for a user.
+    """
+    if not supabase:
+        raise ValueError("Supabase client not initialized")
+    try:
+        response = supabase.table("midtrans_transactions") \
+            .select("*") \
+            .eq("user_id", user_id) \
+            .order("created_at", desc=True) \
+            .limit(limit) \
+            .execute()
+        return response.data if response.data else []
+    except Exception as e:
+        logger.error(f"Error listing midtrans transactions: {str(e)}", exc_info=True)
+        return []
+
+
 def verify_user_token(token: str) -> Optional[Dict[str, Any]]:
     """
     Verify Supabase JWT token and get user info

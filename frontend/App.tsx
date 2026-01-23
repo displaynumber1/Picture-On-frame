@@ -211,6 +211,8 @@ const DashboardView: React.FC<{
   isSubscribed: boolean;
   subscribedUntil: string | null;
   proStatus: 'active' | 'expired' | 'inactive' | 'pending';
+  renewWindow: boolean;
+  expiresInDays: number | null;
   onUploadClick: () => void;
   onUploadChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   uploadInputRef: React.RefObject<HTMLInputElement>;
@@ -318,6 +320,8 @@ const DashboardView: React.FC<{
   isSubscribed,
   subscribedUntil,
   proStatus,
+  renewWindow,
+  expiresInDays,
   onUploadClick,
   onUploadChange,
   uploadInputRef,
@@ -513,6 +517,10 @@ const DashboardView: React.FC<{
                 <span className="text-[10px] font-semibold uppercase tracking-widest px-2 py-1 rounded-full bg-yellow-100 text-yellow-700">
                   Pro Pending
                 </span>
+              ) : proStatus === 'expired' ? (
+                <span className="text-[10px] font-semibold uppercase tracking-widest px-2 py-1 rounded-full bg-red-100 text-red-700">
+                  Pro Expired
+                </span>
               ) : (
                 <span className={`text-[10px] font-semibold uppercase tracking-widest px-2 py-1 rounded-full ${isSubscribed ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600'}`}>
                   {isSubscribed ? 'Pro Active' : 'Free'}
@@ -549,6 +557,24 @@ const DashboardView: React.FC<{
       </div>
 
       <div className="max-w-6xl mx-auto px-6 py-8 space-y-6">
+        {proStatus === 'active' && renewWindow && (
+          <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold text-amber-700">Masa Pro hampir habis</div>
+              <div className="text-xs text-amber-700/80">
+                {typeof expiresInDays === 'number'
+                  ? `Sisa ${expiresInDays} hari. Perpanjang sekarang agar layanan tidak terputus.`
+                  : 'Perpanjang sekarang agar layanan tidak terputus.'}
+              </div>
+            </div>
+            <button
+              onClick={handleBillingNavigate}
+              className="bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl px-4 py-2 text-sm"
+            >
+              Perpanjang Sekarang
+            </button>
+          </div>
+        )}
         <div className="bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl p-6 text-white flex flex-col gap-4 md:flex-row md:items-center md:justify-between shadow-lg">
           <div>
             <h2 className="text-xl font-bold">Upload Video</h2>
@@ -1746,6 +1772,8 @@ export default function App() {
       setProStatus(status);
       setSubscribedUntil(data?.subscribed_until || null);
       setIsSubscribed(Boolean(data?.subscribed));
+      setRenewWindow(Boolean(data?.renew_window));
+      setExpiresInDays(typeof data?.expires_in_days === 'number' ? data.expires_in_days : null);
     } catch {
       // silent
     }
@@ -1835,6 +1863,8 @@ export default function App() {
   const [subscribedUntil, setSubscribedUntil] = useState<string | null>(null);
   const [proStatus, setProStatus] = useState<'active' | 'expired' | 'inactive' | 'pending'>('inactive');
   const [proPending, setProPending] = useState(false);
+  const [renewWindow, setRenewWindow] = useState(false);
+  const [expiresInDays, setExpiresInDays] = useState<number | null>(null);
   const [dashboardRegeneratingId, setDashboardRegeneratingId] = useState<number | null>(null);
   const [variantName, setVariantName] = useState('');
   const [variants, setVariants] = useState<VariantPreset[]>([]);
@@ -3925,6 +3955,8 @@ export default function App() {
         isSubscribed={isSubscribed}
         subscribedUntil={subscribedUntil}
         proStatus={proStatus}
+        renewWindow={renewWindow}
+        expiresInDays={expiresInDays}
         onUploadClick={handleDashboardUploadClick}
         onUploadChange={handleDashboardUploadChange}
         uploadInputRef={dashboardUploadRef}

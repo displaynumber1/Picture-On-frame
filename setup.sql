@@ -41,6 +41,23 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     UNIQUE(user_id)
 );
 
+-- 1f. Tabel transaksi Midtrans (coins + subscription)
+CREATE TABLE IF NOT EXISTS midtrans_transactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    order_id TEXT NOT NULL,
+    item_type TEXT NOT NULL DEFAULT 'coins',
+    package_id TEXT,
+    gross_amount INTEGER,
+    coins_added INTEGER,
+    transaction_status TEXT,
+    payment_type TEXT,
+    fraud_status TEXT,
+    midtrans_signature TEXT,
+    raw_payload JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- 1c. Tabel variant presets untuk simpan kombinasi input user (variants hanya milik user tsb)
 CREATE TABLE IF NOT EXISTS variant_presets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -68,6 +85,7 @@ CREATE INDEX IF NOT EXISTS idx_profiles_user_id ON profiles(user_id);
 CREATE INDEX IF NOT EXISTS idx_variant_presets_user_id ON variant_presets(user_id);
 CREATE INDEX IF NOT EXISTS idx_admin_users_user_id ON admin_users(user_id);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_midtrans_transactions_user_id ON midtrans_transactions(user_id);
 
 -- 3. Buat function untuk update updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -97,6 +115,7 @@ CREATE TRIGGER update_subscriptions_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+
 -- 5. Buat function untuk auto-create profile saat user baru mendaftar
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
@@ -123,6 +142,7 @@ ALTER TABLE variant_presets ENABLE ROW LEVEL SECURITY;
 -- Enable RLS untuk admin_users
 ALTER TABLE admin_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE midtrans_transactions ENABLE ROW LEVEL SECURITY;
 
 -- 8. Buat policy untuk user hanya bisa membaca dan update profile mereka sendiri
 DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
@@ -174,6 +194,12 @@ CREATE POLICY "Users can view own subscriptions"
     ON subscriptions FOR SELECT
     USING (auth.uid() = user_id);
 
+-- Midtrans transactions policies (user scoped)
+DROP POLICY IF EXISTS "Users can view own midtrans transactions" ON midtrans_transactions;
+CREATE POLICY "Users can view own midtrans transactions"
+    ON midtrans_transactions FOR SELECT
+    USING (auth.uid() = user_id);
+
 -- 9. Buat policy untuk service role (backend) bisa melakukan semua operasi
 DROP POLICY IF EXISTS "Service role can do everything" ON profiles;
 CREATE POLICY "Service role can do everything"
@@ -193,6 +219,11 @@ CREATE POLICY "Service role can do everything"
 DROP POLICY IF EXISTS "Service role can do everything" ON subscriptions;
 CREATE POLICY "Service role can do everything"
     ON subscriptions FOR ALL
+    USING (auth.jwt()->>'role' = 'service_role');
+
+DROP POLICY IF EXISTS "Service role can do everything" ON midtrans_transactions;
+CREATE POLICY "Service role can do everything"
+    ON midtrans_transactions FOR ALL
     USING (auth.jwt()->>'role' = 'service_role');
 
 -- Catatan:
