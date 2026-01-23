@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabaseService } from '../../services/supabaseService';
 import { midtransService } from '../../services/midtransService';
@@ -35,7 +35,7 @@ export default function BillingPage() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyFilter, setHistoryFilter] = useState<'all' | 'coins' | 'subscription'>('all');
 
-  const fetchStatus = async () => {
+  const fetchStatus = useCallback(async () => {
     try {
       setLoading(true);
       const token = await supabaseService.getAccessToken();
@@ -56,9 +56,9 @@ export default function BillingPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchHistory = async () => {
+  const fetchHistory = useCallback(async () => {
     try {
       setHistoryLoading(true);
       const token = await supabaseService.getAccessToken();
@@ -80,12 +80,12 @@ export default function BillingPage() {
     } finally {
       setHistoryLoading(false);
     }
-  };
+  }, [historyFilter]);
 
   useEffect(() => {
     fetchStatus();
     fetchHistory();
-  }, [historyFilter]);
+  }, [fetchStatus, fetchHistory]);
 
   const handlePay = async () => {
     try {

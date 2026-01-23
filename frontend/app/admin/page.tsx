@@ -55,13 +55,13 @@ export default function AdminPanelPage() {
     }
   }, [toast]);
 
-  const buildFilters = () => {
+  const buildFilters = useCallback(() => {
     const params = new URLSearchParams();
     if (statusFilter !== 'ALL') params.set('status', statusFilter);
     if (subscribedFilter !== 'ALL') params.set('subscribed', subscribedFilter === 'true' ? 'true' : 'false');
     if (adminFilter !== 'ALL') params.set('is_admin', adminFilter === 'true' ? 'true' : 'false');
     return params;
-  };
+  }, [statusFilter, subscribedFilter, adminFilter]);
 
   const fetchUsers = useCallback(async (nextPage: number) => {
     try {
@@ -91,7 +91,7 @@ export default function AdminPanelPage() {
     } finally {
       setLoading(false);
     }
-  }, [perPage, statusFilter, subscribedFilter, adminFilter]);
+  }, [perPage, buildFilters]);
 
   const fetchSearchPage = useCallback(async (nextPage: number) => {
     if (!searchQuery.trim()) {
@@ -122,7 +122,7 @@ export default function AdminPanelPage() {
       setToast('Gagal mencari users.');
       return { items: [], total: 0 };
     }
-  }, [searchQuery, perPage, statusFilter, subscribedFilter, adminFilter]);
+  }, [searchQuery, perPage, buildFilters]);
 
   const searchUsers = useCallback(async (nextPage?: number) => {
     if (!searchQuery.trim()) {
