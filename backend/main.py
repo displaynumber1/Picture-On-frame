@@ -260,15 +260,8 @@ def init_database():
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
-        # Create authorized_users table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS authorized_users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                email TEXT UNIQUE NOT NULL,
-                role TEXT DEFAULT 'user' NOT NULL,
-                created_at TEXT NOT NULL
-            )
-        ''')
+        # Remove deprecated allowlist table
+        cursor.execute('DROP TABLE IF EXISTS authorized_users')
 
         # Create autopost_videos table for dashboard queue
         cursor.execute('''
@@ -383,19 +376,7 @@ def init_database():
             )
         ''')
         
-        # Bootstrap authorized admins from environment (optional)
-        if BOOTSTRAP_ADMIN_ENABLED and BOOTSTRAP_ADMIN_EMAILS:
-            for admin_email in BOOTSTRAP_ADMIN_EMAILS:
-                cursor.execute('SELECT id FROM authorized_users WHERE email = ?', (admin_email,))
-                if cursor.fetchone() is None:
-                    cursor.execute('''
-                        INSERT INTO authorized_users (email, role, created_at)
-                        VALUES (?, ?, ?)
-                    ''', (admin_email, 'admin', datetime.now().isoformat()))
-                    logger.info(f"Bootstrap admin '{admin_email}' added to authorized_users")
-                else:
-                    logger.info(f"Bootstrap admin '{admin_email}' already exists in authorized_users")
-        
+        # Bootstrap admin users in Supabase (optional)
         conn.commit()
         conn.close()
         logger.info(f"Database initialized at: {DB_PATH}")
@@ -470,50 +451,6 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
-def is_email_authorized(email: str) -> bool:
-    """Check if email is in authorized_users table"""
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('SELECT id FROM authorized_users WHERE email = ?', (email,))
-        result = cursor.fetchone()
-        conn.close()
-        return result is not None
-    except sqlite3.OperationalError as e:
-        if "no such table" in str(e).lower():
-            logger.error("Database table not found. Reinitializing database...")
-            init_database()
-            # Retry after initialization
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute('SELECT id FROM authorized_users WHERE email = ?', (email,))
-            result = cursor.fetchone()
-            conn.close()
-            return result is not None
-        raise
-
-def get_user_role(email: str) -> Optional[str]:
-    """Get user role from database"""
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('SELECT role FROM authorized_users WHERE email = ?', (email,))
-        result = cursor.fetchone()
-        conn.close()
-        return result['role'] if result else None
-    except sqlite3.OperationalError as e:
-        if "no such table" in str(e).lower():
-            logger.error("Database table not found. Reinitializing database...")
-            init_database()
-            # Retry after initialization
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute('SELECT role FROM authorized_users WHERE email = ?', (email,))
-            result = cursor.fetchone()
-            conn.close()
-            return result['role'] if result else None
-        raise
-
 
 def get_user_role_from_profile(user_id: str) -> Optional[str]:
     """Get user role from Supabase profile"""
@@ -545,22 +482,9 @@ def get_user_role_from_email(email: str) -> Optional[str]:
 
 
 
-def add_authorized_user(email: str, role: str = 'user') -> bool:
-    """Add new user to authorized_users table"""
-    from datetime import datetime
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute('''
-            INSERT INTO authorized_users (email, role, created_at)
-            VALUES (?, ?, ?)
-        ''', (email, role, datetime.now().isoformat()))
-        conn.commit()
-        conn.close()
-        return True
-    except sqlite3.IntegrityError:
-        conn.close()
-        return False
+def get_user_role(email: str) -> Optional[str]:
+    """Get user role from Supabase profile by email"""
+    return get_user_role_from_email(email)
 
 
 def _now_iso() -> str:
@@ -2553,19 +2477,13 @@ async def get_constants():
 # Authentication endpoints
 @app.post("/api/verify-email")
 async def verify_email(request: VerifyEmailRequest):
-    """Verify if email is authorized"""
-    if is_email_authorized(request.email):
-        role = get_user_role(request.email)
-        return {
-            "authorized": True,
-            "email": request.email,
-            "role": role
-        }
-    else:
-        raise HTTPException(
-            status_code=403,
-            detail="Akses Ditolak: Email Anda belum terdaftar dalam sistem premium kami."
-        )
+    """Verify email role using Supabase profile"""
+    role = get_user_role(request.email) or "user"
+    return {
+        "authorized": True,
+        "email": request.email,
+        "role": role
+    }
 
 @app.options("/auth/google-login")
 async def google_login_options():
