@@ -121,19 +121,6 @@ const LoginPage: React.FC = () => {
     } catch {
       // ignore
     }
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const authError = localStorage.getItem('auth_error');
-      if (authError && params.get('auth_error') === '1') {
-        setError(authError);
-      }
-      if (authError) {
-        localStorage.removeItem('auth_error');
-      }
-    } catch {
-      // ignore storage errors
-    }
-
   }, []);
 
   const isUnregisteredError = error.toLowerCase().includes('belum terdaftar');
