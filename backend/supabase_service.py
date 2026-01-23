@@ -356,13 +356,14 @@ def update_user_admin_flag(user_id: str, is_admin: bool) -> Dict[str, Any]:
 
 def update_user_subscription_expires(user_id: str, expires_at: Optional[str]) -> Dict[str, Any]:
     """
-    Update user's subscription_expires_at.
+    Update user's subscription_expires_at and subscribed_until.
     """
     if not supabase:
         raise ValueError("Supabase client not initialized")
     try:
         response = supabase.table("profiles").update({
-            "subscription_expires_at": expires_at
+            "subscription_expires_at": expires_at,
+            "subscribed_until": expires_at
         }).eq("user_id", user_id).execute()
         if response.data and len(response.data) > 0:
             return response.data[0]

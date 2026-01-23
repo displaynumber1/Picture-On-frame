@@ -117,5 +117,27 @@ export const midtransService = {
       document.body.appendChild(script);
     });
   }
+  ,
+  async initializeSubscriptionSnap(token: string, days: number = 30): Promise<string> {
+    const response = await fetch(`${API_URL}/api/billing/checkout`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        plan_id: 'pro_monthly',
+        days
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Failed to create subscription' }));
+      throw new Error(error.detail || 'Failed to create subscription');
+    }
+
+    const { snap_token } = await response.json();
+    return snap_token;
+  }
 };
 

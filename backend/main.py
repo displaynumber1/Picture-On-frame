@@ -403,7 +403,13 @@ bootstrap_admin_profiles()
 
 
 def _trial_guard(profile: Dict[str, Any], user_id: str) -> None:
+    expires_at = profile.get("subscribed_until") or profile.get("subscription_expires_at")
     subscribed = bool(profile.get("subscribed"))
+    if subscribed and expires_at:
+        try:
+            subscribed = datetime.fromisoformat(expires_at) > datetime.utcnow()
+        except Exception:
+            subscribed = True
     remaining = int(profile.get("trial_upload_remaining") or 0)
     if subscribed:
         return
@@ -4052,6 +4058,10 @@ MIDTRANS_COIN_PACKAGES = {
     "package-250k": {"price": 250000, "coins": 8850},
 }
 
+class CreateSubscriptionCheckoutRequest(BaseModel):
+    plan_id: Optional[str] = "pro_monthly"
+    days: Optional[int] = 30
+
 @app.post("/api/midtrans/create-transaction")
 async def create_midtrans_transaction(
     request: CreateMidtransTransactionRequest,
@@ -4128,6 +4138,178 @@ async def create_midtrans_transaction(
     except Exception as e:
         logger.error(f"Error creating Midtrans transaction: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/billing/checkout")
+async def create_subscription_checkout(
+    request: CreateSubscriptionCheckoutRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Create Midtrans Snap transaction for subscription.
+    """
+    try:
+        user_id = current_user.get("id")
+        if not user_id:
+            raise HTTPException(status_code=403, detail="User ID not found")
+        plan_id = request.plan_id or "pro_monthly"
+        days = int(request.days or 30)
+
+        MIDTRANS_SERVER_KEY = os.getenv('MIDTRANS_SERVER_KEY')
+        MIDTRANS_IS_PRODUCTION = os.getenv('MIDTRANS_IS_PRODUCTION', 'false').lower() == 'true'
+        if not MIDTRANS_SERVER_KEY:
+            raise HTTPException(status_code=500, detail="Midtrans server key not configured")
+
+        if plan_id != "pro_monthly":
+            raise HTTPException(status_code=400, detail="Invalid plan_id")
+
+        price = 49000
+        order_id = f"sub-{user_id}-{int(datetime.utcnow().timestamp())}"
+
+        transaction_data = {
+            "transaction_details": {
+                "order_id": order_id,
+                "gross_amount": price
+            },
+            "customer_details": {
+                "user_id": user_id,
+                "email": current_user.get("email")
+            },
+            "custom_field1": user_id,
+            "custom_field2": plan_id,
+            "custom_field3": "subscription",
+            "item_details": [
+                {
+                    "id": plan_id,
+                    "price": price,
+                    "quantity": 1,
+                    "name": f"Pro Subscription ({days} days)"
+                }
+            ]
+        }
+
+        midtrans_url = "https://app.midtrans.com/snap/v1/transactions" if MIDTRANS_IS_PRODUCTION else "https://app.sandbox.midtrans.com/snap/v1/transactions"
+        auth_string = base64.b64encode(f"{MIDTRANS_SERVER_KEY}:".encode()).decode()
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                midtrans_url,
+                headers={
+                    "Authorization": f"Basic {auth_string}",
+                    "Content-Type": "application/json"
+                },
+                json=transaction_data
+            )
+            response.raise_for_status()
+            result = response.json()
+            return {
+                "snap_token": result.get("token"),
+                "order_id": order_id
+            }
+    except httpx.HTTPStatusError as e:
+        logger.error(f"Midtrans API error: {e.response.status_code} - {e.response.text}")
+        raise HTTPException(status_code=500, detail=f"Failed to create transaction: {e.response.text}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating subscription checkout: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/billing/webhook")
+async def billing_webhook(request: Request):
+    """
+    Handle Midtrans subscription webhook
+    """
+    try:
+        body = await request.json()
+        transaction_status = body.get("transaction_status")
+        order_id = body.get("order_id")
+        gross_amount = body.get("gross_amount")
+        status_code = body.get("status_code")
+        signature_key = body.get("signature_key")
+        fraud_status = body.get("fraud_status")
+        user_id = body.get("custom_field1") or body.get("user_id")
+        plan_id = body.get("custom_field2") or "pro_monthly"
+        plan_type = body.get("custom_field3")
+
+        if not order_id or not gross_amount or not status_code:
+            raise HTTPException(status_code=400, detail="Invalid webhook payload")
+
+        MIDTRANS_SERVER_KEY = os.getenv('MIDTRANS_SERVER_KEY')
+        if not MIDTRANS_SERVER_KEY:
+            raise HTTPException(status_code=500, detail="Midtrans server key not configured")
+
+        if not signature_key:
+            raise HTTPException(status_code=400, detail="Missing signature_key")
+
+        signature_payload = f"{order_id}{status_code}{gross_amount}{MIDTRANS_SERVER_KEY}"
+        expected_signature = hashlib.sha512(signature_payload.encode()).hexdigest()
+        if signature_key != expected_signature:
+            raise HTTPException(status_code=403, detail="Invalid signature")
+
+        if transaction_status not in {"settlement", "capture"}:
+            return {"status": "ignored", "message": "Transaction not settled"}
+
+        if fraud_status and fraud_status != "accept":
+            return {"status": "rejected", "message": "Fraud check failed"}
+
+        if not user_id:
+            if order_id.startswith("sub-"):
+                parts = order_id.split("-")
+                if len(parts) >= 2:
+                    user_id = parts[1]
+        if not user_id:
+            raise HTTPException(status_code=400, detail="User ID not found in order")
+
+        if plan_type != "subscription" and not order_id.startswith("sub-"):
+            return {"status": "ignored", "message": "Not a subscription transaction"}
+
+        days = 30
+        if plan_id == "pro_monthly":
+            days = 30
+
+        profile = get_profile_by_user_id(user_id)
+        now = datetime.utcnow()
+        current_exp = _parse_iso_dt((profile or {}).get("subscribed_until") or (profile or {}).get("subscription_expires_at"))
+        base = current_exp if current_exp and current_exp > now else now
+        new_exp = base + timedelta(days=days)
+
+        update_user_subscription(user_id, True)
+        update_user_subscription_expires(user_id, new_exp.isoformat())
+        upsert_subscription_record(user_id, True, new_exp.isoformat())
+
+        return {
+            "status": "success",
+            "user_id": user_id,
+            "subscribed_until": new_exp.isoformat()
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error processing billing webhook: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/billing/status")
+async def billing_status(current_user: Dict[str, Any] = Depends(get_current_user)):
+    user_id = current_user.get("id")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="User ID not found in token")
+    profile = get_profile_by_user_id(user_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    expires_at = profile.get("subscribed_until") or profile.get("subscription_expires_at")
+    subscribed = bool(profile.get("subscribed"))
+    if subscribed and expires_at:
+        try:
+            subscribed = datetime.fromisoformat(expires_at) > datetime.utcnow()
+        except Exception:
+            subscribed = True
+    return {
+        "subscribed": subscribed,
+        "subscribed_until": expires_at
+    }
 
 @app.post("/api/webhook/midtrans")
 async def midtrans_webhook(request: Request):
@@ -5084,7 +5266,7 @@ def _subscription_status(profile: Optional[Dict[str, Any]]) -> str:
         return "inactive"
     if not bool(profile.get("subscribed")):
         return "inactive"
-    expires_at = _parse_iso_dt(profile.get("subscription_expires_at"))
+    expires_at = _parse_iso_dt(profile.get("subscribed_until") or profile.get("subscription_expires_at"))
     if expires_at and expires_at <= datetime.utcnow():
         return "expired"
     return "active"
@@ -5096,7 +5278,7 @@ def _serialize_admin_user(user: Dict[str, Any], profile: Optional[Dict[str, Any]
         "email": user.get("email"),
         "trial_upload_remaining": int(profile.get("trial_upload_remaining") or 0) if profile else 0,
         "subscribed": bool(profile.get("subscribed")) if profile else False,
-        "subscription_expires_at": profile.get("subscription_expires_at") if profile else None,
+        "subscription_expires_at": (profile.get("subscribed_until") or profile.get("subscription_expires_at")) if profile else None,
         "is_admin": bool(profile.get("is_admin")) if profile else False,
         "subscription_status": _subscription_status(profile)
     }

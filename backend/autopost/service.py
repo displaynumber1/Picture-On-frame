@@ -54,8 +54,19 @@ class AutopostService:
     def __init__(self, deps: AutopostDeps):
         self.deps = deps
 
+    def _subscription_active(self, profile: Dict[str, Any]) -> bool:
+        if not bool(profile.get("subscribed")):
+            return False
+        expires_at = profile.get("subscribed_until") or profile.get("subscription_expires_at")
+        if not expires_at:
+            return True
+        try:
+            return datetime.fromisoformat(expires_at) > datetime.utcnow()
+        except Exception:
+            return True
+
     def _trial_guard(self, profile: Dict[str, Any], user_id: str, decrement: bool = False) -> None:
-        subscribed = bool(profile.get("subscribed"))
+        subscribed = self._subscription_active(profile)
         remaining = int(profile.get("trial_upload_remaining") or 0)
         if subscribed:
             return

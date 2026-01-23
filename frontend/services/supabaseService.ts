@@ -30,6 +30,7 @@ export interface UserProfile {
   trial_upload_remaining?: number | null;
   subscribed?: boolean | null;
   subscription_expires_at?: string | null;
+  subscribed_until?: string | null;
   is_admin?: boolean | null;
   created_at: string;
   updated_at: string;

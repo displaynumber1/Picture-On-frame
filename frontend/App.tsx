@@ -36,6 +36,7 @@ import {
 import { generateProductPhoto, generateProductVideo } from './services/geminiService';
 import { generateImagesWithFal, buildPromptFromOptions, createVideoFromImage, createVideoBatchFromImage, createKlingVideoFromImage } from './services/falService';
 import { supabaseService } from './services/supabaseService';
+import { midtransService } from './services/midtransService';
 import { 
   BACKGROUND_OPTIONS, 
   STYLE_OPTIONS, 
@@ -208,6 +209,7 @@ const DashboardView: React.FC<{
   regeneratingId: number | null;
   trialRemaining: number | null;
   isSubscribed: boolean;
+  subscribedUntil: string | null;
   onUploadClick: () => void;
   onUploadChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   uploadInputRef: React.RefObject<HTMLInputElement>;
@@ -313,6 +315,7 @@ const DashboardView: React.FC<{
   regeneratingId,
   trialRemaining,
   isSubscribed,
+  subscribedUntil,
   onUploadClick,
   onUploadChange,
   uploadInputRef,
@@ -499,6 +502,14 @@ const DashboardView: React.FC<{
               {isAdmin && (
                 <span className="text-[10px] font-semibold uppercase tracking-widest bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full">
                   Admin
+                </span>
+              )}
+              <span className={`text-[10px] font-semibold uppercase tracking-widest px-2 py-1 rounded-full ${isSubscribed ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600'}`}>
+                {isSubscribed ? 'Pro Active' : 'Free'}
+              </span>
+              {isSubscribed && subscribedUntil && (
+                <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-gray-50 text-gray-500">
+                  Aktif sampai {new Date(subscribedUntil).toLocaleDateString('id-ID')}
                 </span>
               )}
             </div>
@@ -1705,10 +1716,38 @@ export default function App() {
     return safeMessages.has(message) ? message : fallback;
   };
 
-  const UPGRADE_LINK = 'https://wa.me/6285190049996?text=Halo%20saya%20ingin%20upgrade%20Pro%20Rp49.000%2Fbulan';
-
-  const handleUpgradeClick = () => {
-    window.open(UPGRADE_LINK, '_blank');
+  const handleUpgradeClick = async () => {
+    try {
+      setUpgradeLoading(true);
+      const token = await supabaseService.getAccessToken();
+      if (!token) {
+        setDashboardError('Sesi kamu telah berakhir. Silakan login ulang.');
+        return;
+      }
+      await midtransService.loadSnapScript();
+      const snapToken = await midtransService.initializeSubscriptionSnap(token, 30);
+      const snap = (window as any).snap;
+      if (!snap?.pay) {
+        throw new Error('Midtrans Snap tidak tersedia.');
+      }
+      snap.pay(snapToken, {
+        onSuccess: () => {
+          setShowUpgradeModal(false);
+          refreshCoins();
+        },
+        onPending: () => {
+          setShowUpgradeModal(false);
+          refreshCoins();
+        },
+        onError: () => {
+          setDashboardError('Pembayaran gagal. Silakan coba lagi.');
+        }
+      });
+    } catch (error: any) {
+      setDashboardError(error?.message || 'Gagal memulai pembayaran.');
+    } finally {
+      setUpgradeLoading(false);
+    }
   };
 
   const handleTrialExpired = (payload: any) => {
@@ -1742,6 +1781,7 @@ export default function App() {
   const [coins, setCoins] = useState<number>(0);
   const [showCoinModal, setShowCoinModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [displayName, setDisplayName] = useState('User');
@@ -1753,6 +1793,7 @@ export default function App() {
   const [dashboardErrorNeedsTopUp, setDashboardErrorNeedsTopUp] = useState(false);
   const [trialRemaining, setTrialRemaining] = useState<number | null>(null);
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [subscribedUntil, setSubscribedUntil] = useState<string | null>(null);
   const [dashboardRegeneratingId, setDashboardRegeneratingId] = useState<number | null>(null);
   const [variantName, setVariantName] = useState('');
   const [variants, setVariants] = useState<VariantPreset[]>([]);
@@ -1988,7 +2029,16 @@ export default function App() {
         setTrialRemaining(profile.trial_upload_remaining);
       }
       if (profile?.subscribed !== undefined && profile?.subscribed !== null) {
-        setIsSubscribed(Boolean(profile.subscribed));
+        let active = Boolean(profile.subscribed);
+        const expiresAt = profile.subscribed_until || profile.subscription_expires_at;
+        if (active && expiresAt) {
+          const dt = new Date(expiresAt);
+          if (!Number.isNaN(dt.getTime())) {
+            active = dt.getTime() > Date.now();
+          }
+        }
+        setIsSubscribed(active);
+        setSubscribedUntil(expiresAt || null);
       }
       if (profile?.display_name) {
         setDisplayName(profile.display_name);
@@ -3826,6 +3876,7 @@ export default function App() {
         regeneratingId={dashboardRegeneratingId}
         trialRemaining={trialRemaining}
         isSubscribed={isSubscribed}
+        subscribedUntil={subscribedUntil}
         onUploadClick={handleDashboardUploadClick}
         onUploadChange={handleDashboardUploadChange}
         uploadInputRef={dashboardUploadRef}
@@ -4931,11 +4982,11 @@ export default function App() {
               <button
                 onClick={() => {
                   handleUpgradeClick();
-                  setShowUpgradeModal(false);
                 }}
-                className="w-full px-4 py-2 rounded-xl bg-purple-600 text-white font-semibold hover:bg-purple-700 transition"
+                className="w-full px-4 py-2 rounded-xl bg-purple-600 text-white font-semibold hover:bg-purple-700 transition disabled:opacity-60"
+                disabled={upgradeLoading}
               >
-                🚀 Upgrade ke Pro
+                {upgradeLoading ? 'Memproses...' : 'Bayar via Midtrans'}
               </button>
               <button
                 onClick={() => setShowUpgradeModal(false)}
