@@ -2249,8 +2249,13 @@ export default function App() {
 
   const ensureRegisteredUser = useCallback(async () => {
     try {
-      const profile = await supabaseService.getProfile();
-      if (!profile) {
+      const token = await supabaseService.getAccessToken();
+      if (!token) return false;
+      const response = await fetch(`${API_URL}/api/auth/ensure-access`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.status === 403) {
         try {
           localStorage.setItem('auth_error', 'Maaf email anda belum terdaftar di sistem kami');
         } catch {
@@ -2264,15 +2269,7 @@ export default function App() {
       return true;
     } catch (error) {
       console.error('Error validating profile:', error);
-      try {
-        localStorage.setItem('auth_error', 'Maaf email anda belum terdaftar di sistem kami');
-      } catch {
-        // ignore storage errors
-      }
-      setSession(null);
-      await supabaseService.signOut();
-      router.replace('/login?auth_error=1');
-      return false;
+      return true;
     }
   }, [router]);
 
@@ -2927,6 +2924,11 @@ export default function App() {
   };
 
   const handleLogout = async () => {
+    try {
+      localStorage.removeItem('auth_error');
+    } catch {
+      // ignore
+    }
     await supabaseService.signOut();
     router.replace('/login');
   };

@@ -396,6 +396,25 @@ def update_user_subscription_expires(user_id: str, expires_at: Optional[str]) ->
         raise
 
 
+def ensure_user_profile(user_id: str, display_name: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Ensure profile exists for user_id (create if missing).
+    """
+    if not supabase:
+        raise ValueError("Supabase client not initialized")
+    payload: Dict[str, Any] = {"user_id": user_id}
+    if display_name:
+        payload["display_name"] = display_name
+    try:
+        response = supabase.table("profiles").upsert(payload, on_conflict="user_id").execute()
+        if response.data and len(response.data) > 0:
+            return response.data[0]
+        raise ValueError("Failed to ensure profile")
+    except Exception as e:
+        logger.error(f"Error ensuring user profile: {str(e)}", exc_info=True)
+        raise
+
+
 def upsert_subscription_record(user_id: str, active: bool, expires_at: Optional[str]) -> None:
     """
     Upsert subscriptions table record.

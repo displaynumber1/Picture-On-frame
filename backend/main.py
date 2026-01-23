@@ -67,6 +67,7 @@ from supabase_service import (
     list_recent_reminders,
     insert_subscription_reminder,
     get_user_by_id,
+    ensure_user_profile,
     verify_user_token,
     upload_image_to_supabase_storage,
     convert_base64_to_image_bytes,
@@ -141,6 +142,19 @@ async def get_current_user_raw(authorization: Optional[str] = Header(None)) -> D
     except Exception as e:
         logger.error(f"Error verifying token: {str(e)}", exc_info=True)
         raise HTTPException(status_code=401, detail="Token verification failed")
+
+
+@app.post("/api/auth/ensure-access")
+async def ensure_access(current_user: Dict[str, Any] = Depends(get_current_user_raw)):
+    email = (current_user.get("email") or "").lower()
+    if not email:
+        raise HTTPException(status_code=400, detail="Email not found in token")
+    if not is_email_authorized(email):
+        raise HTTPException(status_code=403, detail="Maaf email anda belum terdaftar di sistem kami")
+    user_id = current_user.get("id")
+    if user_id:
+        ensure_user_profile(user_id, current_user.get("user_metadata", {}).get("full_name"))
+    return {"authorized": True}
 
 
 async def require_admin(current_user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
