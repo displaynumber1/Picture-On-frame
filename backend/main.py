@@ -143,17 +143,6 @@ async def get_current_user_raw(authorization: Optional[str] = Header(None)) -> D
         raise HTTPException(status_code=401, detail="Token verification failed")
 
 
-@app.post("/api/auth/ensure-access")
-async def ensure_access(current_user: Dict[str, Any] = Depends(get_current_user_raw)):
-    email = (current_user.get("email") or "").lower()
-    if not email:
-        raise HTTPException(status_code=400, detail="Email not found in token")
-    user_id = current_user.get("id")
-    if user_id:
-        ensure_user_profile(user_id, current_user.get("user_metadata", {}).get("full_name"))
-    return {"authorized": True}
-
-
 async def require_admin(current_user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
     user_id = current_user.get("id")
     if not user_id:
@@ -1765,6 +1754,17 @@ async def _broadcast_autopost_event(user_id: str, event: str, payload: Dict[str,
         AUTPOST_WS_CONNECTIONS[user_id] = [ws for ws in connections if ws not in stale]
 
 app = FastAPI()
+
+
+@app.post("/api/auth/ensure-access")
+async def ensure_access(current_user: Dict[str, Any] = Depends(get_current_user_raw)):
+    email = (current_user.get("email") or "").lower()
+    if not email:
+        raise HTTPException(status_code=400, detail="Email not found in token")
+    user_id = current_user.get("id")
+    if user_id:
+        ensure_user_profile(user_id, current_user.get("user_metadata", {}).get("full_name"))
+    return {"authorized": True}
 AUTPOST_WS_CONNECTIONS: Dict[str, List[WebSocket]] = {}
 AUTPOST_SCORE_CACHE: Dict[str, Tuple[float, Dict[str, Any]]] = {}
 AUTPOST_RATE_LIMIT: Dict[str, List[float]] = {}
