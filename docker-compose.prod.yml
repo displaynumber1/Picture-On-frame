@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pictureonframe-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env.production
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/premium_studio.db:/app/premium_studio.db
+      - ./backend/temp_videos:/app/temp_videos
+      - ./backend/logs:/app/logs
