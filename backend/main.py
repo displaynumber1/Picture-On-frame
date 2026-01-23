@@ -4301,14 +4301,31 @@ async def billing_status(current_user: Dict[str, Any] = Depends(get_current_user
         raise HTTPException(status_code=404, detail="Profile not found")
     expires_at = profile.get("subscribed_until") or profile.get("subscription_expires_at")
     subscribed = bool(profile.get("subscribed"))
+    status = "inactive"
+    renew_window = False
+    expires_in_days = None
     if subscribed and expires_at:
         try:
-            subscribed = datetime.fromisoformat(expires_at) > datetime.utcnow()
+            exp_dt = datetime.fromisoformat(expires_at)
+            now = datetime.utcnow()
+            expires_in_days = max(0, (exp_dt - now).days)
+            if exp_dt <= now:
+                status = "expired"
+                subscribed = False
+            else:
+                status = "active"
+                threshold_days = int(os.getenv("SUBSCRIPTION_RENEW_WINDOW_DAYS", "5"))
+                renew_window = exp_dt <= (now + timedelta(days=threshold_days))
         except Exception:
-            subscribed = True
+            status = "active"
+    elif subscribed and not expires_at:
+        status = "active"
     return {
         "subscribed": subscribed,
-        "subscribed_until": expires_at
+        "status": status,
+        "subscribed_until": expires_at,
+        "expires_in_days": expires_in_days,
+        "renew_window": renew_window
     }
 
 @app.post("/api/webhook/midtrans")

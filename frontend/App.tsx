@@ -210,6 +210,7 @@ const DashboardView: React.FC<{
   trialRemaining: number | null;
   isSubscribed: boolean;
   subscribedUntil: string | null;
+  proStatus: 'active' | 'expired' | 'inactive' | 'pending';
   onUploadClick: () => void;
   onUploadChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   uploadInputRef: React.RefObject<HTMLInputElement>;
@@ -316,6 +317,7 @@ const DashboardView: React.FC<{
   trialRemaining,
   isSubscribed,
   subscribedUntil,
+  proStatus,
   onUploadClick,
   onUploadChange,
   uploadInputRef,
@@ -413,6 +415,9 @@ const DashboardView: React.FC<{
   const [adminAuditTarget, setAdminAuditTarget] = useState('');
   const [adminAuditAction, setAdminAuditAction] = useState('ALL');
   const isTrialExpired = !isSubscribed && typeof trialRemaining === 'number' && trialRemaining <= 0;
+  const handleBillingNavigate = () => {
+    window.location.href = '/app/billing';
+  };
 
   const formatCountdown = (nextCheckAt?: string | null) => {
     if (!nextCheckAt) return '—';
@@ -504,9 +509,15 @@ const DashboardView: React.FC<{
                   Admin
                 </span>
               )}
-              <span className={`text-[10px] font-semibold uppercase tracking-widest px-2 py-1 rounded-full ${isSubscribed ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600'}`}>
-                {isSubscribed ? 'Pro Active' : 'Free'}
-              </span>
+              {proStatus === 'pending' ? (
+                <span className="text-[10px] font-semibold uppercase tracking-widest px-2 py-1 rounded-full bg-yellow-100 text-yellow-700">
+                  Pro Pending
+                </span>
+              ) : (
+                <span className={`text-[10px] font-semibold uppercase tracking-widest px-2 py-1 rounded-full ${isSubscribed ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600'}`}>
+                  {isSubscribed ? 'Pro Active' : 'Free'}
+                </span>
+              )}
               {isSubscribed && subscribedUntil && (
                 <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-gray-50 text-gray-500">
                   Aktif sampai {new Date(subscribedUntil).toLocaleDateString('id-ID')}
@@ -519,6 +530,12 @@ const DashboardView: React.FC<{
                 className="px-4 py-2 rounded-full bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition"
               >
                 Back to Studio
+              </button>
+              <button
+                onClick={handleBillingNavigate}
+                className="px-4 py-2 rounded-full border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition"
+              >
+                Billing
               </button>
               <button
                 onClick={onLogout}
@@ -1716,6 +1733,24 @@ export default function App() {
     return safeMessages.has(message) ? message : fallback;
   };
 
+  const refreshSubscriptionStatus = useCallback(async () => {
+    try {
+      const token = await supabaseService.getAccessToken();
+      if (!token) return;
+      const response = await fetch(`${API_URL}/api/billing/status`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      const status = data?.status || 'inactive';
+      setProStatus(status);
+      setSubscribedUntil(data?.subscribed_until || null);
+      setIsSubscribed(Boolean(data?.subscribed));
+    } catch {
+      // silent
+    }
+  }, []);
+
   const handleUpgradeClick = async () => {
     try {
       setUpgradeLoading(true);
@@ -1733,11 +1768,14 @@ export default function App() {
       snap.pay(snapToken, {
         onSuccess: () => {
           setShowUpgradeModal(false);
-          refreshCoins();
+          setProPending(false);
+          refreshSubscriptionStatus();
         },
         onPending: () => {
           setShowUpgradeModal(false);
-          refreshCoins();
+          setProPending(true);
+          setProStatus('pending');
+          refreshSubscriptionStatus();
         },
         onError: () => {
           setDashboardError('Pembayaran gagal. Silakan coba lagi.');
@@ -1757,6 +1795,7 @@ export default function App() {
     }
     return false;
   };
+
 
   const [state, setState] = useState<AppState>({
     productImage: null,
@@ -1794,6 +1833,8 @@ export default function App() {
   const [trialRemaining, setTrialRemaining] = useState<number | null>(null);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [subscribedUntil, setSubscribedUntil] = useState<string | null>(null);
+  const [proStatus, setProStatus] = useState<'active' | 'expired' | 'inactive' | 'pending'>('inactive');
+  const [proPending, setProPending] = useState(false);
   const [dashboardRegeneratingId, setDashboardRegeneratingId] = useState<number | null>(null);
   const [variantName, setVariantName] = useState('');
   const [variants, setVariants] = useState<VariantPreset[]>([]);
@@ -2039,6 +2080,7 @@ export default function App() {
         }
         setIsSubscribed(active);
         setSubscribedUntil(expiresAt || null);
+        setProStatus(active ? 'active' : expiresAt ? 'expired' : 'inactive');
       }
       if (profile?.display_name) {
         setDisplayName(profile.display_name);
@@ -3841,6 +3883,11 @@ export default function App() {
     fetchAdminAuditLogs();
   }, [showDashboard, isAdmin, fetchAdminLogs, fetchMidtransStatus, fetchAdminAuditLogs]);
 
+  useEffect(() => {
+    if (!showDashboard) return;
+    refreshSubscriptionStatus();
+  }, [showDashboard, refreshSubscriptionStatus]);
+
   const handleCoinClick = () => {
     setShowCoinModal(!showCoinModal);
   };
@@ -3877,6 +3924,7 @@ export default function App() {
         trialRemaining={trialRemaining}
         isSubscribed={isSubscribed}
         subscribedUntil={subscribedUntil}
+        proStatus={proStatus}
         onUploadClick={handleDashboardUploadClick}
         onUploadChange={handleDashboardUploadChange}
         uploadInputRef={dashboardUploadRef}
