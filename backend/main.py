@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI, File, UploadFile, HTTPException, Depends, Header, Response, Form, Request, WebSocket, WebSocketDisconnect, BackgroundTasks  # type: ignore
 from fastapi.middleware.cors import CORSMiddleware  # type: ignore
-from fastapi.responses import JSONResponse, FileResponse  # type: ignore
+from fastapi.responses import JSONResponse, FileResponse, Response  # type: ignore
 from pydantic import BaseModel  # type: ignore
 from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime, timedelta
@@ -62,6 +62,11 @@ from supabase_service import (
     get_profile_by_user_id,
     list_auth_users,
     list_midtrans_transactions,
+    list_midtrans_transactions_filtered,
+    list_profiles_due_for_renewal,
+    list_recent_reminders,
+    insert_subscription_reminder,
+    get_user_by_id,
     verify_user_token,
     upload_image_to_supabase_storage,
     convert_base64_to_image_bytes,
@@ -4350,12 +4355,13 @@ async def billing_status(current_user: Dict[str, Any] = Depends(get_current_user
 @app.get("/api/billing/history")
 async def billing_history(
     limit: int = 50,
+    item_type: Optional[str] = None,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
     user_id = current_user.get("id")
     if not user_id:
         raise HTTPException(status_code=400, detail="User ID not found in token")
-    items = list_midtrans_transactions(user_id, limit=max(1, min(limit, 200)))
+    items = list_midtrans_transactions_filtered(user_id, limit=max(1, min(limit, 200)), item_type=item_type)
     sanitized = []
     for item in items:
         sanitized.append({
@@ -4368,6 +4374,71 @@ async def billing_history(
             "created_at": item.get("created_at")
         })
     return {"items": sanitized}
+
+
+@app.get("/api/billing/history/pdf")
+async def billing_history_pdf(
+    limit: int = 100,
+    item_type: Optional[str] = None,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    user_id = current_user.get("id")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="User ID not found in token")
+    items = list_midtrans_transactions_filtered(user_id, limit=max(1, min(limit, 200)), item_type=item_type)
+    from fpdf import FPDF  # type: ignore
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Helvetica", size=12)
+    pdf.cell(0, 10, "Invoice History", ln=1)
+    pdf.set_font("Helvetica", size=9)
+    for item in items:
+        line = f"{item.get('created_at','')[:10]} | {item.get('item_type','')} | {item.get('order_id','')} | Rp {item.get('gross_amount') or '-'} | {item.get('transaction_status') or '-'}"
+        pdf.multi_cell(0, 6, line)
+    pdf_output = pdf.output(dest="S").encode("latin-1")
+    return Response(content=pdf_output, media_type="application/pdf", headers={
+        "Content-Disposition": "attachment; filename=invoice-history.pdf"
+    })
+
+
+@app.post("/api/billing/reminders/run")
+async def billing_reminders_run(request: Request):
+    token = request.headers.get("x-reminder-token") or ""
+    expected = os.getenv("BILLING_REMINDER_TOKEN", "")
+    if not expected or token != expected:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    threshold_days = int(os.getenv("SUBSCRIPTION_RENEW_WINDOW_DAYS", "5"))
+    profiles = list_profiles_due_for_renewal(threshold_days)
+    email_webhook = os.getenv("REMINDER_EMAIL_WEBHOOK_URL", "")
+    wa_webhook = os.getenv("REMINDER_WHATSAPP_WEBHOOK_URL", "")
+
+    sent = 0
+    for profile in profiles:
+        user_id = profile.get("user_id")
+        if not user_id:
+            continue
+        recent = list_recent_reminders(user_id, "renewal", hours=24)
+        if recent:
+            continue
+        user = get_user_by_id(user_id)
+        email = (user or {}).get("email")
+        message = "Masa langganan Pro kamu hampir habis. Yuk perpanjang agar fitur tetap aktif."
+        if email and email_webhook:
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    await client.post(email_webhook, json={"to": email, "message": message})
+            except Exception:
+                logger.warning("Failed to send email reminder", exc_info=True)
+        whatsapp_number = (profile.get("whatsapp_number") or (user or {}).get("phone")) if profile else None
+        if whatsapp_number and wa_webhook:
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    await client.post(wa_webhook, json={"to": whatsapp_number, "message": message})
+            except Exception:
+                logger.warning("Failed to send WhatsApp reminder", exc_info=True)
+        insert_subscription_reminder(user_id, "renewal", profile.get("subscribed_until"))
+        sent += 1
+    return {"sent": sent}
 
 @app.post("/api/webhook/midtrans")
 async def midtrans_webhook(request: Request):

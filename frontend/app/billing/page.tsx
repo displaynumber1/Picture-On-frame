@@ -33,6 +33,7 @@ export default function BillingPage() {
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<BillingHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyFilter, setHistoryFilter] = useState<'all' | 'coins' | 'subscription'>('all');
 
   const fetchStatus = async () => {
     try {
@@ -64,7 +65,11 @@ export default function BillingPage() {
       if (!token) {
         return;
       }
-      const response = await fetch(`${API_URL}/api/billing/history?limit=50`, {
+      const params = new URLSearchParams({ limit: '50' });
+      if (historyFilter !== 'all') {
+        params.set('item_type', historyFilter);
+      }
+      const response = await fetch(`${API_URL}/api/billing/history?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!response.ok) {
@@ -80,7 +85,7 @@ export default function BillingPage() {
   useEffect(() => {
     fetchStatus();
     fetchHistory();
-  }, []);
+  }, [historyFilter]);
 
   const handlePay = async () => {
     try {
@@ -181,6 +186,31 @@ export default function BillingPage() {
 
       <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 space-y-4">
         <h2 className="text-lg font-semibold text-gray-900">Riwayat Pembayaran</h2>
+        <div className="flex items-center gap-2">
+          <select
+            value={historyFilter}
+            onChange={(event) => setHistoryFilter(event.target.value as any)}
+            className="border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-700"
+          >
+            <option value="all">Semua</option>
+            <option value="coins">Coins</option>
+            <option value="subscription">Subscription</option>
+          </select>
+          <button
+            onClick={async () => {
+              const token = await supabaseService.getAccessToken();
+              if (!token) return;
+              const params = new URLSearchParams({ limit: '100' });
+              if (historyFilter !== 'all') {
+                params.set('item_type', historyFilter);
+              }
+              window.open(`${API_URL}/api/billing/history/pdf?${params.toString()}`, '_blank');
+            }}
+            className="border border-gray-200 hover:bg-gray-50 rounded-xl px-4 py-2 text-sm text-gray-700"
+          >
+            Export PDF
+          </button>
+        </div>
         {historyLoading && <div className="text-sm text-gray-500">Memuat riwayat...</div>}
         {!historyLoading && history.length === 0 && (
           <div className="text-sm text-gray-500">Belum ada transaksi.</div>

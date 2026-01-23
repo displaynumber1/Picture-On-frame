@@ -58,6 +58,16 @@ CREATE TABLE IF NOT EXISTS midtrans_transactions (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- 1g. Tabel reminder subscription
+CREATE TABLE IF NOT EXISTS subscription_reminders (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    reminder_type TEXT NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE,
+    sent_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id, reminder_type, sent_at)
+);
+
 -- 1c. Tabel variant presets untuk simpan kombinasi input user (variants hanya milik user tsb)
 CREATE TABLE IF NOT EXISTS variant_presets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -86,6 +96,7 @@ CREATE INDEX IF NOT EXISTS idx_variant_presets_user_id ON variant_presets(user_i
 CREATE INDEX IF NOT EXISTS idx_admin_users_user_id ON admin_users(user_id);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);
 CREATE INDEX IF NOT EXISTS idx_midtrans_transactions_user_id ON midtrans_transactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_subscription_reminders_user_id ON subscription_reminders(user_id);
 
 -- 3. Buat function untuk update updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -143,6 +154,7 @@ ALTER TABLE variant_presets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE midtrans_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subscription_reminders ENABLE ROW LEVEL SECURITY;
 
 -- 8. Buat policy untuk user hanya bisa membaca dan update profile mereka sendiri
 DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
@@ -199,6 +211,12 @@ DROP POLICY IF EXISTS "Users can view own midtrans transactions" ON midtrans_tra
 CREATE POLICY "Users can view own midtrans transactions"
     ON midtrans_transactions FOR SELECT
     USING (auth.uid() = user_id);
+
+-- Subscription reminders policies (admin/service only)
+DROP POLICY IF EXISTS "Service role can do everything" ON subscription_reminders;
+CREATE POLICY "Service role can do everything"
+    ON subscription_reminders FOR ALL
+    USING (auth.jwt()->>'role' = 'service_role');
 
 -- 9. Buat policy untuk service role (backend) bisa melakukan semua operasi
 DROP POLICY IF EXISTS "Service role can do everything" ON profiles;

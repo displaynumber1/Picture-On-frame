@@ -6,6 +6,7 @@ import logging
 import httpx
 from typing import Optional, Dict, Any, Tuple, List
 from urllib.parse import quote_plus
+from datetime import datetime, timedelta
 from supabase import create_client, Client
 from dotenv import load_dotenv
 from pathlib import Path
@@ -102,6 +103,28 @@ def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
         return users[0] if users else None
     except Exception as e:
         logger.error(f"Error getting user by email: {str(e)}", exc_info=True)
+        return None
+
+
+def get_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Fetch Supabase auth user by ID using Admin API.
+    """
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        raise ValueError("Supabase credentials not initialized")
+    try:
+        url = f"{SUPABASE_URL}/auth/v1/admin/users/{quote_plus(user_id)}"
+        headers = {
+            "apikey": SUPABASE_SERVICE_KEY,
+            "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}"
+        }
+        response = httpx.get(url, headers=headers, timeout=15)
+        if response.status_code != 200:
+            logger.warning(f"Failed to fetch user by id: {response.status_code} - {response.text}")
+            return None
+        return response.json()
+    except Exception as e:
+        logger.error(f"Error getting user by id: {str(e)}", exc_info=True)
         return None
 
 
@@ -441,6 +464,84 @@ def list_midtrans_transactions(user_id: str, limit: int = 50) -> List[Dict[str, 
     except Exception as e:
         logger.error(f"Error listing midtrans transactions: {str(e)}", exc_info=True)
         return []
+
+
+def list_midtrans_transactions_filtered(user_id: str, limit: int = 50, item_type: Optional[str] = None) -> List[Dict[str, Any]]:
+    """
+    List Midtrans transactions filtered by type.
+    """
+    if not supabase:
+        raise ValueError("Supabase client not initialized")
+    try:
+        query = supabase.table("midtrans_transactions") \
+            .select("*") \
+            .eq("user_id", user_id) \
+            .order("created_at", desc=True) \
+            .limit(limit)
+        if item_type:
+            query = query.eq("item_type", item_type)
+        response = query.execute()
+        return response.data if response.data else []
+    except Exception as e:
+        logger.error(f"Error listing midtrans transactions filtered: {str(e)}", exc_info=True)
+        return []
+
+
+def list_profiles_due_for_renewal(threshold_days: int) -> List[Dict[str, Any]]:
+    """
+    List profiles whose subscribed_until is within renew window.
+    """
+    if not supabase:
+        raise ValueError("Supabase client not initialized")
+    now = datetime.utcnow()
+    upper = (now + timedelta(days=threshold_days)).isoformat()
+    try:
+        response = supabase.table("profiles") \
+            .select("*") \
+            .eq("subscribed", True) \
+            .gt("subscribed_until", now.isoformat()) \
+            .lte("subscribed_until", upper) \
+            .execute()
+        return response.data if response.data else []
+    except Exception as e:
+        logger.error(f"Error listing profiles due for renewal: {str(e)}", exc_info=True)
+        return []
+
+
+def list_recent_reminders(user_id: str, reminder_type: str, hours: int = 24) -> List[Dict[str, Any]]:
+    """
+    Check reminders sent within last N hours.
+    """
+    if not supabase:
+        raise ValueError("Supabase client not initialized")
+    since = (datetime.utcnow() - timedelta(hours=hours)).isoformat()
+    try:
+        response = supabase.table("subscription_reminders") \
+            .select("*") \
+            .eq("user_id", user_id) \
+            .eq("reminder_type", reminder_type) \
+            .gte("sent_at", since) \
+            .execute()
+        return response.data if response.data else []
+    except Exception as e:
+        logger.error(f"Error listing reminders: {str(e)}", exc_info=True)
+        return []
+
+
+def insert_subscription_reminder(user_id: str, reminder_type: str, expires_at: Optional[str]) -> None:
+    """
+    Insert reminder log.
+    """
+    if not supabase:
+        raise ValueError("Supabase client not initialized")
+    try:
+        supabase.table("subscription_reminders").insert({
+            "user_id": user_id,
+            "reminder_type": reminder_type,
+            "expires_at": expires_at
+        }).execute()
+    except Exception as e:
+        logger.error(f"Error inserting reminder: {str(e)}", exc_info=True)
 
 
 def verify_user_token(token: str) -> Optional[Dict[str, Any]]:
