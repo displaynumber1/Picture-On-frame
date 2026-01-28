@@ -11,13 +11,22 @@ const isValidSupabaseUrl = /^https?:\/\//i.test(supabaseUrl);
 // User should configure .env.local with actual credentials
 let supabase: SupabaseClient;
 
+const supabaseOptions = {
+  auth: {
+    flowType: 'pkce' as const,
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: false,
+  }
+};
+
 if (!supabaseUrl || !supabaseAnonKey || !isValidSupabaseUrl || supabaseUrl.includes('your-project') || supabaseAnonKey.includes('your-anon')) {
   console.warn('⚠️ Supabase credentials not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local');
   // Create a dummy client with placeholder values to prevent crash
   // This will fail on actual API calls, but won't crash the app on load
-  supabase = createClient('https://placeholder.supabase.co', 'placeholder-key');
+  supabase = createClient('https://placeholder.supabase.co', 'placeholder-key', supabaseOptions);
 } else {
-  supabase = createClient(supabaseUrl, supabaseAnonKey);
+  supabase = createClient(supabaseUrl, supabaseAnonKey, supabaseOptions);
 }
 
 export interface UserProfile {
@@ -99,10 +108,16 @@ export const supabaseService = {
    * Sign in with Google
    */
   async signInWithGoogle() {
+    const getBaseUrl = () => {
+      if (typeof window !== 'undefined' && window.location?.origin) {
+        return window.location.origin;
+      }
+      return process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || '';
+    };
     return await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/generator`,
+        redirectTo: `${getBaseUrl()}/auth/callback`,
         queryParams: {
           prompt: 'select_account'
         }

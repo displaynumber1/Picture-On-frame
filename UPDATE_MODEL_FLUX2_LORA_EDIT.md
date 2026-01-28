@@ -40,7 +40,7 @@
 {
   "prompt": "A Woman model, for Fashion, in Mirror selfie using iPhone pose, in Cinematic style, with Natural Daylight lighting, shot from Eye-Level angle, in 9:16 aspect ratio, photorealistic resolusi HD",
   "image_urls": [
-    "https://vmbzsnkkgxchzfviqcux.supabase.co/storage/v1/object/public/public/user_id/uuid.jpg"
+    "https://your-project.supabase.co/storage/v1/object/public/public/user_id/uuid.jpg"
   ],
   "num_inference_steps": 7,
   "guidance_scale": 3.5,

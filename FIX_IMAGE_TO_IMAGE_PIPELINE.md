@@ -136,7 +136,7 @@ else:
 ```json
 {
   "prompt": "A Woman model, for Fashion, in Mirror selfie using iPhone pose...",
-  "image_url": "https://vmbzsnkkgxchzfviqcux.supabase.co/storage/v1/object/public/public/user_id/uuid.jpg",
+  "image_url": "https://your-project.supabase.co/storage/v1/object/public/public/user_id/uuid.jpg",
   "image_strength": 0.5,
   "num_inference_steps": 7,
   "guidance_scale": 3.5,

@@ -2247,20 +2247,56 @@ export default function App() {
     }
   }, []);
 
+  const ensureStateRef = useRef<{
+    inFlight: boolean;
+    lastToken?: string;
+    lastOk?: boolean;
+    lastFailAt?: number;
+  }>({
+    inFlight: false,
+    lastToken: undefined,
+    lastOk: undefined,
+    lastFailAt: undefined
+  });
+
   const ensureRegisteredUser = useCallback(async () => {
     try {
       const token = await supabaseService.getAccessToken();
       if (!token) return false;
+      if (ensureStateRef.current.inFlight) {
+        return Boolean(ensureStateRef.current.lastOk);
+      }
+      if (ensureStateRef.current.lastToken === token && ensureStateRef.current.lastOk) {
+        return true;
+      }
+      if (
+        ensureStateRef.current.lastToken === token &&
+        ensureStateRef.current.lastOk === false &&
+        ensureStateRef.current.lastFailAt &&
+        Date.now() - ensureStateRef.current.lastFailAt < 30000
+      ) {
+        return false;
+      }
+      ensureStateRef.current.inFlight = true;
       const response = await fetch(`${API_URL}/api/auth/ensure-access`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       });
+      ensureStateRef.current.lastToken = token;
+      ensureStateRef.current.lastOk = response.ok;
+      if (!response.ok) {
+        ensureStateRef.current.lastFailAt = Date.now();
+      }
       return response.ok;
     } catch (error) {
       console.error('Error validating profile:', error);
+      ensureStateRef.current.lastOk = false;
+      ensureStateRef.current.lastFailAt = Date.now();
       return false;
+    } finally {
+      ensureStateRef.current.inFlight = false;
     }
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     let subscription: { unsubscribe: () => void } | null = null;

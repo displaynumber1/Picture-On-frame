@@ -49,14 +49,14 @@ GEMINI_API_KEY=your_actual_gemini_api_key_here
 **Format lengkap config.env:**
 ```
 # Fal.ai API Key for image and video generation
-FAL_KEY=fb2e630a-8d36-4641-a4cc-804997d229fe:55f0fbbd1e990396fcef92ce958b4cdc
+FAL_KEY=your_fal_api_key_here
 
 # Gemini API Key for image description extraction (required for prompt enhancement)
 GEMINI_API_KEY=your_actual_gemini_api_key_here
 
 # Supabase Configuration
-SUPABASE_URL=https://vmbzsnkkgxchzfviqcux.supabase.co
-SUPABASE_SERVICE_KEY=sb_secret_LwXdhKwIQljiOK0YcEPkCQ_KvbR7Pj8
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_KEY=your_supabase_service_role_key
 ```
 
 ### Step 3: Verify API Key Loaded

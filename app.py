@@ -5,20 +5,27 @@ from datetime import datetime
 from dotenv import load_dotenv  # type: ignore
 import os
 try:
-    import google.generativeai as genai  # type: ignore
+    from google import genai  # type: ignore
+    from google.genai import types  # type: ignore
 except ImportError:
-    # Fallback if google-generativeai is not installed
+    # Fallback if google-genai is not installed
     genai = None
-    st.error("google-generativeai package is not installed. Please install it with: pip install google-generativeai")
+    types = None
+    st.error("google-genai package is not installed. Please install it with: pip install google-genai")
 
 # Load environment variables
 load_dotenv('config.env')
 
 # Initialize Gemini API
+client = None
 if genai is not None:
-    genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
+    api_key = os.getenv('GEMINI_API_KEY')
+    if api_key:
+        client = genai.Client(api_key=api_key)
+    else:
+        st.error("GEMINI_API_KEY not found. Please add it to config.env.")
 else:
-    st.error("Gemini API is not available. Please install google-generativeai package.")
+    st.error("Gemini API is not available. Please install google-genai package.")
 
 # Constants
 MODELS = ['Pria', 'Wanita', 'Anak Laki-Laki', 'Anak Perempuan', 'Hewan (Peliharaan)', 'Cartoon', 'Manekin', 'Tanpa Model (Hanya Produk)']
@@ -947,9 +954,8 @@ def generate_video_prompt(image_url: str) -> str:
         else:
             image_base64 = image_url
         
-        if genai is None:
-            raise ValueError("Gemini API is not available. Please install google-generativeai package.")
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        if client is None or types is None:
+            raise ValueError("Gemini API is not available. Please install google-genai package.")
         
         # Decode base64 to bytes
         image_data = base64.b64decode(image_base64)
@@ -975,14 +981,13 @@ Example:
 A high-resolution video of the watch on the table, with subtle light glints reflecting off the glass as the camera breathes slightly.
         """
         
-        response = model.generate_content(
-            [
-                {
-                    "mime_type": "image/png",
-                    "data": image_data
-                },
-                prompt_text
-            ]
+        contents = [
+            types.Part.from_bytes(image_data, mime_type="image/png"),
+            prompt_text
+        ]
+        response = client.models.generate_content(
+            model="gemini-1.5-flash",
+            contents=contents
         )
         
         return response.text if hasattr(response, 'text') else str(response)
@@ -1054,7 +1059,11 @@ TECHNICAL: Shot on Phase One IQ4, 150MP, sharp focus, 8K, high-frequency texture
         """
         
         # Build parts
-        parts = [prompt]
+        parts = []
+        if types is not None:
+            parts.append(types.Part.from_text(prompt))
+        else:
+            parts.append(prompt)
         
         # Part 2: Product image
         if product_image:
@@ -1064,10 +1073,13 @@ TECHNICAL: Shot on Phase One IQ4, 150MP, sharp focus, 8K, high-frequency texture
                 else:
                     product_base64 = product_image
                 product_data = base64.b64decode(product_base64)
-                parts.append({
-                    "mime_type": "image/png",
-                    "data": product_data
-                })
+                if types is not None:
+                    parts.append(types.Part.from_bytes(product_data, mime_type="image/png"))
+                else:
+                    parts.append({
+                        "mime_type": "image/png",
+                        "data": product_data
+                    })
             except Exception as e:
                 raise Exception(f"Failed to decode product image: {str(e)}")
         
@@ -1079,10 +1091,13 @@ TECHNICAL: Shot on Phase One IQ4, 150MP, sharp focus, 8K, high-frequency texture
                 else:
                     face_base64 = face_image
                 face_data = base64.b64decode(face_base64)
-                parts.append({
-                    "mime_type": "image/png",
-                    "data": face_data
-                })
+                if types is not None:
+                    parts.append(types.Part.from_bytes(face_data, mime_type="image/png"))
+                else:
+                    parts.append({
+                        "mime_type": "image/png",
+                        "data": face_data
+                    })
             except Exception as e:
                 pass  # Continue without face image if decode fails
         
@@ -1094,10 +1109,13 @@ TECHNICAL: Shot on Phase One IQ4, 150MP, sharp focus, 8K, high-frequency texture
                 else:
                     bg_base64 = custom_bg_image
                 bg_data = base64.b64decode(bg_base64)
-                parts.append({
-                    "mime_type": "image/png",
-                    "data": bg_data
-                })
+                if types is not None:
+                    parts.append(types.Part.from_bytes(bg_data, mime_type="image/png"))
+                else:
+                    parts.append({
+                        "mime_type": "image/png",
+                        "data": bg_data
+                    })
             except Exception as e:
                 pass  # Continue without background image if decode fails
         
@@ -1106,18 +1124,17 @@ TECHNICAL: Shot on Phase One IQ4, 150MP, sharp focus, 8K, high-frequency texture
             # Use Gemini model for image generation
             # Note: For actual image generation, you may need to use a different model or API endpoint
             # The Python SDK may have different model names than TypeScript SDK
-            if genai is None:
-                raise ValueError("Gemini API is not available. Please install google-generativeai package.")
-            model = genai.GenerativeModel('gemini-1.5-pro')
-            
-            response = model.generate_content(
-                parts,
-                generation_config={
-                    "temperature": 0.7,
-                    "top_p": 0.95,
-                    "top_k": 40,
-                    "max_output_tokens": 8192,
-                }
+            if client is None or types is None:
+                raise ValueError("Gemini API is not available. Please install google-genai package.")
+            response = client.models.generate_content(
+                model="gemini-1.5-pro",
+                contents=parts,
+                config=types.GenerateContentConfig(
+                    temperature=0.7,
+                    top_p=0.95,
+                    top_k=40,
+                    max_output_tokens=8192,
+                ),
             )
             
             # Extract image from response

@@ -4,30 +4,39 @@ Supabase service for database operations
 import os
 import logging
 import httpx
+import base64
+import json
 from typing import Optional, Dict, Any, Tuple, List
 from urllib.parse import quote_plus
 from datetime import datetime, timedelta
 from supabase import create_client, Client
-from dotenv import load_dotenv
-from pathlib import Path
 from io import BytesIO
 
 logger = logging.getLogger(__name__)
 
-# Load environment variables
-env_path = Path(__file__).parent.parent / 'config.env'
-if not env_path.exists():
-    env_path = Path(__file__).parent / 'config.env'
-load_dotenv(env_path)
-
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_KEY')  # Service role key for backend
+SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY')  # Public anon key for auth verification
 
 if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
     logger.warning("Supabase credentials not found in environment variables")
     supabase: Optional[Client] = None
 else:
     supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
+
+def _safe_decode_jwt_claims(token: str) -> Optional[Dict[str, Any]]:
+    try:
+        parts = token.split(".")
+        if len(parts) < 2:
+            return None
+        payload_b64 = parts[1]
+        padding = "=" * (-len(payload_b64) % 4)
+        payload_bytes = base64.urlsafe_b64decode(payload_b64 + padding)
+        payload = json.loads(payload_bytes.decode("utf-8"))
+        return payload if isinstance(payload, dict) else None
+    except Exception:
+        return None
 
 
 def get_user_profile(user_id: str) -> Optional[Dict[str, Any]]:
@@ -337,6 +346,62 @@ def update_user_trial_remaining(user_id: str, trial_remaining: int) -> Dict[str,
         raise
 
 
+def insert_admin_adjustment(
+    admin_user_id: str,
+    target_user_id: str,
+    action: str,
+    delta: int,
+    reason: Optional[str],
+    request_meta: Optional[Dict[str, Any]] = None
+) -> None:
+    """
+    Insert admin audit adjustment row (Supabase).
+    """
+    if not supabase:
+        raise ValueError("Supabase client not initialized")
+    payload: Dict[str, Any] = {
+        "admin_user_id": admin_user_id,
+        "target_user_id": target_user_id,
+        "action": action,
+        "delta": int(delta),
+        "reason": reason
+    }
+    if request_meta:
+        payload["request_id"] = request_meta.get("request_id")
+        payload["ip"] = request_meta.get("ip")
+        payload["user_agent"] = request_meta.get("user_agent")
+    try:
+        supabase.table("admin_adjustments").insert(payload).execute()
+    except Exception as e:
+        logger.error(f"Error inserting admin adjustment: {str(e)}", exc_info=True)
+
+
+def list_admin_adjustments(
+    limit: int = 100,
+    admin_user_id: Optional[str] = None,
+    target_user_id: Optional[str] = None,
+    action: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    """
+    List admin adjustments from Supabase.
+    """
+    if not supabase:
+        raise ValueError("Supabase client not initialized")
+    try:
+        query = supabase.table("admin_adjustments").select("*")
+        if admin_user_id:
+            query = query.eq("admin_user_id", admin_user_id)
+        if target_user_id:
+            query = query.eq("target_user_id", target_user_id)
+        if action:
+            query = query.eq("action", action)
+        response = query.order("created_at", desc=True).limit(max(1, min(int(limit), 500))).execute()
+        return response.data if response.data else []
+    except Exception as e:
+        logger.error(f"Error listing admin adjustments: {str(e)}", exc_info=True)
+        return []
+
+
 def update_user_subscription(user_id: str, subscribed: bool) -> Dict[str, Any]:
     """
     Update user's subscribed flag.
@@ -403,19 +468,20 @@ def ensure_user_profile(user_id: str, display_name: Optional[str] = None) -> Dic
     if not supabase:
         raise ValueError("Supabase client not initialized")
     try:
-        existing = get_user_profile(user_id)
-        if existing:
-            return existing
         payload: Dict[str, Any] = {
             "user_id": user_id,
-            "coins_balance": 25,
+            "coins_balance": 0,
+            "trial_upload_remaining": 3,
             "role_user": "user"
         }
         if display_name:
             payload["display_name"] = display_name
-        response = supabase.table("profiles").insert(payload).execute()
+        response = supabase.table("profiles").upsert(payload, on_conflict="user_id").execute()
         if response.data and len(response.data) > 0:
             return response.data[0]
+        existing = get_user_profile(user_id)
+        if existing:
+            return existing
         raise ValueError("Failed to ensure profile")
     except Exception as e:
         logger.error(f"Error ensuring user profile: {str(e)}", exc_info=True)
@@ -572,40 +638,65 @@ def insert_subscription_reminder(user_id: str, reminder_type: str, expires_at: O
 
 def verify_user_token(token: str) -> Optional[Dict[str, Any]]:
     """
-    Verify Supabase JWT token and get user info
-    
-    Args:
-        token: Supabase JWT token (access_token from Supabase session)
-    
-    Returns:
-        User info dict or None if invalid
+    Verify Supabase JWT token and get user info.
     """
-    if not supabase or not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-        logger.error("Supabase not configured. Please add SUPABASE_URL and SUPABASE_SERVICE_KEY to config.env")
-        raise ValueError("Supabase client not initialized. Please configure SUPABASE_URL and SUPABASE_SERVICE_KEY in config.env")
-    
+    if not supabase or not SUPABASE_URL or not SUPABASE_ANON_KEY:
+        logger.error("Supabase not configured. Please add SUPABASE_URL and SUPABASE_ANON_KEY to config.env")
+        raise ValueError("Supabase client not initialized. Please configure SUPABASE_URL and SUPABASE_ANON_KEY in config.env")
+    if not token:
+        logger.warning("Token verification failed: empty token")
+        return None
+
     try:
-        # Verify token using Supabase REST API
-        # Use the user's access token to get their user info
+        if os.getenv("AUTH_LOG_CLAIMS", "").lower() in {"1", "true", "yes", "on"}:
+            claims = _safe_decode_jwt_claims(token)
+            if claims:
+                logger.info(
+                    "Auth token claims",
+                    extra={
+                        "iss": claims.get("iss"),
+                        "aud": claims.get("aud"),
+                        "sub_present": bool(claims.get("sub")),
+                        "role_present": "role" in claims or "role_user" in claims
+                    }
+                )
+            else:
+                logger.info("Auth token not JWT or claims decode failed")
+
+        # SECURITY: verify token using public anon key, not service role key.
         verify_url = f"{SUPABASE_URL}/auth/v1/user"
         headers = {
             "Authorization": f"Bearer {token}",
-            "apikey": SUPABASE_SERVICE_KEY  # Use service role key for API access
+            "apikey": SUPABASE_ANON_KEY
         }
-        
+
         response = httpx.get(verify_url, headers=headers, timeout=10.0)
-        
-        if response.status_code == 200:
-            user_data = response.json()
-            return {
-                "id": user_data.get("id"),
-                "email": user_data.get("email"),
-                "user_metadata": user_data.get("user_metadata", {})
-            }
-        else:
-            logger.warning(f"Token verification failed: {response.status_code} - {response.text}")
+        if response.status_code != 200:
+            logger.warning(
+                "Token verification failed",
+                extra={"status_code": response.status_code, "body": response.text[:200]}
+            )
             return None
-            
+
+        payload = response.json()
+        user_data = payload if isinstance(payload, dict) else {}
+        user_id = user_data.get("id")
+        email = user_data.get("email")
+        email_confirmed_at = user_data.get("email_confirmed_at") or user_data.get("confirmed_at")
+
+        # SECURITY: reject missing id/email or unverified email.
+        if not user_id or not email:
+            logger.warning("Token verification rejected: missing id or email")
+            return None
+        if not email_confirmed_at:
+            logger.warning("Token verification rejected: email not confirmed")
+            return None
+
+        return {
+            "id": user_id,
+            "email": email,
+            "user_metadata": user_data.get("user_metadata", {})
+        }
     except Exception as e:
         logger.error(f"Error verifying user token: {str(e)}", exc_info=True)
         return None

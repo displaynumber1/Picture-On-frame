@@ -37,7 +37,7 @@ Error response dari Supabase Storage API:
 1. **Login ke Supabase Dashboard**
    - Buka https://supabase.com/dashboard
    - Login dengan akun Anda
-   - Pilih project yang sesuai (`vmbzsnkkgxchzfviqcux`)
+   - Pilih project yang sesuai (`your-project-ref`)
 
 2. **Navigasi ke Storage**
    - Di sidebar kiri, klik menu **Storage**
@@ -91,22 +91,22 @@ Jika bucket sudah ada dengan nama berbeda:
 4. **Project URL**
    - Pastikan `SUPABASE_URL` di `config.env` benar
    - Format: `https://[project-ref].supabase.co`
-   - Dari config.env: `https://vmbzsnkkgxchzfviqcux.supabase.co` ✅
+   - Dari config.env: `https://your-project.supabase.co` ✅
 
 ## 🔍 Verification Steps
 
 ### Step 1: Cek Supabase Dashboard
 ```
 1. Login ke https://supabase.com/dashboard
-2. Pilih project: vmbzsnkkgxchzfviqcux
+2. Pilih project: your-project-ref
 3. Storage > Buckets
 4. Cek apakah bucket 'public' ada
 ```
 
 ### Step 2: Cek config.env
 ```env
-SUPABASE_URL=https://vmbzsnkkgxchzfviqcux.supabase.co  ✅
-SUPABASE_SERVICE_KEY=sb_secret_LwXdhKwIQljiOK0YcEPkCQ_KvbR7Pj8  ⚠️ Cek apakah service role key
+SUPABASE_URL=https://your-project.supabase.co  ✅
+SUPABASE_SERVICE_KEY=your_supabase_service_role_key  ⚠️ Cek apakah service role key
 ```
 
 ### Step 3: Restart Backend
@@ -142,7 +142,7 @@ Setelah bucket `public` dibuat:
    INFO:    Path: {user_id}/face/{uuid}.jpg
    INFO:    File size: 245760 bytes (0.23 MB)
    INFO: ✅ Image uploaded successfully to Supabase Storage
-   INFO:    Public URL: https://vmbzsnkkgxchzfviqcux.supabase.co/storage/v1/object/public/public/{user_id}/face/{uuid}.jpg
+   INFO:    Public URL: https://your-project.supabase.co/storage/v1/object/public/public/{user_id}/face/{uuid}.jpg
    ```
 
 2. **Tidak ada error 404**:

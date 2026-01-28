@@ -83,7 +83,7 @@ Setelah update:
    INFO:    Bucket: IMAGES_UPLOAD
    INFO:    Path: {user_id}/face/{uuid}.jpg
    INFO: ✅ Image uploaded successfully to Supabase Storage
-   INFO:    Public URL: https://vmbzsnkkgxchzfviqcux.supabase.co/storage/v1/object/public/IMAGES_UPLOAD/{user_id}/face/{uuid}.jpg
+   INFO:    Public URL: https://your-project.supabase.co/storage/v1/object/public/IMAGES_UPLOAD/{user_id}/face/{uuid}.jpg
    ```
 
 2. **Tidak ada error 404:**

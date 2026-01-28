@@ -13,7 +13,7 @@ import httpx
 from io import BytesIO
 import cv2
 import numpy as np
-from face_detection import detect_face, create_face_mask, get_face_region_info
+from app.services.face_detection import detect_face, create_face_mask, get_face_region_info
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ def check_ffmpeg_available() -> bool:
     from pathlib import Path
     
     # Try local FFmpeg first (in project folder)
-    project_root = Path(__file__).parent.parent
+    project_root = Path(__file__).resolve().parents[3]
     local_ffmpeg = project_root / "ffmpeg" / "ffmpeg-8.0.1-essentials_build" / "bin" / "ffmpeg.exe"
     
     if local_ffmpeg.exists():
@@ -59,7 +59,7 @@ def get_ffmpeg_path() -> str:
     from pathlib import Path
     
     # Try local FFmpeg first (in project folder)
-    project_root = Path(__file__).parent.parent
+    project_root = Path(__file__).resolve().parents[3]
     local_ffmpeg = project_root / "ffmpeg" / "ffmpeg-8.0.1-essentials_build" / "bin" / "ffmpeg.exe"
     
     if local_ffmpeg.exists():
@@ -116,7 +116,7 @@ def create_human_safe_video(
     if face_info is None:
         logger.warning("No face detected, using standard fake motion")
         # Fallback to standard zoom if no face detected
-        from video_service import create_fake_motion_video
+        from app.services.video_service import create_fake_motion_video
         return create_fake_motion_video(
             image_path=image_path,
             output_path=output_path,

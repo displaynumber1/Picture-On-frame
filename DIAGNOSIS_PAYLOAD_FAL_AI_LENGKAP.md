@@ -52,7 +52,7 @@ Content-Type: application/json
 - **Format:** `https://{project}.supabase.co/storage/v1/object/public/IMAGES_UPLOAD/{user_id}/{category}/{uuid}.{ext}`
 - **Example:**
   ```json
-  "image_url": "https://vmbzsnkkgxchzfviqcux.supabase.co/storage/v1/object/public/IMAGES_UPLOAD/user-123/face/a1b2c3d4-e5f6-7890-abcd-ef1234567890.jpg"
+  "image_url": "https://your-project.supabase.co/storage/v1/object/public/IMAGES_UPLOAD/user-123/face/a1b2c3d4-e5f6-7890-abcd-ef1234567890.jpg"
   ```
 - **Note:** 
   - ✅ Singular (`image_url`, bukan `image_urls`)
@@ -128,7 +128,7 @@ Content-Type: application/json
 ```json
 {
   "prompt": "A professional product photo with clean white background, studio lighting, high quality, product detail visible",
-  "image_url": "https://vmbzsnkkgxchzfviqcux.supabase.co/storage/v1/object/public/IMAGES_UPLOAD/user-123/face/a1b2c3d4-e5f6-7890-abcd-ef1234567890.jpg",
+  "image_url": "https://your-project.supabase.co/storage/v1/object/public/IMAGES_UPLOAD/user-123/face/a1b2c3d4-e5f6-7890-abcd-ef1234567890.jpg",
   "image_strength": 0.5,
   "num_inference_steps": 7,
   "guidance_scale": 3.5
@@ -141,7 +141,7 @@ Content-Type: application/json
 ```json
 {
   "prompt": "A professional product photo with clean white background, studio lighting, high quality",
-  "image_url": "https://vmbzsnkkgxchzfviqcux.supabase.co/storage/v1/object/public/IMAGES_UPLOAD/user-123/product/b2c3d4e5-f6a7-8901-bcde-f23456789012.png",
+  "image_url": "https://your-project.supabase.co/storage/v1/object/public/IMAGES_UPLOAD/user-123/product/b2c3d4e5-f6a7-8901-bcde-f23456789012.png",
   "image_strength": 0.5,
   "num_inference_steps": 7,
   "guidance_scale": 3.5,

@@ -7,17 +7,9 @@ import logging
 import asyncio
 import json
 from typing import List, Dict, Any, Optional, Tuple
-from dotenv import load_dotenv
-from pathlib import Path
 from io import BytesIO
 
 logger = logging.getLogger(__name__)
-
-# Load environment variables
-env_path = Path(__file__).parent.parent / 'config.env'
-if not env_path.exists():
-    env_path = Path(__file__).parent / 'config.env'
-load_dotenv(env_path)
 
 FAL_KEY = os.getenv('FAL_KEY')
 FAL_API_BASE = "https://fal.run"

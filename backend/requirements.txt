@@ -6,7 +6,7 @@ google-genai>=0.2.0
 pydantic==2.5.0
 google-auth==2.23.4
 google-auth-oauthlib==1.1.0
-google-auth-httplib2==0.1.1
+google-auth-httplib2>=0.2.0,<1.0.0
 httpx>=0.24.0
 supabase>=2.0.0
 python-jose[cryptography]>=3.3.0
@@ -14,7 +14,7 @@ fpdf2>=2.7.9
 Pillow>=10.0.0
 opencv-python-headless>=4.8.0
 mediapipe==0.10.31
-webrtcvad>=2.0.10
+python-json-logger>=2.0.7
 
 
 

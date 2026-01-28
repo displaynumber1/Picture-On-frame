@@ -14,7 +14,7 @@ Tabel `profiles` belum dibuat di database Supabase, atau schema cache Supabase b
 
 1. Buka https://supabase.com/dashboard
 2. Login ke akun Supabase Anda
-3. Pilih project yang sesuai (dari URL di `config.env`: `https://vmbzsnkkgxchzfviqcux.supabase.co`)
+3. Pilih project yang sesuai (dari URL di `config.env`: `https://your-project.supabase.co`)
 
 ### Langkah 2: Jalankan SQL Setup
 

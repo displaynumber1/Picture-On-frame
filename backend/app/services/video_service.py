@@ -21,7 +21,7 @@ def check_ffmpeg_available() -> bool:
     from pathlib import Path
     
     # Try local FFmpeg first (in project folder)
-    project_root = Path(__file__).parent.parent
+    project_root = Path(__file__).resolve().parents[3]
     local_ffmpeg = project_root / "ffmpeg" / "ffmpeg-8.0.1-essentials_build" / "bin" / "ffmpeg.exe"
     
     if local_ffmpeg.exists():
@@ -56,7 +56,7 @@ def get_ffmpeg_path() -> str:
     from pathlib import Path
     
     # Try local FFmpeg first (in project folder)
-    project_root = Path(__file__).parent.parent
+    project_root = Path(__file__).resolve().parents[3]
     local_ffmpeg = project_root / "ffmpeg" / "ffmpeg-8.0.1-essentials_build" / "bin" / "ffmpeg.exe"
     
     if local_ffmpeg.exists():

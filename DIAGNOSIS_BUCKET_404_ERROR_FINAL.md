@@ -27,7 +27,7 @@ IMAGE IS REQUIRED FOR IMAGE-TO-IMAGE PIPELINE
 
 #### Step 2: Pilih Project
 1. Dari list projects, pilih project yang sesuai
-2. Project URL dari config.env: `https://vmbzsnkkgxchzfviqcux.supabase.co`
+2. Project URL dari config.env: `https://your-project.supabase.co`
 3. Pastikan project ini yang dipilih
 
 #### Step 3: Navigasi ke Storage
@@ -110,12 +110,12 @@ IMAGE IS REQUIRED FOR IMAGE-TO-IMAGE PIPELINE
 **Solution:**
 1. Cek `SUPABASE_URL` di `config.env`
 2. Pastikan sesuai dengan project di Supabase Dashboard
-3. Dari config.env: `https://vmbzsnkkgxchzfviqcux.supabase.co`
+3. Dari config.env: `https://your-project.supabase.co`
 
 ## 📋 Checklist
 
 - [ ] Login ke Supabase Dashboard
-- [ ] Pilih project yang benar (`vmbzsnkkgxchzfviqcux`)
+- [ ] Pilih project yang benar (`your-project-ref`)
 - [ ] Navigasi ke Storage > Buckets
 - [ ] Cek apakah bucket `public` ada (lowercase)
 - [ ] Jika TIDAK ADA: Create bucket `public` (Public: Enabled)
@@ -133,7 +133,7 @@ Setelah bucket `public` dibuat:
    INFO:    Bucket: public
    INFO:    Path: {user_id}/face/{uuid}.jpg
    INFO: ✅ Image uploaded successfully to Supabase Storage
-   INFO:    Public URL: https://vmbzsnkkgxchzfviqcux.supabase.co/storage/v1/object/public/public/{user_id}/face/{uuid}.jpg
+   INFO:    Public URL: https://your-project.supabase.co/storage/v1/object/public/public/{user_id}/face/{uuid}.jpg
    ```
 
 2. **Tidak ada error 404:**
@@ -171,7 +171,7 @@ Setelah bucket `public` dibuat:
 
 4. **Project URL:**
    - Pastikan `SUPABASE_URL` sesuai dengan project
-   - Dari config.env: `https://vmbzsnkkgxchzfviqcux.supabase.co`
+   - Dari config.env: `https://your-project.supabase.co`
 
 ---
 

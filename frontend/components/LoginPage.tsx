@@ -76,12 +76,12 @@ const LoginPage: React.FC = () => {
       icon: Users,
       content: (
         <div className="space-y-4 text-sm text-gray-700">
-          <p>Bergabunglah dengan 250+ member Picture on Frame untuk:</p>
+          <p>Bergabunglah dengan 250++ member Picture on Frame untuk:</p>
           <ul className="space-y-2 list-disc list-inside">
-            <li>Berbagi hasil karya dan inspirasi</li>
-            <li>Mendapatkan feedback dari sesama pengguna</li>
-            <li>Feel Free to Share your result</li>
-            <li>Saling Support dan Berbagi pengalaman Affiliate</li>
+            <li>Berbagi hasil karya dan inspirasi.</li>
+            <li>Mendapatkan feedback dari sesama pengguna.</li>
+            <li>Saling follow akun dan like untuk setiap postingan kamu.</li>
+            <li>Saling Support dan Berbagi pengalaman Affiliate dan konten AI lainnya.</li>
           </ul>
           <p className="text-xs text-gray-500 mt-4">Hubungi kami melalui WhatsApp untuk info lebih lanjut.</p>
         </div>

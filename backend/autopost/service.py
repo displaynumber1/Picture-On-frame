@@ -3,7 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Dict, Optional
+from typing import Any, Awaitable, Callable, Dict, List, Optional
+from uuid import uuid4
 import json
 import logging
 import os
@@ -48,6 +49,7 @@ class AutopostDeps:
     cleanup_old_temp_videos: Callable[[], None]
     async_scene_analysis: Callable[[int, str, str], None]
     recheck_due_videos: Callable[[Any, str], int]
+    active_tasks: Callable[[str], int]
 
 
 class AutopostService:
@@ -96,6 +98,9 @@ class AutopostService:
         if not user_id:
             raise HTTPException(status_code=400, detail="User ID not found in token")
 
+        if self.deps.active_tasks(user_id) > 3:
+            raise HTTPException(status_code=429, detail="Too many active tasks")
+
         self.deps.enforce_rate_limit(user_id)
         profile = self.deps.get_user_profile(user_id)
         if not profile:
@@ -108,167 +113,212 @@ class AutopostService:
         if not file.filename:
             raise HTTPException(status_code=400, detail="Filename is required")
 
-        file_ext = Path(file.filename).suffix or ".mp4"
-        safe_name = f"{user_id}_{int(datetime.now().timestamp())}_{os.urandom(4).hex()}{file_ext}"
-        file_path = self.deps.temp_dir / safe_name
+        max_upload_mb = 150
+        max_size = max_upload_mb * 1024 * 1024
+        chunk_size = 1024 * 1024
+        allowed_types = {
+            "video/mp4",
+            "video/quicktime",
+            "video/x-matroska"
+        }
+        if file.content_type not in allowed_types:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid file type. Only MP4, MOV, MKV allowed."
+            )
 
-        content = await file.read()
-        with open(file_path, "wb") as f:
-            f.write(content)
+        safe_name = f"{uuid4()}_{Path(file.filename).name}"
+        temp_dir = self.deps.temp_dir.resolve()
+        file_path = (temp_dir / safe_name).resolve()
+        tmp_path = file_path.with_suffix(".uploading")
+        if not file_path.is_relative_to(temp_dir):
+            raise HTTPException(status_code=500, detail="Unsafe upload path")
 
-        trend_list, _, _ = self.deps.get_trend_context(title, caption, hook_text, cta_text, hashtags, category)
-        trend_tag = trend_list[0] if trend_list else None
+        file_written = False
+        error_occurred = True
+        total_size = 0
+        try:
+            with open(tmp_path, "wb") as buffer:
+                while True:
+                    chunk = await file.read(chunk_size)
+                    if not chunk:
+                        break
+                    total_size += len(chunk)
+                    if total_size > max_size:
+                        raise HTTPException(
+                            status_code=413,
+                            detail=f"File too large. Max allowed size is {max_upload_mb} MB"
+                        )
+                    buffer.write(chunk)
+            tmp_path.replace(file_path)
+            file_written = True
+            logger.info(f"[AUTPOST] user={user_id} uploaded file={safe_name}")
 
-        conn = self.deps.get_db_connection()
-        refresh_feedback_weights(conn, user_id)
-        refresh_global_feedback_weights(conn)
-        user_weights = get_feedback_weights(conn, user_id)
-        global_weights = get_global_feedback_weights(conn)
-        strength = get_learning_strength(conn, user_id)
-        weights = merge_weights(global_weights, user_weights, strength)
+            trend_list, _, _ = self.deps.get_trend_context(title, caption, hook_text, cta_text, hashtags, category)
+            trend_tag = trend_list[0] if trend_list else None
 
-        if title or hook_text or cta_text or hashtags:
-            generated = generate_metadata(title, hook_text, cta_text, hashtags, category, trend_tag=trend_tag)
-            title = generated.title
-            hook_text = generated.hook_text
-            cta_text = generated.cta_text
-            hashtags = generated.hashtags
-            sources = generated.sources
-        else:
-            variants = generate_variants(category, trend_tag, weights, count=5)
-            scored_variants: List[Dict[str, Any]] = []
-            for variant in variants:
-                details = self.deps.score_video_metadata(
-                    variant.title,
-                    caption,
-                    variant.hook_text,
-                    variant.cta_text,
-                    variant.hashtags,
-                    category,
-                    user_id,
-                    None
-                )
-                scored_variants.append({
-                    "variant": variant,
-                    "score": float(details.get("score", 0.0))
-                })
-            scored_variants.sort(key=lambda v: v["score"], reverse=True)
-            best = scored_variants[0]["variant"]
-            logger.info(f"[AI VARIANTS] video={file.filename} scores={[round(v['score'], 2) for v in scored_variants]} strength={round(strength, 2)}")
-            logger.info(f"[AI VARIANTS] selected hook_pattern={best.hook_pattern} cta_pattern={best.cta_pattern} hashtag_pattern={best.hashtag_pattern}")
-            title = best.title
-            hook_text = best.hook_text
-            cta_text = best.cta_text
-            hashtags = best.hashtags
-            sources = {
-                "title_source": "ai_generated",
-                "hook_source": "ai_generated",
-                "cta_source": "ai_generated",
-                "hashtags_source": "ai_generated"
-            }
+            conn = self.deps.get_db_connection()
+            refresh_feedback_weights(conn, user_id)
+            refresh_global_feedback_weights(conn)
+            user_weights = get_feedback_weights(conn, user_id)
+            global_weights = get_global_feedback_weights(conn)
+            strength = get_learning_strength(conn, user_id)
+            weights = merge_weights(global_weights, user_weights, strength)
 
-        scene_signals = self.deps.get_scene_signals(str(file_path))
-        details = self.deps.score_video_metadata(
-            title,
-            caption,
-            hook_text,
-            cta_text,
-            hashtags,
-            category,
-            user_id,
-            scene_signals
-        )
-        score = float(details.get("score", 0.0))
-        threshold = self.deps.adjust_threshold_with_feedback(
-            self.deps.default_threshold,
-            details.get("feedback") or {},
-            float(details.get("trend_similarity") or 0.0)
-        )
-        details["threshold"] = threshold
-        score_reasons = build_score_reasons(details, title, hook_text, cta_text, hashtags, category)
-        self.deps.log_score_details(f"user={user_id} video={file.filename}", details)
+            if title or hook_text or cta_text or hashtags:
+                generated = generate_metadata(title, hook_text, cta_text, hashtags, category, trend_tag=trend_tag)
+                title = generated.title
+                hook_text = generated.hook_text
+                cta_text = generated.cta_text
+                hashtags = generated.hashtags
+                sources = generated.sources
+            else:
+                variants = generate_variants(category, trend_tag, weights, count=5)
+                scored_variants: List[Dict[str, Any]] = []
+                for variant in variants:
+                    details = self.deps.score_video_metadata(
+                        variant.title,
+                        caption,
+                        variant.hook_text,
+                        variant.cta_text,
+                        variant.hashtags,
+                        category,
+                        user_id,
+                        None
+                    )
+                    scored_variants.append({
+                        "variant": variant,
+                        "score": float(details.get("score", 0.0))
+                    })
+                scored_variants.sort(key=lambda v: v["score"], reverse=True)
+                best = scored_variants[0]["variant"]
+                logger.info(f"[AI VARIANTS] video={file.filename} scores={[round(v['score'], 2) for v in scored_variants]} strength={round(strength, 2)}")
+                logger.info(f"[AI VARIANTS] selected hook_pattern={best.hook_pattern} cta_pattern={best.cta_pattern} hashtag_pattern={best.hashtag_pattern}")
+                title = best.title
+                hook_text = best.hook_text
+                cta_text = best.cta_text
+                hashtags = best.hashtags
+                sources = {
+                    "title_source": "ai_generated",
+                    "hook_source": "ai_generated",
+                    "cta_source": "ai_generated",
+                    "hashtags_source": "ai_generated"
+                }
 
-        compliance_blocked = bool(details.get("compliance_blocked"))
-        if compliance_blocked:
-            status = "WAITING_RECHECK"
-            next_check_at = self.deps.schedule_next_check()
-        else:
-            status = "QUEUED" if score >= threshold else "WAITING_RECHECK"
-            next_check_at = None if status == "QUEUED" else self.deps.schedule_next_check()
-
-        cursor = conn.cursor()
-        scheduled_at = None
-        status_note = None
-        if status == "QUEUED":
-            preferred_window = get_best_posting_window(conn, user_id)
-            scheduled_at_dt = resolve_schedule_time(datetime.now(), preferred_window)
-            if scheduled_at_dt:
-                scheduled_at = scheduled_at_dt.isoformat()
-                status_note = "scheduled"
-
-        cursor.execute(
-            """
-            INSERT INTO autopost_videos
-            (user_id, file_name, file_path, title, caption, hook_text, cta_text, hashtags, category,
-             title_source, hook_source, cta_source, hashtags_source,
-             status, score, score_details, score_reasons, threshold, next_check_at, scheduled_at, status_note,
-             created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                user_id,
-                file.filename,
-                str(file_path),
+            scene_signals = self.deps.get_scene_signals(str(file_path))
+            details = self.deps.score_video_metadata(
                 title,
                 caption,
                 hook_text,
                 cta_text,
                 hashtags,
                 category,
-                sources.get("title_source"),
-                sources.get("hook_source"),
-                sources.get("cta_source"),
-                sources.get("hashtags_source"),
-                status,
-                score,
-                json.dumps(details),
-                json.dumps(score_reasons),
-                threshold,
-                next_check_at,
-                scheduled_at,
-                status_note,
-                self.deps.now_iso(),
-                self.deps.now_iso()
+                user_id,
+                scene_signals
             )
-        )
-        record_id = cursor.lastrowid
-        conn.commit()
-        remaining_coins = coins
+            score = float(details.get("score", 0.0))
+            threshold = self.deps.adjust_threshold_with_feedback(
+                self.deps.default_threshold,
+                details.get("feedback") or {},
+                float(details.get("trend_similarity") or 0.0)
+            )
+            details["threshold"] = threshold
+            score_reasons = build_score_reasons(details, title, hook_text, cta_text, hashtags, category)
+            self.deps.log_score_details(f"user={user_id} video={file.filename}", details)
 
-        if self.deps.scene_provider != "none" and background_tasks is not None:
-            background_tasks.add_task(self.deps.async_scene_analysis, record_id, str(file_path), user_id)
-        if not bool(profile.get("subscribed")):
-            self._trial_guard(profile, user_id, decrement=True)
-        conn.close()
+            compliance_blocked = bool(details.get("compliance_blocked"))
+            if compliance_blocked:
+                status = "WAITING_RECHECK"
+                next_check_at = self.deps.schedule_next_check()
+            else:
+                status = "QUEUED" if score >= threshold else "WAITING_RECHECK"
+                next_check_at = None if status == "QUEUED" else self.deps.schedule_next_check()
 
-        response_payload = {
-            "id": record_id,
-            "status": status,
-            "score": score,
-            "threshold": threshold,
-            "next_check_at": next_check_at,
-            "scheduled_at": scheduled_at,
-            "status_note": status_note,
-            "score_reasons": score_reasons,
-            "remaining_coins": remaining_coins
-        }
-        self.deps.cleanup_old_temp_videos()
-        await self.deps.broadcast_event(
-            user_id,
-            "autopost.updated",
-            {"id": record_id, "status": status, "score": score, "next_check_at": next_check_at, "video_name": file.filename}
-        )
-        return response_payload
+            cursor = conn.cursor()
+            scheduled_at = None
+            status_note = None
+            if status == "QUEUED":
+                preferred_window = get_best_posting_window(conn, user_id)
+                scheduled_at_dt = resolve_schedule_time(datetime.now(), preferred_window)
+                if scheduled_at_dt:
+                    scheduled_at = scheduled_at_dt.isoformat()
+                    status_note = "scheduled"
+
+            cursor.execute(
+                """
+                INSERT INTO autopost_videos
+                (user_id, file_name, file_path, title, caption, hook_text, cta_text, hashtags, category,
+                 title_source, hook_source, cta_source, hashtags_source,
+                 status, score, score_details, score_reasons, threshold, next_check_at, scheduled_at, status_note,
+                 created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    user_id,
+                    file.filename,
+                    str(file_path),
+                    title,
+                    caption,
+                    hook_text,
+                    cta_text,
+                    hashtags,
+                    category,
+                    sources.get("title_source"),
+                    sources.get("hook_source"),
+                    sources.get("cta_source"),
+                    sources.get("hashtags_source"),
+                    status,
+                    score,
+                    json.dumps(details),
+                    json.dumps(score_reasons),
+                    threshold,
+                    next_check_at,
+                    scheduled_at,
+                    status_note,
+                    self.deps.now_iso(),
+                    self.deps.now_iso()
+                )
+            )
+            record_id = cursor.lastrowid
+            conn.commit()
+            remaining_coins = coins
+
+            if self.deps.scene_provider != "none" and background_tasks is not None:
+                background_tasks.add_task(self.deps.async_scene_analysis, record_id, str(file_path), user_id)
+            if not bool(profile.get("subscribed")):
+                self._trial_guard(profile, user_id, decrement=True)
+            conn.close()
+
+            response_payload = {
+                "id": record_id,
+                "status": status,
+                "score": score,
+                "threshold": threshold,
+                "next_check_at": next_check_at,
+                "scheduled_at": scheduled_at,
+                "status_note": status_note,
+                "score_reasons": score_reasons,
+                "remaining_coins": remaining_coins
+            }
+            self.deps.cleanup_old_temp_videos()
+            await self.deps.broadcast_event(
+                user_id,
+                "autopost.updated",
+                {"id": record_id, "status": status, "score": score, "next_check_at": next_check_at, "video_name": file.filename}
+            )
+            error_occurred = False
+            return response_payload
+        finally:
+            if error_occurred and file_written and file_path.exists():
+                try:
+                    file_path.unlink()
+                except Exception as cleanup_error:
+                    logger.warning(f"[AUTPOST] Failed cleanup for {file_path}: {cleanup_error}")
+            if error_occurred and tmp_path.exists():
+                try:
+                    tmp_path.unlink()
+                except Exception as cleanup_error:
+                    logger.warning(f"[AUTPOST] Failed cleanup for {tmp_path}: {cleanup_error}")
 
     def dashboard(self, user_id: str, status: Optional[str]) -> Dict[str, Any]:
         if not user_id:

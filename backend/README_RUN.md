@@ -30,6 +30,18 @@ python main.py
 
 ## Troubleshooting
 
+### Supabase: Auto-create profiles
+Jalankan SQL trigger ini di Supabase SQL Editor agar `profiles` otomatis dibuat saat user pertama kali login:
+```
+backend/sql/trigger_profiles.sql
+```
+
+### Supabase: Admin adjustments audit log
+Jalankan SQL ini di Supabase SQL Editor untuk membuat tabel audit penyesuaian admin:
+```
+backend/sql/admin_adjustments.sql
+```
+
 ### Error: "Virtual environment not found"
 ```powershell
 # Buat virtual environment

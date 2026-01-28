@@ -3,9 +3,8 @@ import base64
 import logging
 import asyncio
 from typing import Optional, List, Dict, Any
-from pathlib import Path
-from dotenv import load_dotenv
 from google import genai
+from google.genai import types
 from fastapi import HTTPException
 
 # Helper function to extract base64 and mime_type from data URL
@@ -54,12 +53,6 @@ def extract_base64_and_mime_type(data_url_or_base64: str, default_mime: str = "i
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Load environment variables
-env_path = Path(__file__).parent.parent / 'config.env'
-if not env_path.exists():
-    env_path = Path(__file__).parent / 'config.env'
-load_dotenv(env_path)
-
 # Initialize Gemini API Client (lazy initialization)
 api_key = os.getenv('GEMINI_API_KEY')
 client = None
@@ -72,6 +65,69 @@ def get_gemini_client():
             raise ValueError("GEMINI_API_KEY tidak ditemukan. Pastikan file config.env ada di root project dengan format: GEMINI_API_KEY=your_key_here")
         client = genai.Client(api_key=api_key)
     return client
+
+
+def generate_text_content(model: str, prompt: str) -> Optional[str]:
+    """Generate text with Gemini; return None on missing client or errors."""
+    try:
+        gemini_client = get_gemini_client()
+    except Exception as e:
+        logger.warning(f"Gemini client unavailable: {str(e)}")
+        return None
+    try:
+        result = gemini_client.models.generate_content(
+            model=model,
+            contents=prompt
+        )
+        return (result.text or "").strip()
+    except Exception as e:
+        logger.warning(f"Gemini text generation failed: {str(e)}")
+        return None
+
+
+def generate_video_prompt_from_image(
+    image_base64: str,
+    image_mime: str,
+    prompt_text: str
+) -> str:
+    """Generate a video prompt from an image using Gemini."""
+    gemini_client = get_gemini_client()
+    image_bytes = base64.b64decode(image_base64)
+    contents = [
+        types.Part.from_bytes(image_bytes, mime_type=image_mime),
+        prompt_text
+    ]
+    response = gemini_client.models.generate_content(
+        model="gemini-1.5-flash",
+        contents=contents
+    )
+    if hasattr(response, 'text'):
+        return response.text
+    if hasattr(response, 'candidates') and response.candidates:
+        candidate = response.candidates[0]
+        if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
+            text_parts = [part.text for part in candidate.content.parts if hasattr(part, 'text')]
+            return ' '.join(text_parts)
+    return str(response)
+
+
+def generate_imagen_content(
+    prompt: str,
+    temperature: float = 0.7,
+    top_p: float = 0.95,
+    top_k: int = 40
+):
+    """Generate image content using the imagen model via Gemini SDK."""
+    gemini_client = get_gemini_client()
+    return gemini_client.models.generate_content(
+        model="imagen-3.0-generate-001",
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            temperature=temperature,
+            top_p=top_p,
+            top_k=top_k,
+        ),
+    )
 
 async def enhance_prompt_with_multiple_images(
     prompt: str,
