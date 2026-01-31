@@ -2,7 +2,7 @@
 
 Aplikasi Premium AI Studio dengan Next.js (React) untuk frontend dan FastAPI untuk backend.
 
-## Struktur Project
+## Struktur Project 
 
 ```
 project-gemini-ai/
