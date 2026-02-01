@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
+import { ROUTES } from '../../../../lib/routes';
 
 export default function AutopostHelpPage() {
   const router = useRouter();
@@ -43,7 +44,7 @@ export default function AutopostHelpPage() {
 
         <div className="mt-10">
           <button
-            onClick={() => router.replace('/app?dashboard=1')}
+            onClick={() => router.replace(ROUTES.afterLogin)}
             className="px-6 py-3 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition"
           >
             Kembali ke Dashboard

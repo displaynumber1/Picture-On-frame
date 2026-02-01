@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ROUTES } from '../../lib/routes';
 import { supabaseService } from '../../services/supabaseService';
 import { midtransService } from '../../services/midtransService';
 
@@ -127,7 +128,7 @@ export default function BillingPage() {
             <p className="text-sm text-gray-500">Kelola status Pro dan langganan</p>
           </div>
           <button
-            onClick={() => router.push('/app')}
+            onClick={() => router.push(ROUTES.afterLogin)}
             className="border border-gray-200 hover:bg-gray-50 rounded-xl px-4 py-2 text-sm text-gray-700"
           >
             Kembali ke Dashboard

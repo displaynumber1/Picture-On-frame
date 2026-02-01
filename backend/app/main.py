@@ -74,6 +74,7 @@ from app.services.supabase_service import (
     list_auth_users,
     list_midtrans_transactions,
     list_midtrans_transactions_filtered,
+    get_midtrans_transaction_by_order_id,
     list_profiles_due_for_renewal,
     list_recent_reminders,
     insert_subscription_reminder,
@@ -3680,7 +3681,7 @@ async def generate_image_saas(
                 status_code=500,
                 detail=f"Database configuration error: {error_msg}. Please run setup.sql in Supabase SQL Editor."
             )
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         error_msg = str(e)
         logger.error(f"Error generating images: {str(error_msg)}", exc_info=True)
@@ -3730,6 +3731,7 @@ async def create_video(
         raise HTTPException(status_code=401, detail="User not authenticated")
     enforce_rate_limit(request, user_id, "create-video")
     request.state.rate_limit_checked = True
+    request.state.skip_coin_charge = True
     return await create_videos_batch(request, current_user)
 
 
@@ -3767,6 +3769,9 @@ async def create_videos_batch(
 
         if not getattr(request.state, "rate_limit_checked", False):
             enforce_rate_limit(request, user_id, "create-videos-batch")
+
+        # Free batch: no coin checks or deductions.
+        remaining_coins = None
         
         # Check FFmpeg availability
         if not check_ffmpeg_available():
@@ -3940,8 +3945,8 @@ async def create_videos_batch(
                                     pan_y=motion_config.get('pan_y', 0.0),
                                     pan_speed=motion_config.get('pan_speed', 0.0),
                                     rotate=rotate_override,
-                                focus_x=None,
-                                focus_y=None,
+                                    focus_x=None,
+                                    focus_y=None,
                                     zoom_expr_override=zoom_expr_override if is_variation_2 else None,
                                     x_expr_override=x_expr_override if is_variation_2 else None,
                                     y_expr_override=y_expr_override if is_variation_2 else None,
@@ -4091,8 +4096,8 @@ async def create_videos_batch(
                                     pan_y=motion_config.get('pan_y', 0.0),
                                     pan_speed=motion_config.get('pan_speed', 0.0),
                                     rotate=rotate_override,
-                                focus_x=None,
-                                focus_y=None,
+                                    focus_x=None,
+                                    focus_y=None,
                                     zoom_expr_override=zoom_expr_override if is_variation_2 else None,
                                     x_expr_override=x_expr_override if is_variation_2 else None,
                                     y_expr_override=y_expr_override if is_variation_2 else None,
@@ -4168,13 +4173,16 @@ async def create_videos_batch(
             for idx, video in enumerate(videos):
                 logger.info(f"  Video {idx + 1}: {video.get('preset_name', 'Unknown')} - {video.get('video_url', 'No URL')[:50]}...")
             
-            return JSONResponse(content={
+            response_payload = {
                 "videos": videos,
                 "category": category,
                 "total_videos": len(videos),
                 "has_human_face": has_face,
                 "video_type": "human_safe" if has_face else "standard"
-            })
+            }
+            if remaining_coins is not None:
+                response_payload["remaining_coins"] = remaining_coins
+            return JSONResponse(content=response_payload)
             
         except Exception as batch_error:
             # Clean up any remaining temp files
@@ -4483,6 +4491,9 @@ async def billing_webhook(request: Request):
         expected_signature = hashlib.sha512(signature_payload.encode()).hexdigest()
         if signature_key != expected_signature:
             raise HTTPException(status_code=403, detail="Invalid signature")
+        existing = get_midtrans_transaction_by_order_id(order_id)
+        if existing:
+            return {"status": "ignored", "message": "Duplicate webhook"}
 
         if transaction_status not in {"settlement", "capture"}:
             return {"status": "ignored", "message": "Transaction not settled"}
@@ -4701,6 +4712,9 @@ async def midtrans_webhook(request: Request):
         expected_signature = hashlib.sha512(signature_payload.encode()).hexdigest()
         if signature_key != expected_signature:
             raise HTTPException(status_code=403, detail="Invalid signature")
+        existing = get_midtrans_transaction_by_order_id(order_id)
+        if existing:
+            return {"status": "ignored", "message": "Duplicate webhook"}
 
         # Verify transaction status
         if transaction_status != "settlement" and transaction_status != "capture":

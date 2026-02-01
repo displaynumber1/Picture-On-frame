@@ -37,6 +37,7 @@ import { generateProductPhoto, generateProductVideo } from './services/geminiSer
 import { generateImagesWithFal, buildPromptFromOptions, createVideoFromImage, createVideoBatchFromImage, createKlingVideoFromImage } from './services/falService';
 import { supabaseService } from './services/supabaseService';
 import { midtransService } from './services/midtransService';
+import { ROUTES } from './lib/routes';
 import { 
   BACKGROUND_OPTIONS, 
   STYLE_OPTIONS, 
@@ -412,6 +413,7 @@ const DashboardView: React.FC<{
   adminAuditError,
   onAdminAuditRefresh
 }) => {
+  const router = useRouter();
   const [showMetricsInfo, setShowMetricsInfo] = useState(false);
   const [showUploadInfo, setShowUploadInfo] = useState(false);
   const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
@@ -420,7 +422,7 @@ const DashboardView: React.FC<{
   const [adminAuditAction, setAdminAuditAction] = useState('ALL');
   const isTrialExpired = !isSubscribed && typeof trialRemaining === 'number' && trialRemaining <= 0;
   const handleBillingNavigate = () => {
-    window.location.href = '/app/billing';
+    router.replace(ROUTES.afterLogin);
   };
 
   const formatCountdown = (nextCheckAt?: string | null) => {
@@ -623,7 +625,7 @@ const DashboardView: React.FC<{
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-slate-700">Panduan Fitur Auto-Posting</h3>
             <a
-              href="/app/help/autopost"
+              href={ROUTES.afterLogin}
               className="text-xs text-indigo-600 hover:text-indigo-700"
             >
               Lihat panduan lengkap disini →
@@ -1501,7 +1503,7 @@ const DashboardView: React.FC<{
           </div>
           <div className="mb-3">
             <a
-              href="/app/help"
+              href={ROUTES.afterLogin}
               className="text-xs text-indigo-600 hover:text-indigo-700"
             >
               Lihat panduan unduh data tiktok kamu disini →
@@ -1744,7 +1746,6 @@ type VariantPreset = {
 export default function App() {
   const router = useRouter();
   const IMAGE_BATCH_COINS = 75;
-  const VIDEO_BATCH_COINS = 5;
   const PRO_VIDEO_COINS = 185;
   const toSafeErrorMessage = (error: any, fallback: string) => {
     const message = typeof error?.message === 'string' ? error.message : '';
@@ -2300,6 +2301,7 @@ export default function App() {
 
   useEffect(() => {
     let subscription: { unsubscribe: () => void } | null = null;
+    let cancelled = false;
 
     try {
       if (supabaseService.supabase) {
@@ -2321,6 +2323,30 @@ export default function App() {
             }
           })
         };
+
+        // Ensure existing sessions hydrate immediately (onAuthStateChange can be delayed).
+        (async () => {
+          try {
+            const { data } = await supabaseService.getSession();
+            if (cancelled) return;
+            if (data?.session) {
+              setSession(data.session);
+              const isRegistered = await ensureRegisteredUser();
+              if (!isRegistered) return;
+              await refreshCoins();
+              await fetchVariants();
+            } else {
+              setSession(null);
+            }
+          } catch (error) {
+            console.error('Error getting initial session:', error);
+          } finally {
+            if (!authInitializedRef.current) {
+              authInitializedRef.current = true;
+              setAuthReady(true);
+            }
+          }
+        })();
       } else {
         setAuthReady(true);
       }
@@ -2330,6 +2356,7 @@ export default function App() {
     }
 
     return () => {
+      cancelled = true;
       if (subscription) {
         subscription.unsubscribe();
       }
@@ -2577,6 +2604,7 @@ export default function App() {
         isKlingVideoGenerating: {},
         isVideoBatchGenerating: {}
       }));
+      await refreshCoins();
       
       // Auto-generate 3 videos for each generated image based on category
       if (state.options.category) {
@@ -2660,14 +2688,6 @@ export default function App() {
 
   const generateVideoBatch = async (imageIndex: number, imageUrl: string, category: string) => {
     try {
-      if (coins < VIDEO_BATCH_COINS) {
-        setState(prev => ({
-          ...prev,
-          error: getMissingCoinsMessage(VIDEO_BATCH_COINS, coins)
-        }));
-        return;
-      }
-
       // Set loading state
       setState(prev => ({
         ...prev,
@@ -2686,6 +2706,9 @@ export default function App() {
         category,
         session.access_token
       );
+      if (typeof result.remaining_coins === 'number') {
+        setCoins(result.remaining_coins);
+      }
 
       // Extract video URLs - ensure we get all videos
       console.log('📹 Video batch response:', result);
@@ -2960,7 +2983,7 @@ export default function App() {
 
   const handleTopUp = () => {
     // Navigate to top-up page
-    router.replace('/app/topup');
+    router.replace(ROUTES.afterLogin);
   };
 
   const getMissingCoinsMessage = (requiredCoins: number, currentCoins: number) => {
@@ -4596,7 +4619,7 @@ export default function App() {
                   ) : (
                     <>
                       <Sparkles size={28} />
-                      Generate Batch (1)
+                      Generate Batch (FREE)
                     </>
                   )}
                 </span>
@@ -4735,7 +4758,10 @@ export default function App() {
                       {/* Free Video Pilihan Section - 3 videos below image */}
                       <div className="mt-6 bg-white rounded-[2rem] p-6 border border-gray-100 shadow-lg">
                         <div className="mb-4">
-                          <h3 className="text-[11px] font-black text-gray-700 uppercase tracking-[0.3em] mb-2">Free Video Pilihan</h3>
+                          <div className="flex items-center gap-2 mb-2">
+                            <h3 className="text-[11px] font-black text-gray-700 uppercase tracking-[0.3em]">Free Video Pilihan</h3>
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[9px] font-black uppercase tracking-[0.2em]">Free</span>
+                          </div>
                           {state.isVideoBatchGenerating[i] && (
                             <div className="flex items-center gap-2 text-purple-600">
                               <Loader2 className="animate-spin" size={16} />

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { COIN_PACKAGES, midtransService } from '../../../services/midtransService';
 import { supabaseService } from '../../../services/supabaseService';
+import { ROUTES } from '../../../lib/routes';
 
 declare global {
   interface Window {
@@ -54,10 +55,10 @@ export default function TopUpPage() {
 
       window.snap.pay(snapToken, {
         onSuccess: () => {
-          window.location.href = '/app';
+          router.replace(ROUTES.afterLogin);
         },
         onPending: () => {
-          window.location.href = '/app';
+          router.replace(ROUTES.afterLogin);
         },
         onError: () => {
           setError('Pembayaran gagal. Silakan coba lagi.');
@@ -76,7 +77,7 @@ export default function TopUpPage() {
     <div className="min-h-screen bg-gradient-to-b from-white via-white to-slate-50 px-6 py-16">
       <div className="max-w-5xl mx-auto relative">
         <button
-          onClick={() => router.replace('/app')}
+          onClick={() => router.replace(ROUTES.afterLogin)}
           className="absolute right-0 top-0 h-10 w-10 rounded-full border border-slate-200 bg-white text-slate-500 text-lg font-semibold hover:text-slate-800 hover:border-slate-300 transition"
           aria-label="Kembali ke Dashboard"
           title="Kembali"

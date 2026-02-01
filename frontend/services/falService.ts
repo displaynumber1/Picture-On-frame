@@ -620,7 +620,22 @@ export async function createVideoFromImage(
   }
 
   const result = await response.json();
-  return result;
+  if (result?.video_url) {
+    return result;
+  }
+  const firstVideo = Array.isArray(result?.videos)
+    ? result.videos.find((video: any) => video?.video_url)
+    : null;
+  if (firstVideo?.video_url) {
+    return {
+      video_url: firstVideo.video_url,
+      file_size_mb: typeof firstVideo.file_size_mb === 'number' ? firstVideo.file_size_mb : 0,
+      duration: typeof result?.duration === 'number' ? result.duration : 0,
+      resolution: typeof result?.resolution === 'string' ? result.resolution : '',
+      fps: typeof result?.fps === 'number' ? result.fps : 0
+    };
+  }
+  throw new Error('Tidak ada video yang dihasilkan. Silakan coba lagi.');
 }
 
 /**
@@ -636,7 +651,7 @@ export async function createVideoBatchFromImage(
   imageUrl: string,
   category: string,
   token: string
-): Promise<{ videos: Array<{ video_url: string; preset_name: string; file_size_mb: number; description: string }>; category: string; total_videos: number }> {
+): Promise<{ videos: Array<{ video_url: string; preset_name: string; file_size_mb: number; description: string }>; category: string; total_videos: number; remaining_coins?: number }> {
   const response = await fetch(`${API_URL}/api/create-videos-batch`, {
     method: 'POST',
     headers: {

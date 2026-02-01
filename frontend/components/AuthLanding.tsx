@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Session } from '@supabase/supabase-js';
 import { supabaseService } from '../services/supabaseService';
+import { ROUTES } from '../lib/routes';
 import LoginPage from './LoginPage';
 
 const AuthLanding: React.FC = () => {
@@ -11,6 +12,14 @@ const AuthLanding: React.FC = () => {
   const [authReady, setAuthReady] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const initializedRef = useRef(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      console.log('[AUTH DEBUG]');
+      console.log('origin:', window.location.origin);
+      console.log('path:', window.location.pathname);
+    }
+  }, []);
 
   useEffect(() => {
     let subscription: { unsubscribe: () => void } | null = null;
@@ -61,8 +70,10 @@ const AuthLanding: React.FC = () => {
 
   useEffect(() => {
     if (!authReady) return;
-    if (session) {
-      router.replace('/app');
+    if (session && typeof window !== 'undefined') {
+      if (window.location.pathname !== ROUTES.afterLogin) {
+        router.replace(ROUTES.afterLogin);
+      }
     }
   }, [authReady, session, router]);
 

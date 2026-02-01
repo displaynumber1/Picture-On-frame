@@ -2,12 +2,14 @@ import asyncio
 import io
 import os
 import tempfile
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 import main as app_module
+from autopost import scheduler as scheduler_module
 from autopost.service import AutopostDeps, AutopostService
 
 
@@ -172,6 +174,107 @@ def run_sanity_tests():
             files={"file": ("video.txt", io.BytesIO(b"text"), "text/plain")}
         )
         assert resp.status_code == 400
+
+        # generate-image validation: missing prompt + invalid base64
+        original_get_user_profile = app_module.get_user_profile
+        original_update_user_coins = app_module.update_user_coins
+        app_module.get_user_profile = lambda _user_id: {"coins_balance": 1000}
+        app_module.update_user_coins = _noop
+        try:
+            resp = client.post("/api/generate-image", json={})
+            assert resp.status_code == 422
+            resp = client.post("/api/generate-image", json={
+                "prompt": "test",
+                "product_images": ["not_base64"]
+            })
+            assert resp.status_code == 422
+            resp = client.post("/api/generate-image", json={
+                "prompt": "test"
+            })
+            assert resp.status_code == 422
+            resp = client.post(
+                "/api/generate-image",
+                files={"image": ("image.png", io.BytesIO(b"fake"), "image/png")}
+            )
+            assert resp.status_code == 422
+            resp = client.post(
+                "/api/generate-image",
+                files={"prompt": (None, "test")}
+            )
+            assert resp.status_code == 422
+            resp = client.post(
+                "/api/generate-image",
+                json={
+                    "prompt": "test",
+                    "product_images": ["data:image/;base64,AAAA"]
+                }
+            )
+            assert resp.status_code == 422
+            resp = client.post(
+                "/api/generate-image",
+                files={
+                    "prompt": (None, "test"),
+                    "image": ("empty.png", io.BytesIO(b""), "image/png")
+                }
+            )
+            assert resp.status_code == 422
+            resp = client.post(
+                "/api/generate-image",
+                files={
+                    "prompt": (None, "test"),
+                    "image": ("note.txt", io.BytesIO(b"hello"), "text/plain")
+                }
+            )
+            assert resp.status_code == 422
+        finally:
+            app_module.get_user_profile = original_get_user_profile
+            app_module.update_user_coins = original_update_user_coins
+
+        # scheduler: resolve_schedule_time
+        now_in_window = datetime(2024, 1, 1, 11, 30, 0)
+        assert scheduler_module.resolve_schedule_time(now_in_window) is None
+        now_before_window = datetime(2024, 1, 1, 10, 0, 0)
+        next_start = scheduler_module.resolve_schedule_time(now_before_window)
+        assert next_start is not None
+        assert next_start.hour == 11
+        assert next_start.date() == now_before_window.date()
+        now_after_window = datetime(2024, 1, 1, 23, 0, 0)
+        next_start = scheduler_module.resolve_schedule_time(now_after_window)
+        assert next_start is not None
+        assert next_start.hour == 11
+        assert next_start.date() == (now_after_window + timedelta(days=1)).date()
+
+        preferred = (8, 10)
+        assert scheduler_module.resolve_schedule_time(datetime(2024, 1, 1, 9, 0, 0), preferred) is None
+        preferred_start = scheduler_module.resolve_schedule_time(datetime(2024, 1, 1, 10, 0, 0), preferred)
+        assert preferred_start is not None
+        assert preferred_start.hour == 8
+
+        # scheduler: get_best_posting_window
+        conn = app_module.get_db_connection()
+        conn.execute("DELETE FROM autopost_metrics WHERE user_id = ?", ("test-user",))
+        samples = [
+            ("2024-01-01T09:00:00", 100, 5, 2, 1),   # 0.08
+            ("2024-01-02T09:30:00", 100, 6, 2, 1),   # 0.09
+            ("2024-01-03T09:45:00", 100, 5, 1, 1),   # 0.07
+            ("2024-01-04T15:00:00", 100, 30, 10, 10),  # 0.50
+            ("2024-01-05T15:15:00", 100, 25, 10, 5),   # 0.40
+        ]
+        for posted_at, views, likes, comments, shares in samples:
+            conn.execute(
+                """
+                INSERT INTO autopost_metrics
+                (user_id, video_id, views, likes, comments, shares, posted_at, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                ("test-user", 1, views, likes, comments, shares, posted_at, app_module._now_iso())
+            )
+        conn.commit()
+        window = scheduler_module.get_best_posting_window(conn, "test-user")
+        conn.close()
+        assert window is not None
+        assert window[0] == 15
+        assert window[1] == 17
 
         # upload size limit (streaming)
         oversized = _StreamingUpload(

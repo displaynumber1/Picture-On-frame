@@ -558,6 +558,26 @@ def list_midtrans_transactions(user_id: str, limit: int = 50) -> List[Dict[str, 
         return []
 
 
+def get_midtrans_transaction_by_order_id(order_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Get a Midtrans transaction by order_id.
+    """
+    if not supabase:
+        raise ValueError("Supabase client not initialized")
+    try:
+        response = supabase.table("midtrans_transactions") \
+            .select("*") \
+            .eq("order_id", order_id) \
+            .limit(1) \
+            .execute()
+        if response.data:
+            return response.data[0]
+        return None
+    except Exception as e:
+        logger.error(f"Error getting midtrans transaction by order_id: {str(e)}", exc_info=True)
+        return None
+
+
 def list_midtrans_transactions_filtered(user_id: str, limit: int = 50, item_type: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     List Midtrans transactions filtered by type.

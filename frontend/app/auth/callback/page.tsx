@@ -54,6 +54,7 @@ export default function AuthCallbackPage() {
         if (typeof window === 'undefined') {
           return;
         }
+        console.log('[AUTH] origin=', window.location.origin, 'path=', window.location.pathname);
         const params = new URLSearchParams(window.location.search);
         const hashParams = new URLSearchParams(window.location.hash.replace('#', ''));
         const code = params.get('code');

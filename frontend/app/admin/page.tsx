@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ROUTES } from '../../lib/routes';
 import { supabaseService } from '../../services/supabaseService';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -305,7 +306,7 @@ export default function AdminPanelPage() {
           <h1 className="text-xl font-semibold text-gray-900">Admin Panel</h1>
           <p className="text-sm text-gray-500">Akses ditolak. Akun kamu bukan admin.</p>
           <button
-            onClick={() => router.push('/app')}
+            onClick={() => router.push(ROUTES.afterLogin)}
             className="border border-gray-200 hover:bg-gray-50 rounded-xl px-4 py-2 text-sm text-gray-700"
           >
             Kembali ke Dashboard
