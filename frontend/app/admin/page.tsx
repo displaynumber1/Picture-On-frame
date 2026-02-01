@@ -176,6 +176,11 @@ export default function AdminPanelPage() {
     />
   ) : null;
 
+  const totalPages = useMemo(() => {
+    if (!total) return null;
+    return Math.max(1, Math.ceil(total / perPage));
+  }, [perPage, total]);
+
   if (!ready) {
     return (
       <div style={{ padding: 24 }}>
@@ -334,11 +339,6 @@ export default function AdminPanelPage() {
       setLoading(false);
     }
   };
-
-  const totalPages = useMemo(() => {
-    if (!total) return null;
-    return Math.max(1, Math.ceil(total / perPage));
-  }, [perPage, total]);
 
   if (!authChecked) {
     return (
