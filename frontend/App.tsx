@@ -625,7 +625,7 @@ const DashboardView: React.FC<{
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-slate-700">Panduan Fitur Auto-Posting</h3>
             <a
-              href={ROUTES.afterLogin}
+              href={ROUTES.helpAutopost}
               className="text-xs text-indigo-600 hover:text-indigo-700"
             >
               Lihat panduan lengkap disini →
@@ -1503,7 +1503,7 @@ const DashboardView: React.FC<{
           </div>
           <div className="mb-3">
             <a
-              href={ROUTES.afterLogin}
+              href={ROUTES.help}
               className="text-xs text-indigo-600 hover:text-indigo-700"
             >
               Lihat panduan unduh data tiktok kamu disini →

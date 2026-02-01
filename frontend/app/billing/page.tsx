@@ -3,8 +3,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ROUTES } from '../../lib/routes';
+import { DebugPanel, useDebugEnabled, useDebugTimestamp } from '../../lib/debugPanel';
 import { supabaseService } from '../../services/supabaseService';
 import { midtransService } from '../../services/midtransService';
+import { useAuthGate } from '../../lib/useAuthGate';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -28,6 +30,9 @@ type BillingHistoryItem = {
 
 export default function BillingPage() {
   const router = useRouter();
+  const { ready, session, user } = useAuthGate();
+  const debugEnabled = useDebugEnabled();
+  const timestamp = useDebugTimestamp();
   const [status, setStatus] = useState<BillingStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [paying, setPaying] = useState(false);
@@ -84,9 +89,10 @@ export default function BillingPage() {
   }, [historyFilter]);
 
   useEffect(() => {
+    if (!ready || !session) return;
     fetchStatus();
     fetchHistory();
-  }, [fetchStatus, fetchHistory]);
+  }, [ready, session, fetchStatus, fetchHistory]);
 
   const handlePay = async () => {
     try {
@@ -119,8 +125,48 @@ export default function BillingPage() {
     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${classes}`}>{label}</span>
   );
 
+  useEffect(() => {
+    if (ready && !session) {
+      router.replace(ROUTES.login);
+    }
+  }, [ready, session, router]);
+
+  const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const hasSession = Boolean(session);
+  const userEmail = user?.email || '';
+  const debugPanel = debugEnabled ? (
+    <DebugPanel
+      ready={ready}
+      hasSession={hasSession}
+      userEmail={userEmail}
+      pathname={currentPath}
+      origin={origin}
+      timestamp={timestamp}
+    />
+  ) : null;
+
+  if (!ready) {
+    return (
+      <div style={{ padding: 24 }}>
+        Loading session…
+        {debugPanel}
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <div style={{ padding: 24 }}>
+        Redirecting to login…
+        {debugPanel}
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-6">
+    <>
+      <div className="max-w-6xl mx-auto p-6 space-y-6">
       <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6">
         <div className="flex items-center justify-between">
           <div>
@@ -251,6 +297,8 @@ export default function BillingPage() {
           </div>
         )}
       </div>
-    </div>
+      </div>
+      {debugPanel}
+    </>
   );
 }

@@ -3,7 +3,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ROUTES } from '../../lib/routes';
+import { DebugPanel, useDebugEnabled, useDebugTimestamp } from '../../lib/debugPanel';
 import { supabaseService } from '../../services/supabaseService';
+import { useAuthGate } from '../../lib/useAuthGate';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -23,6 +25,9 @@ type ConfirmState = {
 
 export default function AdminPanelPage() {
   const router = useRouter();
+  const { ready, session, user } = useAuthGate();
+  const debugEnabled = useDebugEnabled();
+  const timestamp = useDebugTimestamp();
   const [isAdmin, setIsAdmin] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -41,13 +46,14 @@ export default function AdminPanelPage() {
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!ready || !session) return;
     const init = async () => {
       const profile = await supabaseService.getProfile();
       setIsAdmin(Boolean(profile?.is_admin));
       setAuthChecked(true);
     };
     init();
-  }, []);
+  }, [ready, session]);
 
   useEffect(() => {
     if (toast) {
@@ -148,6 +154,45 @@ export default function AdminPanelPage() {
     if (!authChecked || !isAdmin) return;
     fetchUsers(1);
   }, [authChecked, isAdmin, fetchUsers]);
+
+  useEffect(() => {
+    if (ready && !session) {
+      router.replace(ROUTES.login);
+    }
+  }, [ready, session, router]);
+
+  const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const hasSession = Boolean(session);
+  const userEmail = user?.email || '';
+  const debugPanel = debugEnabled ? (
+    <DebugPanel
+      ready={ready}
+      hasSession={hasSession}
+      userEmail={userEmail}
+      pathname={currentPath}
+      origin={origin}
+      timestamp={timestamp}
+    />
+  ) : null;
+
+  if (!ready) {
+    return (
+      <div style={{ padding: 24 }}>
+        Loading session…
+        {debugPanel}
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <div style={{ padding: 24 }}>
+        Redirecting to login…
+        {debugPanel}
+      </div>
+    );
+  }
 
   const confirm = (message: string, onConfirm: () => void) => {
     setConfirmState({ message, onConfirm });
@@ -296,7 +341,12 @@ export default function AdminPanelPage() {
   }, [perPage, total]);
 
   if (!authChecked) {
-    return <div className="p-6 text-sm text-gray-500">Memeriksa akses...</div>;
+    return (
+      <div className="p-6 text-sm text-gray-500">
+        Memeriksa akses...
+        {debugPanel}
+      </div>
+    );
   }
 
   if (!isAdmin) {
@@ -312,11 +362,13 @@ export default function AdminPanelPage() {
             Kembali ke Dashboard
           </button>
         </div>
+        {debugPanel}
       </div>
     );
   }
 
   return (
+    <>
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6">
         <div className="flex flex-col gap-1">
@@ -581,5 +633,7 @@ export default function AdminPanelPage() {
         </div>
       )}
     </div>
+    {debugPanel}
+    </>
   );
 }

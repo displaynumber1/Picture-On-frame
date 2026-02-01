@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import App from '../../App';
 import { ROUTES } from '../../lib/routes';
+import { DebugPanel, useDebugEnabled, useDebugTimestamp } from '../../lib/debugPanel';
 import { useAuthGate } from '../../lib/useAuthGate';
 
 class AppErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
@@ -37,7 +38,8 @@ export default function GeneratorPage() {
   const router = useRouter();
   const { ready, session, user } = useAuthGate();
   const [authStuck, setAuthStuck] = useState(false);
-  const timestamp = useMemo(() => new Date().toISOString(), []);
+  const debugEnabled = useDebugEnabled();
+  const timestamp = useDebugTimestamp();
 
   useEffect(() => {
     console.log('[GENERATOR] ready=', ready, 'session=', Boolean(session), 'user=', user?.email);
@@ -66,33 +68,17 @@ export default function GeneratorPage() {
   const hasSession = Boolean(session);
   const userEmail = user?.email || '';
 
-  const debugPanel = (
-    <div
-      style={{
-        position: 'fixed',
-        right: 12,
-        bottom: 12,
-        zIndex: 9999,
-        background: 'rgba(15, 23, 42, 0.9)',
-        color: '#e2e8f0',
-        padding: '10px 12px',
-        borderRadius: 8,
-        fontSize: 12,
-        lineHeight: 1.4,
-        maxWidth: 320,
-        boxShadow: '0 8px 20px rgba(0,0,0,0.25)'
-      }}
-    >
-      <div><strong>[GENERATOR]</strong></div>
-      <div>ready: {String(ready)}</div>
-      <div>hasSession: {String(hasSession)}</div>
-      <div>userEmail: {userEmail || '-'}</div>
-      <div>currentPath: {currentPath || '-'}</div>
-      <div>origin: {origin || '-'}</div>
-      <div>timestamp: {timestamp}</div>
-      {authStuck ? <div style={{ color: '#fca5a5' }}>Auth init stuck</div> : null}
-    </div>
-  );
+  const debugPanel = debugEnabled ? (
+    <DebugPanel
+      ready={ready}
+      hasSession={hasSession}
+      userEmail={userEmail}
+      pathname={currentPath}
+      origin={origin}
+      timestamp={timestamp}
+      authStuck={authStuck}
+    />
+  ) : null;
 
   const routeMarker = (
     <div style={{ padding: 12, background: '#f1f5f9', borderBottom: '1px solid #e2e8f0', fontSize: 12 }}>
