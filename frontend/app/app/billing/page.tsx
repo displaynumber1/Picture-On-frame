@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { Crown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ROUTES } from '../../../lib/routes';
 import { supabaseService } from '../../../services/supabaseService';
@@ -168,10 +169,11 @@ export default function BillingPage() {
         <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={handlePay}
-            className="bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl px-4 py-2 text-sm disabled:opacity-60"
+            className="bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl px-4 py-2 text-sm disabled:opacity-60 flex items-center gap-2"
             disabled={paying}
           >
-            {paying ? 'Memproses...' : 'Bayar via Midtrans'}
+            <Crown size={16} />
+            {paying ? 'Memproses...' : 'Dapatkan Fitur Pro'}
           </button>
           <button
             onClick={() => {
