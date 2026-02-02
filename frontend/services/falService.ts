@@ -2,6 +2,23 @@ import { GenerationOptions } from '../types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
+async function readErrorDetail(response: Response): Promise<string> {
+  try {
+    const raw = await response.text();
+    try {
+      const json = JSON.parse(raw);
+      if (json && typeof json === 'object') {
+        return json.detail || json.message || json.error || JSON.stringify(json);
+      }
+      return JSON.stringify(json);
+    } catch {
+      return raw || '';
+    }
+  } catch {
+    return '';
+  }
+}
+
 /**
  * Default negative prompt untuk menghindari hasil yang tidak diinginkan
  * Mencegah: plastic skin, artificial smoothness, CGI, 3D render, dll.
@@ -119,11 +136,12 @@ export async function generateImagesWithFal(
     
     for (let i = 0; i < batches; i++) {
       let response: Response;
+      let requestBody: FalGenerateRequest | null = null;
       
       try {
         // Build request body with all images in correct order: [Produk1, Produk2, Wajah, Background]
         // Order: Product images first, then face, then background
-        const requestBody: FalGenerateRequest = {
+        requestBody = {
           prompt: finalPrompt,
           model: 'fal-ai/flux-2/lora/edit',  // Use flux-2/lora/edit model
           image_strength: 0.67,  // Balanced image strength for reference adherence
@@ -197,7 +215,7 @@ export async function generateImagesWithFal(
       if (!response.ok) {
         let errorDetail = await readErrorDetail(response);
 
-        if (response.status === 422 && /identity_mode/i.test(errorDetail)) {
+        if (response.status === 422 && /identity_mode/i.test(errorDetail) && requestBody) {
           console.warn('Backend schema does not accept identity_mode, retrying without it.');
           const fallbackBody = { ...requestBody };
           delete fallbackBody.identity_mode;
