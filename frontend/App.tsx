@@ -422,7 +422,7 @@ const DashboardView: React.FC<{
   const [adminAuditAction, setAdminAuditAction] = useState('ALL');
   const isTrialExpired = !isSubscribed && typeof trialRemaining === 'number' && trialRemaining <= 0;
   const handleBillingNavigate = () => {
-    router.replace(ROUTES.afterLogin);
+    router.replace(ROUTES.billing);
   };
 
   const formatCountdown = (nextCheckAt?: string | null) => {
@@ -625,7 +625,7 @@ const DashboardView: React.FC<{
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-slate-700">Panduan Fitur Auto-Posting</h3>
             <a
-              href={ROUTES.helpAutopost}
+              href={ROUTES.afterLogin}
               className="text-xs text-indigo-600 hover:text-indigo-700"
             >
               Lihat panduan lengkap disini →
@@ -1503,7 +1503,7 @@ const DashboardView: React.FC<{
           </div>
           <div className="mb-3">
             <a
-              href={ROUTES.help}
+              href={ROUTES.afterLogin}
               className="text-xs text-indigo-600 hover:text-indigo-700"
             >
               Lihat panduan unduh data tiktok kamu disini →
@@ -2366,7 +2366,7 @@ export default function App() {
   useEffect(() => {
     if (!authReady) return;
     if (!session) {
-      router.replace('/login');
+      router.replace(ROUTES.login);
     }
   }, [authReady, session, router]);
 
@@ -2978,12 +2978,12 @@ export default function App() {
       // ignore
     }
     await supabaseService.signOut();
-    router.replace('/login');
+    router.replace(ROUTES.login);
   };
 
   const handleTopUp = () => {
     // Navigate to top-up page
-    router.replace(ROUTES.afterLogin);
+    router.replace(ROUTES.topup);
   };
 
   const getMissingCoinsMessage = (requiredCoins: number, currentCoins: number) => {

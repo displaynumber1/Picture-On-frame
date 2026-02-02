@@ -1,10 +1,8 @@
 export const ROUTES = {
-  afterLogin: '/generator',
-  generator: '/generator',
   login: '/login',
-  topup: '/topup',
-  billing: '/billing',
-  help: '/help',
-  helpAutopost: '/help/autopost',
-  admin: '/admin'
+  afterLogin: '/app',
+  app: '/app',
+  topup: '/app/topup',
+  billing: '/app/billing',
+  admin: '/app/admin'
 };

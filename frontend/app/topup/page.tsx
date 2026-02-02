@@ -1,7 +1,15 @@
 'use client';
 
-import TopUpPage from '../app/topup/page';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { ROUTES } from '../../lib/routes';
 
-export default function TopUpRoutePage() {
-  return <TopUpPage />;
+export default function TopupRedirectPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace(ROUTES.afterLogin);
+  }, [router]);
+
+  return <div style={{ padding: 24 }}>Redirecting…</div>;
 }

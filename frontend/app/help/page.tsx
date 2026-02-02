@@ -1,7 +1,15 @@
 'use client';
 
-import HelpPage from '../app/help/page';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { ROUTES } from '../../lib/routes';
 
-export default function HelpRoutePage() {
-  return <HelpPage />;
+export default function HelpRedirectPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace(ROUTES.afterLogin);
+  }, [router]);
+
+  return <div style={{ padding: 24 }}>Redirecting…</div>;
 }

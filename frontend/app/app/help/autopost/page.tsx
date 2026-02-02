@@ -1,64 +1,18 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useRouter } from 'next/navigation';
 import { ROUTES } from '../../../../lib/routes';
-import { DebugPanel, useDebugEnabled, useDebugTimestamp } from '../../../../lib/debugPanel';
-import { useAuthGate } from '../../../../lib/useAuthGate';
 
 export default function AutopostHelpPage() {
   const router = useRouter();
-  const { ready, session, user } = useAuthGate();
-  const debugEnabled = useDebugEnabled();
-  const timestamp = useDebugTimestamp();
-
-  useEffect(() => {
-    if (ready && !session) {
-      router.replace(ROUTES.login);
-    }
-  }, [ready, session, router]);
-
-  const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
-  const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const hasSession = Boolean(session);
-  const userEmail = user?.email || '';
-  const debugPanel = debugEnabled ? (
-    <DebugPanel
-      ready={ready}
-      hasSession={hasSession}
-      userEmail={userEmail}
-      pathname={currentPath}
-      origin={origin}
-      timestamp={timestamp}
-    />
-  ) : null;
-
-  if (!ready) {
-    return (
-      <div style={{ padding: 24 }}>
-        Loading session…
-        {debugPanel}
-      </div>
-    );
-  }
-
-  if (!session) {
-    return (
-      <div style={{ padding: 24 }}>
-        Redirecting to login…
-        {debugPanel}
-      </div>
-    );
-  }
-
   return (
-    <>
-      <div className="min-h-screen bg-white px-6 py-16">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-black text-gray-800 uppercase tracking-wide mb-4">Panduan AI Auto-Posting</h1>
-          <p className="text-sm text-gray-500 mb-10">
-            Panduan lengkap untuk menggunakan Fitur Auto-Posting dengan aman dan optimal.
-          </p>
+    <div className="min-h-screen bg-white px-6 py-16">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-3xl font-black text-gray-800 uppercase tracking-wide mb-4">Panduan AI Auto-Posting</h1>
+        <p className="text-sm text-gray-500 mb-10">
+          Panduan lengkap untuk menggunakan Fitur Auto-Posting dengan aman dan optimal.
+        </p>
 
           <div className="space-y-8 text-sm text-gray-700">
             <section>
@@ -88,17 +42,15 @@ export default function AutopostHelpPage() {
             </section>
           </div>
 
-          <div className="mt-10">
-            <button
-              onClick={() => router.replace(ROUTES.afterLogin)}
-              className="px-6 py-3 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition"
-            >
-              Kembali ke Dashboard
-            </button>
-          </div>
+        <div className="mt-10">
+          <button
+            onClick={() => router.replace(ROUTES.afterLogin)}
+            className="px-6 py-3 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition"
+          >
+            Kembali ke Dashboard
+          </button>
         </div>
       </div>
-      {debugPanel}
-    </>
+    </div>
   );
 }

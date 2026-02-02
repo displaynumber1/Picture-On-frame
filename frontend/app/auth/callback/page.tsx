@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabaseService } from '../../../services/supabaseService';
+import { ROUTES } from '../../../lib/routes';
 
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -19,19 +20,19 @@ export default function AuthCallbackPage() {
     const redirectToGenerator = () => {
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('auth_redirected', Date.now().toString());
-        window.location.href = '/generator';
+        window.location.href = ROUTES.afterLogin;
         // Fallbacks in case navigation is blocked or interrupted.
         setTimeout(() => {
-          window.location.assign('/generator');
+          window.location.assign(ROUTES.afterLogin);
         }, 100);
         setTimeout(() => {
           if (window.location.pathname === '/auth/callback') {
-            window.location.assign('/generator');
+            window.location.assign(ROUTES.afterLogin);
           }
         }, 600);
         return;
       }
-      router.replace('/generator');
+      router.replace(ROUTES.afterLogin);
     };
     const timeoutId = setTimeout(() => {
       if (mounted) {
@@ -71,7 +72,7 @@ export default function AuthCallbackPage() {
               setMessage('Login state hilang. Silakan login ulang.');
               setShowRetry(true);
               setTimeout(() => {
-                router.replace('/login');
+                router.replace(ROUTES.login);
               }, 800);
             }
             return;
@@ -151,7 +152,7 @@ export default function AuthCallbackPage() {
           setShowRetry(true);
           console.error('OAuth callback error:', error);
           setTimeout(() => {
-            router.replace('/login');
+            router.replace(ROUTES.login);
           }, 1200);
         }
       }
@@ -169,7 +170,7 @@ export default function AuthCallbackPage() {
       {showRetry ? (
         <button
           type="button"
-          onClick={() => router.replace('/login')}
+          onClick={() => router.replace(ROUTES.login)}
           className="px-4 py-2 rounded-md bg-purple-600 text-white hover:bg-purple-700"
         >
           Retry
@@ -180,9 +181,9 @@ export default function AuthCallbackPage() {
           type="button"
           onClick={() => {
             if (typeof window !== 'undefined') {
-              window.location.href = '/generator';
+              window.location.href = ROUTES.afterLogin;
             } else {
-              router.replace('/generator');
+              router.replace(ROUTES.afterLogin);
             }
           }}
           className="px-4 py-2 rounded-md border border-purple-600 text-purple-700 hover:bg-purple-50"
