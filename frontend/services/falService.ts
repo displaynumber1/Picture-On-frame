@@ -13,6 +13,7 @@ export interface FalGenerateRequest {
   product_images?: string[];  // Multiple product images (base64 atau data URL)
   face_image?: string;  // Face image (base64 atau data URL)
   background_image?: string;  // Background image (base64 atau data URL)
+  identity_mode?: 'none' | 'avatar';
   // Fal.ai flux-2/lora/edit specific parameters
   image_strength?: number;  // Image strength for image-to-image generation (default: 0.67 - balanced for reference adherence)
   num_inference_steps?: number;  // Number of inference steps (default: 24)
@@ -48,7 +49,8 @@ export async function generateImagesWithFal(
   faceImage?: string,
   backgroundImage?: string,
   options?: GenerationOptions,
-  referenceImage?: string  // Legacy parameter untuk backward compatibility
+  referenceImage?: string,  // Legacy parameter untuk backward compatibility
+  identityMode?: 'none' | 'avatar'
 ): Promise<string[]> {
   try {
     // Get access token from Supabase
@@ -151,6 +153,25 @@ export async function generateImagesWithFal(
           requestBody.reference_image = referenceImage;
         }
         
+        const resolvedIdentityMode = identityMode === 'avatar' ? 'avatar' : 'none';
+        requestBody.identity_mode = resolvedIdentityMode;
+
+        const readErrorDetail = async (res: Response) => {
+          let detail = 'Failed to generate images';
+          try {
+            const errorData = await res.json();
+            detail = errorData.detail || errorData.message || detail;
+          } catch (e) {
+            try {
+              const errorText = await res.text();
+              detail = errorText || `HTTP ${res.status}: ${res.statusText}`;
+            } catch (e2) {
+              detail = `HTTP ${res.status}: ${res.statusText}`;
+            }
+          }
+          return detail;
+        };
+
         response = await fetch(`${API_URL}/api/generate-image`, {
           method: 'POST',
           headers: {
@@ -174,18 +195,34 @@ export async function generateImagesWithFal(
       }
 
       if (!response.ok) {
-        let errorDetail = 'Failed to generate images';
-        try {
-          const errorData = await response.json();
-          errorDetail = errorData.detail || errorData.message || errorDetail;
-        } catch (e) {
-          // If response is not JSON, try to get text
-          try {
-            const errorText = await response.text();
-            errorDetail = errorText || `HTTP ${response.status}: ${response.statusText}`;
-          } catch (e2) {
-            errorDetail = `HTTP ${response.status}: ${response.statusText}`;
+        let errorDetail = await readErrorDetail(response);
+
+        if (response.status === 422 && /identity_mode/i.test(errorDetail)) {
+          console.warn('Backend schema does not accept identity_mode, retrying without it.');
+          const fallbackBody = { ...requestBody };
+          delete fallbackBody.identity_mode;
+          response = await fetch(`${API_URL}/api/generate-image`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(fallbackBody)
+          });
+
+          if (response.ok) {
+            const result: FalGenerateResponse = await response.json();
+            if (!result.images || result.images.length === 0) {
+              throw new Error('Server mengembalikan response kosong. Silakan coba lagi.');
+            }
+            imageUrls.push(...result.images);
+            if (imageUrls.length >= numImages) {
+              break;
+            }
+            continue;
           }
+
+          errorDetail = await readErrorDetail(response);
         }
         
         // Provide more specific error messages based on status code

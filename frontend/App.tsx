@@ -38,6 +38,8 @@ import { generateImagesWithFal, buildPromptFromOptions, createVideoFromImage, cr
 import { supabaseService } from './services/supabaseService';
 import { midtransService } from './services/midtransService';
 import { ROUTES } from './lib/routes';
+// IdentitySelector: import and render in generate form area when needed.
+import IdentitySelector, { type IdentityMode } from './components/IdentitySelector';
 import { 
   BACKGROUND_OPTIONS, 
   STYLE_OPTIONS, 
@@ -1845,6 +1847,7 @@ export default function App() {
     results: [],
     error: null
   });
+  const [identityMode, setIdentityMode] = useState<IdentityMode>('none');
 
   const [coins, setCoins] = useState<number>(0);
   const [showCoinModal, setShowCoinModal] = useState(false);
@@ -2582,7 +2585,9 @@ export default function App() {
         productImages.length > 0 ? productImages : undefined,
         faceImage,
         backgroundImage,
-        state.options // Pass options untuk prompt generation
+        state.options, // Pass options untuk prompt generation
+        undefined,
+        identityMode
       );
       
       // Convert image URLs to GenerationResult format
@@ -4593,10 +4598,16 @@ export default function App() {
             </div>
 
 
+            <div className="mb-8">
+              <SectionHeader step="12" title="Identitas" icon={User} />
+              <IdentitySelector onChange={setIdentityMode} />
+            </div>
+
             <div className="pt-6">
               <button
                 onClick={handleGenerate}
                 disabled={state.isGenerating || (!state.productImage && !state.productImage2 && !state.productImage3 && !state.productImage4)}
+                data-identity-mode={identityMode}
                 className={`w-full py-16 rounded-[3rem] font-black text-lg tracking-[0.5em] uppercase relative overflow-hidden group shadow-lg transition-all duration-300 ${
                   state.isGenerating 
                     ? 'text-white generating-button' 
