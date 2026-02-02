@@ -4619,7 +4619,7 @@ export default function App() {
                   ) : (
                     <>
                       <Sparkles size={28} />
-                      Generate Batch (FREE)
+                      Generate Batch
                     </>
                   )}
                 </span>
