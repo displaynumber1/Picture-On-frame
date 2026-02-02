@@ -4122,11 +4122,11 @@ export default function App() {
             <Sparkles size={12} className="text-pink-300 animate-blink" />
           </div>
           
-          <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-[9rem] font-orbitron font-semibold tracking-[0.08em] mb-4 uppercase text-white leading-[1.1]">
+          <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-[9rem] font-sans font-semibold tracking-[0.02em] mb-4 uppercase text-white leading-[1.08]">
             PICTURE ON<br />FRAME
           </h1>
           
-          <span className="scanline uppercase tracking-[0.35em] text-sm md:text-base font-medium text-white/70 mt-4">
+          <span className="scanline uppercase tracking-[0.28em] text-[11px] md:text-sm font-medium text-white/70 mt-4">
             STUDIO EXCLUSIVE AI RENDERING
           </span>
         </div>
