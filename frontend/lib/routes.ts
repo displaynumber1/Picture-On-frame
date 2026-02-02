@@ -4,5 +4,7 @@ export const ROUTES = {
   app: '/app',
   topup: '/app/topup',
   billing: '/app/billing',
-  admin: '/app/admin'
+  admin: '/app/admin',
+  help: '/app/help',
+  helpAutopost: '/app/help/autopost'
 };
