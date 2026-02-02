@@ -4116,19 +4116,19 @@ export default function App() {
         </div>
 
         <div className="relative z-10 flex flex-col items-center justify-center min-h-[45vh] sm:min-h-[55vh]">
-          <div className="flex items-center gap-2 mb-6 bg-white/10 px-4 py-2 rounded-full backdrop-blur-md border border-white/20 shadow-xl">
+          <div className="flex items-center gap-2 mb-6 bg-white/10 px-4 py-2 rounded-full backdrop-blur-md border border-white/20 shadow-xl badge-scan">
             <Sparkles size={12} className="text-purple-300 animate-blink" />
             <span className="text-[10px] sm:text-xs font-bold tracking-[0.35em] sm:tracking-[0.5em] uppercase text-white">PREMIUM AI STUDIO</span>
             <Sparkles size={12} className="text-pink-300 animate-blink" />
           </div>
           
-          <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-[9rem] font-extrabold tracking-tight mb-4 uppercase drop-shadow-2xl text-white leading-[1.1]">
+          <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-[9rem] font-orbitron font-semibold tracking-[0.08em] mb-4 uppercase bg-gradient-to-r from-[#C084FC] via-[#A855F7] to-[#6366F1] bg-clip-text text-transparent drop-shadow-[0_0_35px_rgba(168,85,247,0.25)] leading-[1.1]">
             PICTURE ON<br />FRAME
           </h1>
           
-          <div className="text-[10px] sm:text-sm md:text-base uppercase tracking-[0.6em] sm:tracking-[1.2em] font-medium text-white/80 mt-4">
-            Exclusive AI Renderings
-          </div>
+          <span className="scanline uppercase tracking-[0.35em] text-sm md:text-base font-medium text-white/70 mt-4">
+            STUDIO EXCLUSIVE AI RENDERING
+          </span>
         </div>
       </div>
 

@@ -64,6 +64,73 @@ h1, h2, h3, .brand-font {
   background-clip: text;
 }
 
+/* ===== Scanline Premium (white + soft purple) ===== */
+.scanline {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.75);
+  text-shadow: 0 0 8px rgba(168, 85, 247, 0.15);
+}
+
+.scanline::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.85) 45%,
+    rgba(192, 132, 252, 0.75) 50%,
+    rgba(168, 85, 247, 0.65) 55%,
+    transparent 70%
+  );
+  transform: translateX(-120%);
+  animation: scan-move 3.8s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+
+@keyframes scan-move {
+  0% { transform: translateX(-120%); }
+  50% { transform: translateX(120%); }
+  100% { transform: translateX(120%); }
+}
+
+/* Badge version: lebih lembut + lebih lambat */
+.badge-scan {
+  position: relative;
+  overflow: hidden;
+}
+
+.badge-scan::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.5) 48%,
+    rgba(192, 132, 252, 0.45) 52%,
+    transparent 60%
+  );
+  transform: translateX(-120%);
+  animation: badge-scan-move 7s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+
+@keyframes badge-scan-move {
+  0% { transform: translateX(-120%); }
+  50% { transform: translateX(120%); }
+  100% { transform: translateX(120%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scanline::after,
+  .badge-scan::after {
+    animation: none;
+  }
+}
+
 .premium-button {
   background: linear-gradient(135deg, #7c3aed 0%, #db2777 100%);
   color: white;

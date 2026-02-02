@@ -39,6 +39,7 @@ module.exports = {
       fontFamily: {
         serif: ['Playfair Display', 'serif'],
         sans: ['Inter', 'sans-serif'],
+        orbitron: ['Orbitron', 'sans-serif'],
       },
     },
   },
