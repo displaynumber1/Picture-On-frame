@@ -114,7 +114,7 @@ h1, h2, h3, .brand-font {
     transparent 60%
   );
   transform: translateX(-120%);
-  animation: badge-scan-move 5s ease-in-out infinite;
+  animation: badge-scan-move 18s linear infinite;
   mix-blend-mode: screen;
 }
 
