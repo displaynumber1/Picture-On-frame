@@ -4122,7 +4122,7 @@ export default function App() {
             <Sparkles size={12} className="text-pink-300 animate-blink" />
           </div>
           
-          <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-[9rem] font-orbitron font-semibold tracking-[0.08em] mb-4 uppercase bg-gradient-to-r from-[#C084FC] via-[#A855F7] to-[#6366F1] bg-clip-text text-transparent drop-shadow-[0_0_35px_rgba(168,85,247,0.25)] leading-[1.1]">
+          <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-[9rem] font-orbitron font-semibold tracking-[0.08em] mb-4 uppercase bg-gradient-to-r from-[#D8B4FE] via-[#A855F7] to-[#6366F1] bg-clip-text text-transparent drop-shadow-[0_0_45px_rgba(168,85,247,0.35)] hero-emboss leading-[1.1]">
             PICTURE ON<br />FRAME
           </h1>
           

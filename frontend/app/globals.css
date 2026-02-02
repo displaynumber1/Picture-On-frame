@@ -86,7 +86,7 @@ h1, h2, h3, .brand-font {
     transparent 70%
   );
   transform: translateX(-120%);
-  animation: scan-move 3.8s ease-in-out infinite;
+  animation: scan-move 6.5s ease-in-out infinite;
   mix-blend-mode: screen;
 }
 
@@ -114,8 +114,15 @@ h1, h2, h3, .brand-font {
     transparent 60%
   );
   transform: translateX(-120%);
-  animation: badge-scan-move 7s ease-in-out infinite;
+  animation: badge-scan-move 12s ease-in-out infinite;
   mix-blend-mode: screen;
+}
+
+.hero-emboss {
+  text-shadow:
+    0 2px 0 rgba(15, 23, 42, 0.2),
+    0 6px 16px rgba(17, 24, 39, 0.35),
+    0 18px 45px rgba(168, 85, 247, 0.25);
 }
 
 @keyframes badge-scan-move {
