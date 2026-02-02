@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_KEY')  # Service role key for backend
+SUPABASE_SERVICE_ROLE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY')  # Preferred service role key for storage
 SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY')  # Public anon key for auth verification
 
 if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
@@ -23,6 +24,18 @@ if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
     supabase: Optional[Client] = None
 else:
     supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
+_storage_client: Optional[Client] = None
+
+
+def _get_storage_client() -> Client:
+    key = SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SERVICE_KEY
+    if not SUPABASE_URL or not key:
+        raise ValueError("Supabase storage client not initialized")
+    global _storage_client
+    if _storage_client is None:
+        _storage_client = create_client(SUPABASE_URL, key)
+    return _storage_client
 
 
 def _safe_decode_jwt_claims(token: str) -> Optional[Dict[str, Any]]:
@@ -972,6 +985,91 @@ def compress_image_if_needed(image_bytes: bytes, max_size_mb: float = 1.0, quali
         logger.error(f"Error compressing image: {str(e)}", exc_info=True)
         # Return original on error
         return image_bytes, '.jpg'
+
+
+def get_user_identity_record(user_id: str) -> Optional[Dict[str, Any]]:
+    if not supabase:
+        raise ValueError("Supabase client not initialized")
+    if not user_id:
+        return None
+    try:
+        response = supabase.table("user_identity").select(
+            "user_id, avatar_state, avatar_version, avatar_ref_path"
+        ).eq("user_id", user_id).execute()
+        if response.data and len(response.data) > 0:
+            return response.data[0]
+        return None
+    except Exception as e:
+        logger.error(f"Error getting user identity: {str(e)}", exc_info=True)
+        return None
+
+
+def upsert_user_identity_avatar_ref(user_id: str, avatar_ref_path: str, avatar_state: str = "ACTIVE") -> None:
+    if not supabase:
+        raise ValueError("Supabase client not initialized")
+    if not user_id or not avatar_ref_path:
+        return
+    try:
+        existing = supabase.table("user_identity").select("user_id").eq("user_id", user_id).execute()
+        if existing.data:
+            supabase.table("user_identity").update(
+                {"avatar_ref_path": avatar_ref_path}
+            ).eq("user_id", user_id).execute()
+            return
+        payload = {
+            "user_id": user_id,
+            "avatar_state": avatar_state,
+            "avatar_ref_path": avatar_ref_path
+        }
+        supabase.table("user_identity").insert(payload).execute()
+    except Exception as e:
+        logger.error(f"Error upserting avatar_ref_path: {str(e)}", exc_info=True)
+        raise
+
+
+def upload_avatar_ref_image(
+    user_id: str,
+    image_bytes: bytes,
+    content_type: Optional[str] = None,
+    bucket_name: str = "avatars",
+) -> Optional[str]:
+    if not user_id or not image_bytes:
+        return None
+    try:
+        storage = _get_storage_client().storage.from_(bucket_name)
+        file_path = f"{user_id}/ref.jpg"
+        storage.upload(
+            path=file_path,
+            file=image_bytes,
+            file_options={
+                "content-type": content_type or "image/jpeg",
+                "upsert": True
+            }
+        )
+        return file_path
+    except Exception as e:
+        logger.error(f"Failed to upload avatar ref: {str(e)}", exc_info=True)
+        return None
+
+
+def create_avatar_ref_signed_url(
+    avatar_ref_path: str,
+    expires_in: int = 1800,
+    bucket_name: str = "avatars"
+) -> Optional[str]:
+    if not avatar_ref_path:
+        return None
+    try:
+        storage = _get_storage_client().storage.from_(bucket_name)
+        result = storage.create_signed_url(avatar_ref_path, expires_in)
+        if isinstance(result, dict):
+            return result.get("signedURL") or result.get("signedUrl")
+        if isinstance(result, str):
+            return result
+        return None
+    except Exception as e:
+        logger.error(f"Failed to create signed URL: {str(e)}", exc_info=True)
+        return None
 
 
 def convert_base64_to_image_bytes(base64_str: str, compress_if_over_1mb: bool = True):

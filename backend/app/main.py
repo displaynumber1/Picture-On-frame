@@ -83,6 +83,10 @@ from app.services.supabase_service import (
     verify_user_token,
     upload_image_to_supabase_storage,
     convert_base64_to_image_bytes,
+    get_user_identity_record,
+    upsert_user_identity_avatar_ref,
+    upload_avatar_ref_image,
+    create_avatar_ref_signed_url,
     insert_midtrans_transaction_log,
     insert_admin_adjustment,
     list_admin_adjustments
@@ -2169,6 +2173,11 @@ class GenerationOptionsModel(BaseModel):
     interactionType: str
     backgroundColor: str = "#ffffff"
 
+class IdentityStatusResponse(BaseModel):
+    state: str
+    avatar_version: int = 0
+    avatar_ref_url: Optional[str] = None
+
 # Helper functions for GenerationOptionsModel
 def get_current_pose_options_for_generation(options: GenerationOptionsModel) -> List[str]:
     """Get dynamic pose options based on GenerationOptionsModel"""
@@ -3056,6 +3065,63 @@ class MidtransWebhookRequest(BaseModel):
     payment_type: str
     fraud_status: Optional[str] = None
     user_id: Optional[str] = None  # Custom field from frontend
+
+@app.get("/identity/status", response_model=IdentityStatusResponse)
+async def get_identity_status(current_user: Dict[str, Any] = Depends(get_current_user)):
+    user_id = current_user.get("id")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="User ID not found in token")
+    record = get_user_identity_record(user_id) or {}
+    avatar_ref_url = None
+    avatar_ref_path = record.get("avatar_ref_path")
+    if avatar_ref_path:
+        avatar_ref_url = create_avatar_ref_signed_url(avatar_ref_path, expires_in=1800)
+    return IdentityStatusResponse(
+        state=record.get("avatar_state") or "NO_AVATAR",
+        avatar_version=record.get("avatar_version") or 0,
+        avatar_ref_url=avatar_ref_url
+    )
+
+
+@app.post("/identity/enroll", response_model=IdentityStatusResponse)
+async def enroll_identity(
+    images: List[UploadFile] = File(...),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    user_id = current_user.get("id")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="User ID not found in token")
+    if not images:
+        raise HTTPException(status_code=400, detail="Images are required")
+
+    avatar_ref_path = None
+    try:
+        preview = images[0]
+        preview_bytes = await preview.read()
+        avatar_ref_path = upload_avatar_ref_image(
+            user_id=user_id,
+            image_bytes=preview_bytes,
+            content_type=preview.content_type
+        )
+        if avatar_ref_path:
+            try:
+                upsert_user_identity_avatar_ref(user_id, avatar_ref_path, avatar_state="ACTIVE")
+            except Exception as db_error:
+                logger.warning(f"Failed to store avatar_ref_path: {str(db_error)}")
+    except Exception as upload_error:
+        logger.warning(f"Failed to upload avatar preview: {str(upload_error)}")
+
+    record = get_user_identity_record(user_id) or {}
+    avatar_ref_url = None
+    avatar_ref_path = record.get("avatar_ref_path") or avatar_ref_path
+    if avatar_ref_path:
+        avatar_ref_url = create_avatar_ref_signed_url(avatar_ref_path, expires_in=1800)
+
+    return IdentityStatusResponse(
+        state=record.get("avatar_state") or "ACTIVE",
+        avatar_version=record.get("avatar_version") or 1,
+        avatar_ref_url=avatar_ref_url
+    )
 
 @app.get("/api/user/profile")
 async def get_profile(current_user: Dict[str, Any] = Depends(get_current_user)):
