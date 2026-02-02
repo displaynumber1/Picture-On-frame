@@ -127,7 +127,7 @@ h1, h2, h3, .brand-font {
 
 @keyframes badge-scan-move {
   0% { transform: translateX(-120%); }
-  50% { transform: translateX(120%); }
+  30% { transform: translateX(120%); }
   100% { transform: translateX(120%); }
 }
 
