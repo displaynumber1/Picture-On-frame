@@ -123,6 +123,7 @@ Frontend akan berjalan di `http://localhost:3000`
 - Video generation endpoint (`/api/generate-video`) saat ini masih placeholder. Untuk production, perlu integrasi dengan video generation API (seperti Grok, Runway, dll).
 - Window.aistudio interface adalah optional untuk integrasi dengan extension/plugin tertentu.
 - Pastikan `SUPABASE_URL` dan `SUPABASE_SERVICE_KEY` sudah di-set sebelum menjalankan backend.
+- Frontend `middleware.ts` hanya UX-only (marker cookie) untuk redirect awal; ini bukan security boundary. AuthGate di client yang menahan render konten private sampai session terkonfirmasi.
 
 ## Deploy (Vercel + Railway)
 

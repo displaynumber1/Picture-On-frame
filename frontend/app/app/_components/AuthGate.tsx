@@ -12,11 +12,13 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const setSessionCookie = () => {
     if (typeof document === 'undefined') return;
-    document.cookie = 'aistudio_session=1; path=/; SameSite=Lax';
+    const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `aistudio_session=1; path=/; SameSite=Lax${secure}`;
   };
   const clearSessionCookie = () => {
     if (typeof document === 'undefined') return;
-    document.cookie = 'aistudio_session=; Max-Age=0; path=/; SameSite=Lax';
+    const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `aistudio_session=; Max-Age=0; path=/; SameSite=Lax${secure}`;
   };
 
   useEffect(() => {

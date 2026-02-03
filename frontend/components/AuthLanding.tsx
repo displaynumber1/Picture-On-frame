@@ -14,7 +14,8 @@ const AuthLanding: React.FC = () => {
   const initializedRef = useRef(false);
   const setSessionCookie = () => {
     if (typeof document === 'undefined') return;
-    document.cookie = 'aistudio_session=1; path=/; SameSite=Lax';
+    const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `aistudio_session=1; path=/; SameSite=Lax${secure}`;
   };
 
   useEffect(() => {
