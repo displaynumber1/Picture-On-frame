@@ -1,7 +1,5 @@
-'use client';
-
-import App from '../../../App';
+import { redirect } from 'next/navigation';
 
 export default function DashboardPage() {
-  return <App />;
+  redirect('/app');
 }

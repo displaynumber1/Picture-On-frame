@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Lightbulb, Upload } from 'lucide-react';
-import { ROUTES } from '../../lib/routes';
+import { ROUTES } from '../../../lib/routes';
 import type {
   AdminAuditLog,
   AdminAutopostLog,
@@ -14,7 +14,7 @@ import type {
   EngagementTemplates,
   MetricsUploadResult,
   TrendsPreview
-} from '../../App';
+} from './dashboardTypes';
 const DashboardView: React.FC<{
   items: AutopostDashboardItem[];
   loading: boolean;

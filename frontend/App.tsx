@@ -39,9 +39,21 @@ import { generateImagesWithFal, buildPromptFromOptions, createVideoFromImage, cr
 import { supabaseService } from './services/supabaseService';
 import { midtransService } from './services/midtransService';
 import { ROUTES } from './lib/routes';
-import DashboardView from './app/components/DashboardView';
+import DashboardView from './app/app/components/DashboardView';
 // IdentitySelector: import and render in generate form area when needed.
 import IdentitySelector, { type IdentityMode } from './components/IdentitySelector';
+import type {
+  AdminAuditLog,
+  AdminAutopostLog,
+  AdminMidtransStatus,
+  AdminSubscriptionInfo,
+  AutopostDashboardItem,
+  AutopostFeedbackWeights,
+  AutopostInsights,
+  EngagementTemplates,
+  MetricsUploadResult,
+  TrendsPreview
+} from './app/app/components/dashboardTypes';
 import { 
   BACKGROUND_OPTIONS, 
   STYLE_OPTIONS, 
@@ -57,107 +69,6 @@ import {
 import { AppState, GenerationOptions, ImageData, GenerationResult } from './types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-
-export type AutopostDashboardItem = {
-  id: number;
-  video_name: string;
-  status: string;
-  title?: string | null;
-  hook_text?: string | null;
-  cta_text?: string | null;
-  hashtags?: string | null;
-  score?: number | null;
-  score_reasons?: string[] | null;
-  next_check_at?: string | null;
-  scheduled_at?: string | null;
-  status_note?: string | null;
-  title_source?: string | null;
-  hook_source?: string | null;
-  cta_source?: string | null;
-  hashtags_source?: string | null;
-  credit_used?: number | null;
-  score_details?: {
-    feedback_delta?: number;
-    feedback_summary?: string;
-    feedback_reasons?: string[];
-  } | null;
-};
-
-export type AdminAutopostLog = {
-  id: number;
-  user_id: string;
-  video_name?: string;
-  status: string;
-  score?: number | null;
-  created_at?: string;
-  views?: number | null;
-  likes?: number | null;
-  comments?: number | null;
-  shares?: number | null;
-};
-
-export type AutopostFeedbackWeights = {
-  user_id: string;
-  learning_strength: number;
-  weights: {
-    hook?: Record<string, number>;
-    cta?: Record<string, number>;
-    hashtag?: Record<string, number>;
-  };
-  global_weights?: {
-    hook?: Record<string, number>;
-    cta?: Record<string, number>;
-    hashtag?: Record<string, number>;
-  };
-};
-
-export type AdminSubscriptionInfo = {
-  user_id: string;
-  subscribed: boolean;
-  trial_upload_remaining: number;
-};
-
-export type AdminAuditLog = {
-  id: number;
-  actor_user_id: string;
-  actor_email?: string | null;
-  action: string;
-  target_user_id?: string | null;
-  details?: Record<string, any> | null;
-  created_at?: string | null;
-};
-
-export type AdminMidtransStatus = {
-  midtrans_is_production: boolean;
-  server_key_configured: boolean;
-  client_key_configured: boolean;
-  packages: Record<string, { price: number; coins: number }>;
-};
-
-export type MetricsUploadResult = {
-  status: 'idle' | 'success' | 'error';
-  message: string | null;
-};
-
-export type TrendsPreview = {
-  total: number;
-  rows: Array<{ category?: string; hashtag?: string; weight?: number }>;
-};
-
-export type EngagementTemplates = {
-  hooks: string[];
-  ctas: string[];
-  captions: string[];
-  hashtags: string[];
-};
-
-export type AutopostInsights = {
-  fatigue_alerts: Array<{ type: string; text: string }>;
-  trend_decay: { status: string; delta: number };
-  retention_summary: { dropoff_second: number | null; avg_retention: number[] };
-  best_times: Array<{ hour: number; engagement_rate: number }>;
-  recommendations: string[];
-};
 
 declare global {
   interface Window {
@@ -353,7 +264,6 @@ export default function App() {
   const [showCoinModal, setShowCoinModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
-  const [authReady, setAuthReady] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [displayName, setDisplayName] = useState('User');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -411,7 +321,6 @@ export default function App() {
   const [categoryOptions, setCategoryOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [autoRetryImport, setAutoRetryImport] = useState(true);
   const importErrorRef = useRef<HTMLDivElement>(null);
-  const authInitializedRef = useRef(false);
   const [hashtagRegex, setHashtagRegex] = useState<string>('');
   const [templates, setTemplates] = useState<EngagementTemplates | null>(null);
   const [templatesLoading, setTemplatesLoading] = useState(false);
@@ -751,127 +660,49 @@ export default function App() {
     }
   }, []);
 
-  const ensureStateRef = useRef<{
-    inFlight: boolean;
-    lastToken?: string;
-    lastOk?: boolean;
-    lastFailAt?: number;
-  }>({
-    inFlight: false,
-    lastToken: undefined,
-    lastOk: undefined,
-    lastFailAt: undefined
-  });
-
-  const ensureRegisteredUser = useCallback(async () => {
-    try {
-      const token = await supabaseService.getAccessToken();
-      if (!token) return false;
-      if (ensureStateRef.current.inFlight) {
-        return Boolean(ensureStateRef.current.lastOk);
-      }
-      if (ensureStateRef.current.lastToken === token && ensureStateRef.current.lastOk) {
-        return true;
-      }
-      if (
-        ensureStateRef.current.lastToken === token &&
-        ensureStateRef.current.lastOk === false &&
-        ensureStateRef.current.lastFailAt &&
-        Date.now() - ensureStateRef.current.lastFailAt < 30000
-      ) {
-        return false;
-      }
-      ensureStateRef.current.inFlight = true;
-      const response = await fetch(`${API_URL}/api/auth/ensure-access`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      ensureStateRef.current.lastToken = token;
-      ensureStateRef.current.lastOk = response.ok;
-      if (!response.ok) {
-        ensureStateRef.current.lastFailAt = Date.now();
-      }
-      return response.ok;
-    } catch (error) {
-      console.error('Error validating profile:', error);
-      ensureStateRef.current.lastOk = false;
-      ensureStateRef.current.lastFailAt = Date.now();
-      return false;
-    } finally {
-      ensureStateRef.current.inFlight = false;
-    }
-  }, []);
-
   useEffect(() => {
     let subscription: { unsubscribe: () => void } | null = null;
     let cancelled = false;
 
-    try {
-      if (supabaseService.supabase) {
+    const initSession = async () => {
+      try {
+        const { data } = await supabaseService.getSession();
+        if (!cancelled) {
+          setSession(data?.session ?? null);
+        }
+      } catch (error) {
+        console.error('Error getting initial session:', error);
+        if (!cancelled) {
+          setSession(null);
+        }
+      }
+
+      try {
         subscription = {
-          unsubscribe: supabaseService.subscribeToAuthChanges(async (_event, session) => {
+          unsubscribe: supabaseService.subscribeToAuthChanges((_event, session) => {
             setSession(session ?? null);
             if (!session) {
               setVariants([]);
             }
-            if (!authInitializedRef.current) {
-              authInitializedRef.current = true;
-              setAuthReady(true);
-            }
-            if (session) {
-              const isRegistered = await ensureRegisteredUser();
-              if (!isRegistered) return;
-              await refreshCoins();
-              await fetchVariants();
-            }
           })
         };
-
-        // Ensure existing sessions hydrate immediately (onAuthStateChange can be delayed).
-        (async () => {
-          try {
-            const { data } = await supabaseService.getSession();
-            if (cancelled) return;
-            if (data?.session) {
-              setSession(data.session);
-              const isRegistered = await ensureRegisteredUser();
-              if (!isRegistered) return;
-              await refreshCoins();
-              await fetchVariants();
-            } else {
-              setSession(null);
-            }
-          } catch (error) {
-            console.error('Error getting initial session:', error);
-          } finally {
-            if (!authInitializedRef.current) {
-              authInitializedRef.current = true;
-              setAuthReady(true);
-            }
-          }
-        })();
-      } else {
-        setAuthReady(true);
-      }
-    } catch (error) {
-      console.error('Error setting up auth listener:', error);
-      setAuthReady(true);
-    }
-
-    return () => {
-      cancelled = true;
-      if (subscription) {
-        subscription.unsubscribe();
+      } catch (error) {
+        console.error('Error setting up auth listener:', error);
       }
     };
-  }, [ensureRegisteredUser, refreshCoins, fetchVariants]);
+
+    initSession();
+    return () => {
+      cancelled = true;
+      subscription?.unsubscribe?.();
+    };
+  }, []);
 
   useEffect(() => {
-    if (!authReady) return;
-    if (!session) {
-      router.replace(ROUTES.login);
-    }
-  }, [authReady, session, router]);
+    if (!session) return;
+    refreshCoins();
+    fetchVariants();
+  }, [session, refreshCoins, fetchVariants]);
 
   useEffect(() => {
     if (!showCoinModal) return;
@@ -2470,18 +2301,6 @@ export default function App() {
     setShowCoinModal(!showCoinModal);
   };
 
-
-  // Show loading while checking authentication
-  if (!authReady) {
-    return (
-      <div className="min-h-screen flex items-center justify-center luxury-gradient-bg">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-white/70 text-sm">Checking authentication...</p>
-        </div>
-      </div>
-    );
-  }
 
   if (showDashboard) {
     return (
