@@ -129,7 +129,7 @@ export default function BillingPage() {
             <p className="text-sm text-gray-500">Kelola status Pro dan langganan</p>
           </div>
           <button
-            onClick={() => router.push(ROUTES.afterLogin)}
+            onClick={() => router.push('/app/dashboard')}
             className="border border-gray-200 hover:bg-gray-50 rounded-xl px-4 py-2 text-sm text-gray-700"
           >
             Kembali ke Dashboard
