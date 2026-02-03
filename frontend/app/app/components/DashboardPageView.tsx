@@ -34,13 +34,14 @@ import {
   Save,
   List
 } from 'lucide-react';
-import { generateProductPhoto, generateProductVideo } from './services/geminiService';
-import { generateImagesWithFal, buildPromptFromOptions, createVideoFromImage, createVideoBatchFromImage, createKlingVideoFromImage } from './services/falService';
-import { supabaseService } from './services/supabaseService';
-import { midtransService } from './services/midtransService';
-import { ROUTES } from './lib/routes';
+import { generateProductPhoto, generateProductVideo } from '../../../services/geminiService';
+import { generateImagesWithFal, buildPromptFromOptions, createVideoFromImage, createVideoBatchFromImage, createKlingVideoFromImage } from '../../../services/falService';
+import { supabaseService } from '../../../services/supabaseService';
+import { midtransService } from '../../../services/midtransService';
+import { ROUTES } from '../../../lib/routes';
+import DashboardView from './DashboardView';
 // IdentitySelector: import and render in generate form area when needed.
-import IdentitySelector, { type IdentityMode } from './components/IdentitySelector';
+import IdentitySelector, { type IdentityMode } from '../../../components/IdentitySelector';
 import type {
   AdminAuditLog,
   AdminAutopostLog,
@@ -52,7 +53,7 @@ import type {
   EngagementTemplates,
   MetricsUploadResult,
   TrendsPreview
-} from './app/app/components/dashboardTypes';
+} from './dashboardTypes';
 import { 
   BACKGROUND_OPTIONS, 
   STYLE_OPTIONS, 
@@ -64,8 +65,8 @@ import {
   INTERACTION_OPTIONS,
   CONTENT_TYPES,
   POSE_MAP
-} from './constants';
-import { AppState, GenerationOptions, ImageData, GenerationResult } from './types';
+} from '../../../constants';
+import { AppState, GenerationOptions, ImageData, GenerationResult } from '../../../types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
@@ -265,6 +266,7 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [displayName, setDisplayName] = useState('User');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [showDashboard] = useState(true);
   const [dashboardItems, setDashboardItems] = useState<AutopostDashboardItem[]>([]);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
@@ -2220,10 +2222,195 @@ export default function App() {
     }
   }, [fetchTrendsPreview]);
 
+  useEffect(() => {
+    if (!showDashboard) return;
+    fetchDashboard();
+    fetchTrendsPreview();
+    fetchAdminStatus();
+    fetchImportStatus();
+    fetchTrendCategories();
+    fetchTemplates();
+    fetchInsights();
+    fetchCompetitors();
+    const intervalId = window.setInterval(() => {
+      fetchDashboard();
+    }, 20000);
+    return () => window.clearInterval(intervalId);
+  }, [showDashboard, fetchDashboard, fetchTrendsPreview, fetchAdminStatus, fetchImportStatus, fetchTrendCategories, fetchTemplates, fetchInsights, fetchCompetitors]);
+
+  useEffect(() => {
+    if (!showDashboard) return;
+    if (importStatus?.status !== 'running') return;
+    const intervalId = window.setInterval(() => {
+      fetchImportStatus();
+    }, 1000);
+    return () => window.clearInterval(intervalId);
+  }, [showDashboard, importStatus?.status, fetchImportStatus]);
+
+  useEffect(() => {
+    if (!showDashboard) return;
+    setTrendsPage(1);
+    fetchTrendsPreview();
+  }, [trendsSearch, trendsCategory, showDashboard, fetchTrendsPreview]);
+
+  useEffect(() => {
+    if (!showDashboard) return;
+    let socket: WebSocket | null = null;
+    let isClosed = false;
+    const connect = async () => {
+      const token = await supabaseService.getAccessToken();
+      if (!token) return;
+      const wsUrl = API_URL.replace('https://', 'wss://').replace('http://', 'ws://');
+      socket = new WebSocket(`${wsUrl}/ws/autopost?token=${encodeURIComponent(token)}`);
+      socket.onmessage = () => {
+        fetchDashboard();
+      };
+      socket.onclose = () => {
+        if (!isClosed) {
+          window.setTimeout(connect, 2000);
+        }
+      };
+    };
+    connect();
+    return () => {
+      isClosed = true;
+      if (socket) {
+        socket.close();
+      }
+    };
+  }, [showDashboard, fetchDashboard]);
+
+  useEffect(() => {
+    if (!showDashboard || !isAdmin) return;
+    fetchAdminLogs();
+    fetchMidtransStatus();
+    fetchAdminAuditLogs();
+  }, [showDashboard, isAdmin, fetchAdminLogs, fetchMidtransStatus, fetchAdminAuditLogs]);
+
+  useEffect(() => {
+    if (!showDashboard) return;
+    refreshSubscriptionStatus();
+  }, [showDashboard, refreshSubscriptionStatus]);
+
   const handleCoinClick = () => {
     setShowCoinModal(!showCoinModal);
   };
 
+
+  if (showDashboard) {
+    return (
+      <DashboardView
+        items={dashboardItems}
+        loading={dashboardLoading}
+        error={dashboardError}
+        displayName={displayName}
+        avatarUrl={avatarUrl}
+        onBack={handleBackToStudio}
+        onLogout={handleLogout}
+        onTopUp={handleTopUp}
+        dashboardErrorNeedsTopUp={dashboardErrorNeedsTopUp}
+        onRetry={handleDashboardRetry}
+        onRecheck={handleDashboardRecheck}
+        onRegenerate={handleDashboardRegenerate}
+        regeneratingId={dashboardRegeneratingId}
+        trialRemaining={trialRemaining}
+        isSubscribed={isSubscribed}
+        subscribedUntil={subscribedUntil}
+        proStatus={proStatus}
+        renewWindow={renewWindow}
+        expiresInDays={expiresInDays}
+        onUploadClick={handleDashboardUploadClick}
+        onUploadChange={handleDashboardUploadChange}
+        uploadInputRef={dashboardUploadRef}
+        trendsPreview={trendsPreview}
+        trendsLoading={trendsLoading}
+        trendsMessage={trendsMessage}
+        onTrendsUploadClick={handleTrendsUploadClick}
+        onTrendsUploadChange={handleTrendsUploadChange}
+        onTrendsRefresh={handleTrendsRefresh}
+        trendsUploadRef={trendsUploadRef}
+        isAdmin={isAdmin}
+        trendsSearch={trendsSearch}
+        onTrendsSearchChange={setTrendsSearch}
+        trendsPage={trendsPage}
+        trendsPageSize={trendsPageSize}
+        onTrendsPageChange={setTrendsPage}
+        trendsCategory={trendsCategory}
+        onTrendsCategoryChange={setTrendsCategory}
+        importStatus={importStatus}
+        importErrors={importErrors}
+        categoryOptions={categoryOptions}
+        onDownloadTemplate={handleDownloadTemplate}
+        onDownloadAllTrends={handleDownloadAllTrends}
+        autoRetryImport={autoRetryImport}
+        onToggleAutoRetry={setAutoRetryImport}
+        templates={templates}
+        templatesLoading={templatesLoading}
+        templatesError={templatesError}
+        onCopyTemplate={handleCopyTemplate}
+        hashtagRegex={hashtagRegex}
+        importErrorRef={importErrorRef}
+        errorRowSet={errorRowSet}
+        errorPages={errorPages}
+        onCopyErrors={handleCopyErrors}
+        onExportErrorsCsv={handleExportErrorsCsv}
+        insights={insights}
+        insightsLoading={insightsLoading}
+        insightsError={insightsError}
+        onAddCompetitor={handleAddCompetitor}
+        competitors={competitors}
+        showOnlyErrors={showOnlyErrors}
+        onToggleShowOnlyErrors={setShowOnlyErrors}
+        hideErrorHighlight={hideErrorHighlight}
+        onToggleHideErrorHighlight={setHideErrorHighlight}
+        errorRowsInPage={errorRowsInPage}
+        adminLogs={adminLogs}
+        adminLogsLoading={adminLogsLoading}
+        adminLogsError={adminLogsError}
+        onAdminLogsRefresh={fetchAdminLogs}
+        adminLogsStatus={adminLogsStatus}
+        onAdminLogsStatusChange={setAdminLogsStatus}
+        adminLogsUserQuery={adminLogsUserQuery}
+        onAdminLogsUserQueryChange={setAdminLogsUserQuery}
+        adminLogsDateFrom={adminLogsDateFrom}
+        onAdminLogsDateFromChange={setAdminLogsDateFrom}
+        adminLogsDateTo={adminLogsDateTo}
+        onAdminLogsDateToChange={setAdminLogsDateTo}
+        adminLogsLimit={adminLogsLimit}
+        onAdminLogsLimitChange={setAdminLogsLimit}
+        filteredAdminLogs={filteredAdminLogs}
+        midtransStatus={midtransStatus}
+        midtransStatusLoading={midtransStatusLoading}
+        midtransStatusError={midtransStatusError}
+        onMidtransStatusRefresh={fetchMidtransStatus}
+        metricsVideoId={metricsVideoId}
+        onMetricsVideoIdChange={setMetricsVideoId}
+        metricsUploadResult={metricsUploadResult}
+        metricsUploading={metricsUploading}
+        metricsUploadRef={metricsUploadRef}
+        onMetricsUploadClick={handleMetricsUploadClick}
+        onMetricsUploadChange={handleMetricsUploadChange}
+        feedbackWeights={feedbackWeights}
+        feedbackWeightsLoading={feedbackWeightsLoading}
+        feedbackWeightsError={feedbackWeightsError}
+        feedbackWeightsQuery={feedbackWeightsQuery}
+        onFeedbackWeightsQueryChange={setFeedbackWeightsQuery}
+        onFeedbackWeightsRefresh={fetchFeedbackWeights}
+        subscriptionQuery={subscriptionQuery}
+        subscriptionInfo={subscriptionInfo}
+        subscriptionLoading={subscriptionLoading}
+        subscriptionError={subscriptionError}
+        subscriptionStatus={subscriptionStatus}
+        onSubscriptionQueryChange={setSubscriptionQuery}
+        onSubscriptionLookup={fetchSubscriptionInfo}
+        onSubscriptionUpdate={updateSubscription}
+        adminAuditLogs={adminAuditLogs}
+        adminAuditLoading={adminAuditLoading}
+        adminAuditError={adminAuditError}
+        onAdminAuditRefresh={fetchAdminAuditLogs}
+      />
+    );
+  }
 
   // Redirect if not authenticated (will be handled by useEffect)
   if (!session) {
