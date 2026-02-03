@@ -10,6 +10,14 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [ready, setReady] = useState(false);
+  const setSessionCookie = () => {
+    if (typeof document === 'undefined') return;
+    document.cookie = 'aistudio_session=1; path=/; SameSite=Lax';
+  };
+  const clearSessionCookie = () => {
+    if (typeof document === 'undefined') return;
+    document.cookie = 'aistudio_session=; Max-Age=0; path=/; SameSite=Lax';
+  };
 
   useEffect(() => {
     let sub: { unsubscribe?: () => void } | null = null;
@@ -22,6 +30,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
       if (!token) {
         clearEnsureCache();
+        clearSessionCookie();
         if (!cancelled) {
           setReady(false);
           router.replace('/login');
@@ -34,6 +43,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       });
 
       if (!cancelled) {
+        setSessionCookie();
         setReady(true);
       }
 
@@ -41,6 +51,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
         const nextToken = session?.access_token ?? null;
         if (!nextToken) {
           clearEnsureCache();
+          clearSessionCookie();
           setReady(false);
           router.replace('/login');
           return;
@@ -50,6 +61,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
           await ensureRegisteredUser(nextToken);
         });
 
+        setSessionCookie();
         setReady(true);
       });
 

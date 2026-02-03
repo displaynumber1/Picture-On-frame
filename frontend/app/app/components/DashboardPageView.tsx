@@ -1641,7 +1641,7 @@ export default function App() {
     } catch (error: any) {
       setDashboardError('Gagal melakukan recheck. Silakan coba lagi.');
     }
-  }, [fetchDashboard, refreshCoins]);
+  }, [fetchDashboard]);
 
   const handleDashboardRetry = useCallback(async (id: number) => {
     try {
@@ -1693,7 +1693,7 @@ export default function App() {
     } finally {
       setDashboardRegeneratingId(null);
     }
-  }, [fetchDashboard]);
+  }, [fetchDashboard, refreshCoins]);
 
   const handleDashboardUploadClick = () => {
     dashboardUploadRef.current?.click();
@@ -3174,7 +3174,7 @@ export default function App() {
                           <CopyButton text={result.promptA} />
                         </div>
                         <p className="text-[11px] text-gray-600 leading-relaxed font-medium bg-white/50 p-3 rounded-xl border border-gray-50 italic">
-                          "{result.promptA}"
+                          &quot;{result.promptA}&quot;
                         </p>
                       </div>
                       
@@ -3184,7 +3184,7 @@ export default function App() {
                           <CopyButton text={result.promptB} />
                         </div>
                         <p className="text-[11px] text-gray-600 leading-relaxed font-medium bg-white/50 p-3 rounded-xl border border-gray-50 italic">
-                          "{result.promptB}"
+                          &quot;{result.promptB}&quot;
                         </p>
                       </div>
                     </div>
@@ -3193,7 +3193,7 @@ export default function App() {
                   <div className="flex flex-col gap-6 group">
                     <div className="relative bg-white p-5 rounded-[3.5rem] shadow-2xl transition-all duration-1000 hover:-translate-y-4">
                       <div className="px-4 pt-2 pb-4">
-                        <p className="text-xs font-semibold text-slate-600">Let's make your own PRO VIDEO here..</p>
+                        <p className="text-xs font-semibold text-slate-600">Let&apos;s make your own PRO VIDEO here..</p>
                       </div>
                       <div className="relative aspect-[3/4] overflow-hidden rounded-[3rem] bg-gray-50 border border-gray-100">
                         {state.klingVideoResults[i] ? (

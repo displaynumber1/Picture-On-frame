@@ -12,6 +12,10 @@ const AuthLanding: React.FC = () => {
   const [authReady, setAuthReady] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const initializedRef = useRef(false);
+  const setSessionCookie = () => {
+    if (typeof document === 'undefined') return;
+    document.cookie = 'aistudio_session=1; path=/; SameSite=Lax';
+  };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -71,6 +75,7 @@ const AuthLanding: React.FC = () => {
   useEffect(() => {
     if (!authReady) return;
     if (session && typeof window !== 'undefined') {
+      setSessionCookie();
       if (window.location.pathname !== ROUTES.afterLogin) {
         router.replace(ROUTES.afterLogin);
       }

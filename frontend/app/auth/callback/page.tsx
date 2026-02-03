@@ -10,6 +10,10 @@ export default function AuthCallbackPage() {
   const [message, setMessage] = useState('Signing you in...');
   const [showRetry, setShowRetry] = useState(false);
   const didRun = useRef(false);
+  const setSessionCookie = () => {
+    if (typeof document === 'undefined') return;
+    document.cookie = 'aistudio_session=1; path=/; SameSite=Lax';
+  };
 
   useEffect(() => {
     if (didRun.current) {
@@ -103,6 +107,7 @@ export default function AuthCallbackPage() {
             if (!ready) {
               throw new Error('Session not ready');
             }
+            setSessionCookie();
             window.history.replaceState(null, '', '/auth/callback');
             redirectToGenerator();
           }
@@ -134,8 +139,9 @@ export default function AuthCallbackPage() {
         console.info('[AuthCallback] getSession', data?.session ? 'ok' : 'empty');
         if (data?.session && mounted) {
           clearTimeout(timeoutId);
-            window.history.replaceState(null, '', '/auth/callback');
-            redirectToGenerator();
+          setSessionCookie();
+          window.history.replaceState(null, '', '/auth/callback');
+          redirectToGenerator();
           window.history.replaceState(null, '', '/auth/callback');
           redirectToGenerator();
           return;
