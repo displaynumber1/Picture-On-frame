@@ -166,10 +166,10 @@ const imageUrls = await generateImagesWithFal(
 - [x] ✅ Process semua images via Gemini Vision
 - [x] ✅ Extract description dari semua images
 - [x] ✅ Combine semua descriptions ke enhanced prompt
-- [x] ✅ Generate dengan Fal.ai menggunakan enhanced prompt
+- [x] ✅ Generate dengan fal menggunakan enhanced prompt
 
-### Backend → Fal.ai:
-- [x] ✅ Enhanced prompt (text) dikirim ke Fal.ai
+### Backend → fal:
+- [x] ✅ Enhanced prompt (text) dikirim ke fal
 - [x] ⚠️ Image **TIDAK dikirim langsung** (karena flux/schnell tidak support)
 - [x] ✅ Image digunakan untuk **enhance prompt** via Gemini Vision
 
@@ -221,9 +221,9 @@ const imageUrls = await generateImagesWithFal(
    └─> Render images di UI
 ```
 
-## ⚠️ Catatan Penting: Fal.ai Model `flux/schnell`
+## ⚠️ Catatan Penting: fal Model `flux/schnell`
 
-### ❌ Image TIDAK Dikirim Langsung ke Fal.ai
+### ❌ Image TIDAK Dikirim Langsung ke fal
 
 **Alasan:**
 - Model `flux/schnell` adalah **Text-to-Image** only
@@ -236,8 +236,8 @@ const imageUrls = await generateImagesWithFal(
 1. **Frontend** → Upload images → Send ke backend (base64/data URL)
 2. **Backend** → Receive images → Gemini Vision API extract descriptions
 3. **Backend** → Enhance prompt dengan descriptions dari semua images
-4. **Backend** → Send **enhanced prompt (text only)** ke Fal.ai
-5. **Fal.ai** → Generate images berdasarkan enhanced prompt
+4. **Backend** → Send **enhanced prompt (text only)** ke fal
+5. **fal** → Generate images berdasarkan enhanced prompt
 
 **Kelebihan:**
 - ✅ Tetap cepat (< 2 detik generate)
@@ -245,19 +245,19 @@ const imageUrls = await generateImagesWithFal(
 - ✅ Semua images digunakan untuk enhance prompt
 
 **Keterbatasan:**
-- ⚠️ Image tidak "dilihat" langsung oleh Fal.ai (hanya deskripsi text)
+- ⚠️ Image tidak "dilihat" langsung oleh fal (hanya deskripsi text)
 - ⚠️ Hasil generate berdasarkan deskripsi, bukan image-to-image transformation
 
 ### 🎯 Jika Perlu Image-to-Image Generation:
 
-**Perlu ganti model Fal.ai:**
+**Perlu ganti model fal:**
 - `fal-ai/flux-2/edit` - Support image input
 - `fal-ai/flux-1.1/image-to-image` - Support image input
 
 **Trade-off:**
 - ❌ Lebih lambat (~5-10 detik)
 - ❌ Lebih mahal
-- ✅ Image dikirim langsung ke Fal.ai
+- ✅ Image dikirim langsung ke fal
 - ✅ Hasil lebih akurat dengan reference image
 
 ## ✅ Status: SEMUA KOLOM UPLOAD SUDAH SUPPORT

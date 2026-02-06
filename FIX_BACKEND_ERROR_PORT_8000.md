@@ -49,7 +49,7 @@ Get-Process | Where-Object {$_.ProcessName -eq "python"} | Stop-Process -Force
 
 ### 2. Verifikasi Konfigurasi
 
-**Cek Konfigurasi Fal.ai:**
+**Cek Konfigurasi fal:**
 ```bash
 cd backend
 python -c "from fal_service import FAL_NUM_INFERENCE_STEPS, FAL_GUIDANCE_SCALE; print(f'Steps: {FAL_NUM_INFERENCE_STEPS}, CFG: {FAL_GUIDANCE_SCALE}')"

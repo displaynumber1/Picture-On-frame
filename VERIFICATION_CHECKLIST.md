@@ -1,8 +1,8 @@
-# Checklist Verifikasi Konfigurasi Fal.ai dan Pengurangan Coins
+# Checklist Verifikasi Konfigurasi fal dan Pengurangan Coins
 
 ## ✅ Konfigurasi yang Sudah Diterapkan
 
-### 1. Endpoint Fal.ai ✅
+### 1. Endpoint fal ✅
 - [x] **File**: `backend/fal_service.py` line 51
 - [x] **Endpoint**: `https://fal.run/fal-ai/flux/schnell`
 - [x] **Status**: SUDAH BENAR - Menggunakan model flux/schnell
@@ -19,7 +19,7 @@ response = await client.post(
 - [x] **Endpoint**: `/api/generate-image`
 - [x] **Logic**: 
   - Check `coins_balance >= 1` sebelum generate
-  - Generate images menggunakan Fal.ai flux/schnell
+  - Generate images menggunakan fal flux/schnell
   - **Kurangi `coins_balance` sebanyak 1 koin** setelah generate berhasil
   - Return `remaining_coins` di response
 
@@ -84,8 +84,8 @@ WHERE user_id = 'YOUR_USER_ID';
 ### Test 3: Check Log Backend
 Setelah generate batch, cek log backend harus ada:
 ```
-INFO: Generating images for user {user_id} using Fal.ai flux/schnell. Current coins: X
-INFO: Successfully generated 2/2 images from Fal.ai
+INFO: Generating images for user {user_id} using fal flux/schnell. Current coins: X
+INFO: Successfully generated 2/2 images from fal
 INFO: Images generated successfully. Reducing coins by 1 for user {user_id}
 INFO: Coins deducted. Remaining coins for user {user_id}: X-1
 ```
@@ -109,7 +109,7 @@ curl -X POST http://localhost:8000/api/generate-image \
 
 Sebelum deploy:
 
-- [x] ✅ Endpoint Fal.ai: `https://fal.run/fal-ai/flux/schnell` (SUDAH BENAR)
+- [x] ✅ Endpoint fal: `https://fal.run/fal-ai/flux/schnell` (SUDAH BENAR)
 - [x] ✅ Check `coins_balance >= 1` sebelum generate (SUDAH DIPERBAIKI)
 - [x] ✅ Kurangi `coins_balance` sebanyak 1 setelah generate berhasil (SUDAH DIPERBAIKI)
 - [x] ✅ Pengurangan hanya terjadi jika generate berhasil (SUDAH BENAR)
@@ -124,7 +124,7 @@ Sebelum deploy:
 
 | Item | Sebelum | Sesudah |
 |------|---------|---------|
-| **Endpoint Fal.ai** | `fal-ai/flux/schnell` ✅ | `fal-ai/flux/schnell` ✅ (Tidak berubah) |
+| **Endpoint fal** | `fal-ai/flux/schnell` ✅ | `fal-ai/flux/schnell` ✅ (Tidak berubah) |
 | **Check Balance** | `free_image_quota` | `coins_balance` ✅ |
 | **Pengurangan** | `update_user_quota(user_id, -1)` | `update_user_coins(user_id, -1)` ✅ |
 | **Response Field** | `remaining_quota` | `remaining_coins` ✅ |

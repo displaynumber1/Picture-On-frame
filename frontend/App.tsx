@@ -893,7 +893,7 @@ export default function App() {
         ? `data:${state.backgroundImage.mimeType};base64,${state.backgroundImage.base64}`
         : undefined;
       
-      // Generate 1 image using Fal.ai dengan semua images yang diupload
+      // Generate 1 image using fal dengan semua images yang diupload
       // Prompt akan di-generate otomatis dari options di dalam generateImagesWithFal
       // Urutan gambar: [Produk1, Produk2, Wajah, Background]
       const imageUrls = await generateImagesWithFal(
@@ -903,8 +903,7 @@ export default function App() {
         faceImage,
         backgroundImage,
         state.options, // Pass options untuk prompt generation
-        undefined,
-        identityMode
+        undefined
       );
       
       // Convert image URLs to GenerationResult format

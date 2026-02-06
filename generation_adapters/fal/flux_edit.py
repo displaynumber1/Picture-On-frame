@@ -1,4 +1,4 @@
-"""Flux LoRA image-to-image adapter for fal.ai."""
+"""Flux LoRA image-to-image adapter for fal."""
 
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ async def edit_with_flux_lora(
         client: Optional FalClient instance.
 
     Returns:
-        fal.ai response JSON.
+        fal response JSON.
     """
 
     _ensure_no_ai_generated(options)

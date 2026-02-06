@@ -3,7 +3,7 @@ DIAGNOSIS: PAYLOAD YANG DIKIRIM KE FAL.AI
 ==========================================
 
 ❌ MASALAH DITEMUKAN:
-Dari log terakhir (2026-01-11T03:17:59), payload yang dikirim ke Fal.ai TIDAK mengandung image_url!
+Dari log terakhir (2026-01-11T03:17:59), payload yang dikirim ke fal TIDAK mengandung image_url!
 
 PAYLOAD YANG DIKIRIM (SAAT INI - SALAH):
 {
@@ -76,14 +76,14 @@ STEP 4: Generate Batch Lagi dan Copy Log Lengkap
 Setelah generate batch lagi, copy SEMUA log dari terminal backend:
 - Log upload image (jika ada)
 - Log "Init image URL: YES/NO"
-- Log "FULL REQUEST PAYLOAD ke Fal.ai"
+- Log "FULL REQUEST PAYLOAD ke fal"
 - Log error (jika ada)
 
 ==========================================
 ACTION REQUIRED:
 ==========================================
 
-1. ✅ Saya sudah tambahkan logging lengkap untuk payload ke Fal.ai
+1. ✅ Saya sudah tambahkan logging lengkap untuk payload ke fal
 2. ✅ Saya sudah update debug_prompt_log.py untuk save image_url
 3. ⏳ USER: Generate batch lagi dan share log lengkap dari terminal backend
 4. ⏳ USER: Cek apakah image benar-benar ter-upload ke Supabase Storage

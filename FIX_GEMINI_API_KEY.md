@@ -21,12 +21,12 @@ ERROR:gemini_service:Error extracting description from background/environment: G
    Original prompt: 200 chars
    Enhanced prompt: 200 chars (TIDAK BERTAMBAH!)
    ```
-3. **Prompt yang dikirim ke Fal.ai TIDAK mengandung deskripsi produk:**
+3. **Prompt yang dikirim ke fal TIDAK mengandung deskripsi produk:**
    ```
    Prompt: A Woman model, for Fashion, in Casual selfie using front camera pose...
    (GENERIC - TIDAK ADA DESKRIPSI PRODUK!)
    ```
-4. **Hasil generate tidak sesuai foto** karena Fal.ai tidak tahu produk apa yang harus di-generate
+4. **Hasil generate tidak sesuai foto** karena fal tidak tahu produk apa yang harus di-generate
 
 ## ✅ Solusi: Tambahkan GEMINI_API_KEY
 
@@ -48,7 +48,7 @@ GEMINI_API_KEY=your_actual_gemini_api_key_here
 
 **Format lengkap config.env:**
 ```
-# Fal.ai API Key for image and video generation
+# fal API Key for image and video generation
 FAL_KEY=your_fal_api_key_here
 
 # Gemini API Key for image description extraction (required for prompt enhancement)
@@ -114,7 +114,7 @@ INFO:    Prompt: A Woman model, for Fashion... IMPORTANT REFERENCE DETAILS: Prod
 
 ## 🎯 Expected Result Setelah Fix:
 
-### Prompt yang Dikirim ke Fal.ai:
+### Prompt yang Dikirim ke fal:
 
 **Sebelum (Tanpa GEMINI_API_KEY):**
 ```

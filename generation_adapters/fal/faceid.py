@@ -1,4 +1,4 @@
-"""FaceID generation adapter for fal.ai."""
+"""FaceID generation adapter for fal."""
 
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ async def generate_with_faceid(
         client: Optional FalClient instance.
 
     Returns:
-        fal.ai response JSON.
+        fal response JSON.
     """
 
     _ensure_no_ai_generated(options)

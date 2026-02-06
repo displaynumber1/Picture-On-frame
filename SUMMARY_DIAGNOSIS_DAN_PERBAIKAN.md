@@ -12,10 +12,10 @@
 2. **Enhanced Prompt Tidak Cukup Kuat** ⚠️
    - Reference details hanya sebagai "tambahan"
    - Tidak ada emphasis kuat pada "EXACT products"
-   - Fal.ai mungkin tidak prioritize reference details dengan baik
+   - fal mungkin tidak prioritize reference details dengan baik
 
 3. **Tidak Ada Logging Prompt** ⚠️
-   - Tidak bisa melihat prompt final yang dikirim ke Fal.ai
+   - Tidak bisa melihat prompt final yang dikirim ke fal
    - Sulit untuk debug kenapa hasil tidak sesuai
 
 4. **Model Limitation** ⚠️
@@ -93,7 +93,7 @@ The background should match the reference background style and environment."
    INFO: Enhanced prompt: A Woman model... IMPORTANT REFERENCE DETAILS: ...
    ```
 
-4. **Final Prompt yang Dikirim ke Fal.ai:**
+4. **Final Prompt yang Dikirim ke fal:**
    ```
    INFO: 📝 FINAL PROMPT YANG DIKIRIM KE FAL.AI:
    INFO:    Model: fal-ai/flux/schnell
@@ -112,7 +112,7 @@ The background should match the reference background style and environment."
    }
    ```
 
-## 📋 Cara Melihat Prompt yang Dikirim ke Fal.ai:
+## 📋 Cara Melihat Prompt yang Dikirim ke fal:
 
 ### Step 1: Restart Backend Server
 ```bash
@@ -146,7 +146,7 @@ INFO:    Model: fal-ai/flux/schnell
 INFO:    Steps: 7, CFG: 3.5
 INFO:    Prompt: [FULL PROMPT TEXT]
 INFO:    Prompt length: 850 chars
-INFO: 📤 Sending request to Fal.ai for image 1/2
+INFO: 📤 Sending request to fal for image 1/2
 INFO:    Model: fal-ai/flux/schnell
 INFO:    Prompt length: 850 chars
 INFO:    Prompt preview: A Woman model for Fashion in Standing pose. IMPORTANT REFERENCE DETAILS: Product 1: brown leather bucket bag...
@@ -231,7 +231,7 @@ INFO: DEBUG: Request payload: {
 **Option**: Image-to-image dengan FLUX 2 Edit
 
 **Trade-off:**
-- ✅ Image dikirim langsung ke Fal.ai
+- ✅ Image dikirim langsung ke fal
 - ✅ Hasil lebih match dengan reference
 - ❌ Lebih lambat (~5-10 detik)
 - ❌ Lebih mahal
@@ -242,7 +242,7 @@ INFO: DEBUG: Request payload: {
 **Sekarang:**
 1. ✅ Gemini Vision prompt lebih detail dan spesifik
 2. ✅ Enhanced prompt structure lebih kuat dengan emphasis "EXACT products"
-3. ✅ Logging lengkap untuk melihat prompt yang dikirim ke Fal.ai
+3. ✅ Logging lengkap untuk melihat prompt yang dikirim ke fal
 4. ✅ Steps = 7, CFG = 3.5 (sudah sesuai permintaan)
 
 **Next Steps:**
@@ -259,5 +259,5 @@ INFO: DEBUG: Request payload: {
 Silakan:
 1. Restart backend server
 2. Generate batch lagi
-3. Check terminal backend untuk melihat prompt lengkap yang dikirim ke Fal.ai
+3. Check terminal backend untuk melihat prompt lengkap yang dikirim ke fal
 4. Share log tersebut untuk saya analisa lebih lanjut

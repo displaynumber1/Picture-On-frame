@@ -13,7 +13,7 @@
 - **Purpose:** Professional prompt generation with natural language synthesis
 - **Features:**
   - `generateProfessionalPrompt()` function - main prompt generator
-  - `getDefaultFalAIConfig()` function - Fal.ai API configuration
+  - `getDefaultFalAIConfig()` function - fal API configuration
   - `TECHNICAL_REALISM_WRAPPER` - Phase One camera, skin pores, fabric texture specifications
   - `REFERENCE_IMAGE_INSTRUCTIONS` - Instructions for LoRA/edit models
 
@@ -57,7 +57,7 @@
 - Professional language
 - Covers all option categories
 
-### 6. Fal.ai API Configuration ✅
+### 6. fal API Configuration ✅
 - Default configuration object
 - `image_strength: 0.65` (optimal for reference consistency)
 - `num_inference_steps: 7`

@@ -1,4 +1,4 @@
-"""Orchestration service for fal.ai identity-locked generation."""
+"""Orchestration service for fal identity-locked generation."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ def _extract_image_url(response: Dict[str, Any]) -> str:
                 return first
             if isinstance(first, dict) and "url" in first:
                 return str(first["url"])
-    raise ValueError("Unable to extract image URL from fal.ai response.")
+    raise ValueError("Unable to extract image URL from fal response.")
 
 
 async def generate_avatar(

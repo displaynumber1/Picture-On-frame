@@ -1,4 +1,4 @@
-"""fal.ai client wrapper with async support and timeouts."""
+"""fal client wrapper with async support and timeouts."""
 
 from __future__ import annotations
 
@@ -9,11 +9,11 @@ import httpx
 
 
 class FalError(RuntimeError):
-    """Raised when fal.ai API call fails."""
+    """Raised when fal API call fails."""
 
 
 class FalClient:
-    """Minimal fal.ai client wrapper."""
+    """Minimal fal client wrapper."""
 
     def __init__(self, api_key: Optional[str] = None, timeout_s: float = 30.0) -> None:
         self.api_key = api_key or os.environ.get("FAL_KEY")
@@ -26,7 +26,7 @@ class FalClient:
         return {"Authorization": f"Key {self.api_key}"}
 
     async def call(self, endpoint: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Perform an async POST call to fal.ai."""
+        """Perform an async POST call to fal."""
 
         url = f"{self.base_url}/{endpoint}"
         try:
@@ -35,16 +35,16 @@ class FalClient:
                 response.raise_for_status()
                 return response.json()
         except httpx.TimeoutException as exc:
-            raise FalError("fal.ai request timed out.") from exc
+            raise FalError("fal request timed out.") from exc
         except httpx.HTTPStatusError as exc:
             raise FalError(
-                f"fal.ai request failed with status {exc.response.status_code}."
+                f"fal request failed with status {exc.response.status_code}."
             ) from exc
         except httpx.HTTPError as exc:
-            raise FalError("fal.ai request failed.") from exc
+            raise FalError("fal request failed.") from exc
 
     def call_sync(self, endpoint: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Perform a synchronous POST call to fal.ai."""
+        """Perform a synchronous POST call to fal."""
 
         url = f"{self.base_url}/{endpoint}"
         try:
@@ -53,10 +53,10 @@ class FalClient:
                 response.raise_for_status()
                 return response.json()
         except httpx.TimeoutException as exc:
-            raise FalError("fal.ai request timed out.") from exc
+            raise FalError("fal request timed out.") from exc
         except httpx.HTTPStatusError as exc:
             raise FalError(
-                f"fal.ai request failed with status {exc.response.status_code}."
+                f"fal request failed with status {exc.response.status_code}."
             ) from exc
         except httpx.HTTPError as exc:
-            raise FalError("fal.ai request failed.") from exc
+            raise FalError("fal request failed.") from exc

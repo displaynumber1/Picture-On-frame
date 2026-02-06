@@ -33,12 +33,12 @@ Generate images that match the style, colors, composition, and visual elements..
 **Problem:**
 - ❌ Reference details hanya ditambahkan sebagai "tambahan"
 - ❌ Tidak ada emphasis kuat pada "EXACT products"
-- ❌ Fal.ai mungkin tidak prioritize reference details dengan baik
+- ❌ fal mungkin tidak prioritize reference details dengan baik
 
-### 3. ⚠️ Tidak Ada Logging Prompt yang Dikirim ke Fal.ai
+### 3. ⚠️ Tidak Ada Logging Prompt yang Dikirim ke fal
 
 **Masalah:**
-- ❌ Tidak bisa melihat prompt final yang dikirim ke Fal.ai
+- ❌ Tidak bisa melihat prompt final yang dikirim ke fal
 - ❌ Tidak bisa debug kenapa hasil tidak sesuai
 - ❌ Sulit untuk improve prompt quality
 
@@ -131,7 +131,7 @@ logger.info(f"   === END PROMPT ===")
 
 **Logging yang Ditambahkan:**
 ```python
-logger.info(f"📤 Sending request to Fal.ai for image {i+1}/{num_images}")
+logger.info(f"📤 Sending request to fal for image {i+1}/{num_images}")
 logger.info(f"   Model: {FAL_MODEL_ENDPOINT}")
 logger.info(f"   Prompt length: {len(prompt)} chars")
 logger.info(f"   Prompt preview: {prompt[:200]}...")
@@ -142,7 +142,7 @@ logger.debug(f"   Request payload: {json.dumps(request_payload, indent=2)}")
 **Hasil:**
 - ✅ Bisa lihat prompt original
 - ✅ Bisa lihat enhanced prompt
-- ✅ Bisa lihat prompt final yang dikirim ke Fal.ai
+- ✅ Bisa lihat prompt final yang dikirim ke fal
 - ✅ Bisa lihat full request payload (dengan steps, CFG, dll)
 
 ### 4. ✅ Improved Description Extraction Logging
@@ -167,7 +167,7 @@ logger.warning(f"⚠️  Could not extract description from {image_type}")
    - **Problem**: Reference details hanya sebagai "tambahan", bukan "requirement"
    - **Fix**: ✅ Sudah diperbaiki dengan emphasis "EXACT products" dan "ACCURATELY match"
 
-3. **Fal.ai Model Limitation** ⚠️
+3. **fal Model Limitation** ⚠️
    - **Problem**: Model `flux/schnell` dengan 7 steps masih ada limitation untuk text-to-image
    - **Note**: Model ini tidak "melihat" image langsung, hanya deskripsi text
    - **Impact**: Hasil mungkin tidak 100% match dengan foto upload
@@ -182,7 +182,7 @@ logger.warning(f"⚠️  Could not extract description from {image_type}")
    - **Example**: "A Woman model for Fashion..." terlalu umum
    - **Fix Needed**: Mungkin perlu enhance prompt original juga
 
-## 🎯 Cara Melihat Prompt yang Dikirim ke Fal.ai:
+## 🎯 Cara Melihat Prompt yang Dikirim ke fal:
 
 ### Method 1: Check Backend Logs
 
@@ -199,7 +199,7 @@ INFO:    Enhanced prompt: A Woman model for Fashion in Standing pose. IMPORTANT 
 INFO:    === PROMPT YANG AKAN DIKIRIM KE FAL.AI ===
 INFO:    [FULL PROMPT TEXT HERE]
 INFO:    === END PROMPT ===
-INFO: 📤 Sending request to Fal.ai for image 1/2
+INFO: 📤 Sending request to fal for image 1/2
 INFO:    Model: fal-ai/flux/schnell
 INFO:    Prompt length: 850 chars
 INFO:    Prompt preview: A Woman model for Fashion in Standing pose. IMPORTANT REFERENCE DETAILS: Product 1: brown leather bucket bag with drawstring closure and long strap. Colors: brown leather. Materials: leather. Design: bucket bag style...
@@ -239,7 +239,7 @@ Saya bisa tambahkan fitur untuk save prompt ke file untuk debugging.
 **Option**: Image-to-image dengan reference image langsung
 
 **Trade-off:**
-- ✅ Image dikirim langsung ke Fal.ai
+- ✅ Image dikirim langsung ke fal
 - ✅ Hasil lebih match dengan reference
 - ❌ Lebih lambat (~5-10 detik)
 - ❌ Lebih mahal
@@ -252,7 +252,7 @@ Untuk diagnose kenapa hasil tidak sesuai:
 1. ✅ Check backend log untuk melihat:
    - Original prompt
    - Enhanced prompt
-   - Prompt yang dikirim ke Fal.ai
+   - Prompt yang dikirim ke fal
    - Gemini Vision descriptions
 
 2. ✅ Verify:
@@ -275,7 +275,7 @@ Untuk diagnose kenapa hasil tidak sesuai:
 1. **Restart backend server** untuk apply changes
 2. **Generate batch lagi** dengan foto yang sama
 3. **Check backend log** untuk melihat:
-   - Prompt yang dikirim ke Fal.ai
+   - Prompt yang dikirim ke fal
    - Descriptions dari Gemini Vision
 4. **Compare** prompt dengan foto upload
 5. **Identify** apa yang missing atau kurang detail
@@ -288,5 +288,5 @@ Untuk diagnose kenapa hasil tidak sesuai:
 Silakan:
 1. Restart backend server
 2. Generate batch lagi
-3. Check log backend untuk melihat prompt lengkap yang dikirim ke Fal.ai
+3. Check log backend untuk melihat prompt lengkap yang dikirim ke fal
 4. Share log tersebut untuk saya analisa lebih lanjut

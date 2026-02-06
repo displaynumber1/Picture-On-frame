@@ -3,7 +3,7 @@ PARAMETER YANG DIKIRIM DARI BACKEND KE FAL.AI UNTUK GENERATE BATCH
 ================================================================================
 
 📅 Tanggal Generate: [Tanggal generate batch terakhir Anda]
-🎯 Endpoint Fal.ai: https://fal.run/fal-ai/flux/schnell
+🎯 Endpoint fal: https://fal.run/fal-ai/flux/schnell
 🔒 Model: fal-ai/flux/schnell (LOCKED - Terkunci untuk kecepatan dan biaya optimal)
 ⚡ Kecepatan: < 2 detik per image
 💰 Biaya: Minimal (num_inference_steps: 4)
@@ -257,7 +257,7 @@ Step 4: Fal Service (fal_service.py)
         "guidance_scale": 3.5  # LOCKED
       }
 
-Step 5: Fal.ai API
+Step 5: fal API
   - Process request dengan parameter di atas
   - Return image URL(s)
 
@@ -322,20 +322,20 @@ Body (JSON):
 Note: Prompt sama untuk kedua image (variasi dihasilkan oleh model itu sendiri dengan random seed)
 
 ================================================================================
-7. PARAMETER YANG TIDAK DIGUNAKAN (Tapi Available di Fal.ai)
+7. PARAMETER YANG TIDAK DIGUNAKAN (Tapi Available di fal)
 ================================================================================
 
-Parameter berikut TIDAK dikirim (default dari Fal.ai):
+Parameter berikut TIDAK dikirim (default dari fal):
   - seed: Random seed (default: random)
   - num_images: Number of images per request (default: 1, kita loop manual)
-  - safety_tolerance: Safety filter level (default: Fal.ai default)
+  - safety_tolerance: Safety filter level (default: fal default)
   - enable_safety_checker: Enable/disable safety checker (default: enabled)
   - format: Image format (default: jpg/webp)
   - return_url: Return type (default: URL)
 
 Alasan tidak digunakan:
   - Model flux/schnell mungkin tidak support semua parameter
-  - Default Fal.ai sudah optimal untuk use case kita
+  - Default fal sudah optimal untuk use case kita
   - Fokus pada kecepatan dan biaya minimal
 
 ================================================================================
@@ -343,12 +343,12 @@ Alasan tidak digunakan:
 ================================================================================
 
 Generate Batch (3 images):
-  - 2 requests ke Fal.ai (masing-masing generate 2 images)
+  - 2 requests ke fal (masing-masing generate 2 images)
   - Request 1: Generate 2 images → Cost: ~$0.002
   - Request 2: Generate 1 image (total perlu 3) → Cost: ~$0.001
   - Total Cost: ~$0.003 per batch (3 images)
   
-  Note: Backend mengurangi 1 coin dari user, bukan berdasarkan actual Fal.ai cost
+  Note: Backend mengurangi 1 coin dari user, bukan berdasarkan actual fal cost
 
 Coins Deducted: 1 coin per batch (bukan per image)
 
@@ -392,29 +392,29 @@ Runtime Validation (backend/fal_service.py line 57-61):
 Error Handling:
   ✅ 401 Unauthorized: FAL_KEY invalid
   ✅ 403 Forbidden: API key tidak punya permission atau model tidak tersedia
-  ✅ 500 Server Error: Fal.ai internal error
+  ✅ 500 Server Error: fal internal error
   ✅ Timeout: 180 seconds per request
 
 Security:
   ✅ FAL_KEY tidak pernah di-expose ke frontend
   ✅ FAL_KEY hanya digunakan di backend
-  ✅ Request ke Fal.ai dari backend (server-to-server)
+  ✅ Request ke fal dari backend (server-to-server)
 
 ================================================================================
 11. LOGGING & DEBUGGING
 ================================================================================
 
 Log yang di-generate:
-  - INFO: "Generating images for user {user_id} using Fal.ai flux/schnell. Current coins: X"
-  - DEBUG: "Fal.ai API response for image {i+1}: {result}"
-  - INFO: "✅ Generated image {i+1}/{num_images} from Fal.ai: {url}..."
-  - INFO: "Successfully generated {len(images)}/{num_images} images from Fal.ai"
+  - INFO: "Generating images for user {user_id} using fal flux/schnell. Current coins: X"
+  - DEBUG: "fal API response for image {i+1}: {result}"
+  - INFO: "✅ Generated image {i+1}/{num_images} from fal: {url}..."
+  - INFO: "Successfully generated {len(images)}/{num_images} images from fal"
   - INFO: "Images generated successfully. Reducing coins by 1 for user {user_id}"
   - INFO: "Coins deducted. Remaining coins for user {user_id}: X"
 
 Untuk debugging, cek log backend untuk melihat:
   - Prompt yang dikirim
-  - Response dari Fal.ai
+  - Response dari fal
   - Error detail jika terjadi
 
 ================================================================================

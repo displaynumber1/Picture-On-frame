@@ -1,4 +1,4 @@
-# Diagnosis: Model Fal.ai yang Digunakan
+# Diagnosis: Model fal yang Digunakan
 
 ## 📊 Hasil Analisa dari Log Terakhir
 
@@ -110,7 +110,7 @@ if init_image_url:
     fal_request_data["image_url"] = init_image_url  # ✅ SINGULAR
 ```
 
-## 🔍 Cara Melihat Payload Lengkap yang Dikirim ke Fal.ai
+## 🔍 Cara Melihat Payload Lengkap yang Dikirim ke fal
 
 ### Method 1: Via Backend Terminal Logs (Paling Lengkap)
 
@@ -125,7 +125,7 @@ INFO: Model: fal-ai/flux-general/image-to-image  ← Harus ini jika ada image
 INFO: Init Image URL: YES  ← Harus YES jika ada image
 INFO: ======================================================================
 
-INFO: Sending image-to-image request to Fal.ai for image 1/2
+INFO: Sending image-to-image request to fal for image 1/2
 INFO:    Model: fal-ai/flux-general/image-to-image
 INFO:    ✅ Image-to-image: Using image_url from Supabase Storage
 INFO:    📤 Image URL yang dikirim: https://...supabase.co/...
@@ -133,7 +133,7 @@ INFO:    Model: fal-ai/flux-general/image-to-image (support LoRA)
 INFO:    Image Strength: 0.5 (FIXED: menjaga identitas wajah)
 INFO:    Inference Steps: 7 (FIXED: INFERENCE, BUKAN training)
 INFO:    Guidance Scale: 3.5 (FIXED: prompt adherence tanpa merusak wajah)
-INFO:    📤 FULL REQUEST PAYLOAD ke Fal.ai:
+INFO:    📤 FULL REQUEST PAYLOAD ke fal:
 INFO:    {
 INFO:      "prompt": "A Woman model, for Fashion...",
 INFO:      "image_url": "https://...supabase.co/...",
@@ -155,7 +155,7 @@ python -c "from debug_prompt_log import get_latest_prompt_log; import json; log 
 1. F12 → **Network** tab
 2. Filter: `generate-image`
 3. Klik request → **Response** tab
-4. Lihat `debug_info` → ini payload yang dikirim ke Fal.ai
+4. Lihat `debug_info` → ini payload yang dikirim ke fal
 
 ### Method 4: Via Debug Endpoint
 

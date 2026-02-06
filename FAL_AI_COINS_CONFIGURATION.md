@@ -1,8 +1,8 @@
-# Konfigurasi Fal.ai dan Pengurangan Coins
+# Konfigurasi fal dan Pengurangan Coins
 
 ## ✅ Konfigurasi yang Sudah Diterapkan
 
-### 1. Endpoint Fal.ai yang Digunakan
+### 1. Endpoint fal yang Digunakan
 
 **File**: `backend/fal_service.py` (line 51)
 
@@ -22,7 +22,7 @@ f"{FAL_API_BASE}/fal-ai/flux/schnell"
 
 **Alur:**
 1. ✅ Check `coins_balance` user (minimal 1 coin)
-2. ✅ Generate images menggunakan Fal.ai flux/schnell
+2. ✅ Generate images menggunakan fal flux/schnell
 3. ✅ **HANYA** setelah generate berhasil, kurangi `coins_balance` sebanyak **1 koin**
 4. ✅ Return `remaining_coins` di response
 
@@ -74,7 +74,7 @@ def update_user_coins(user_id: str, coins_change: int) -> Dict[str, Any]:
 
 ### Checklist Konfigurasi:
 
-- [x] ✅ Endpoint Fal.ai: `https://fal.run/fal-ai/flux/schnell` (SUDAH BENAR)
+- [x] ✅ Endpoint fal: `https://fal.run/fal-ai/flux/schnell` (SUDAH BENAR)
 - [x] ✅ Check coins_balance sebelum generate (SUDAH DIPERBAIKI)
 - [x] ✅ Kurangi coins_balance sebanyak 1 koin setelah generate berhasil (SUDAH DIPERBAIKI)
 - [x] ✅ Pengurangan hanya terjadi jika generate berhasil (SUDAH BENAR - setelah await)
@@ -124,14 +124,14 @@ def update_user_coins(user_id: str, coins_change: int) -> Dict[str, Any]:
 
 4. **Check log backend:**
    ```
-   Generating images for user {user_id} using Fal.ai flux/schnell. Current coins: X
+   Generating images for user {user_id} using fal flux/schnell. Current coins: X
    Images generated successfully. Reducing coins by 1 for user {user_id}
    Coins deducted. Remaining coins for user {user_id}: X-1
    ```
 
 ## ⚠️ Catatan Penting
 
-1. **Endpoint Fal.ai sudah benar**: `https://fal.run/fal-ai/flux/schnell`
+1. **Endpoint fal sudah benar**: `https://fal.run/fal-ai/flux/schnell`
 2. **Pengurangan coins hanya terjadi setelah generate berhasil** (setelah await, jika error tidak dikurangi)
 3. **Check coins dilakukan sebelum generate** (jika < 1, raise 403 error)
 4. **1 generate batch = 1 coin** (bukan per image, tapi per batch request)

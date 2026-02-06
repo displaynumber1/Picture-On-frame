@@ -1,4 +1,4 @@
-# Cara Melihat Prompt yang Dikirim ke Fal.ai
+# Cara Melihat Prompt yang Dikirim ke fal
 
 ## ✅ Status: LOGGING SUDAH DITAMBAHKAN
 
@@ -20,14 +20,14 @@ INFO:    Enhanced prompt: A Woman model for Fashion in Standing pose. IMPORTANT 
 INFO:    === PROMPT YANG AKAN DIKIRIM KE FAL.AI ===
 INFO:    A Woman model for Fashion in Standing pose. IMPORTANT REFERENCE DETAILS: Product 1: brown leather bucket bag with drawstring closure and long strap. Colors: brown leather. Materials: leather. Design: bucket bag style with drawstring closure. Key details: long strap, bucket shape. Product 2: light blue straight-leg jeans. Colors: light blue denim. Materials: denim. Design: straight-leg fit. Product 3: beige peplum blouse with ruffles. Colors: beige/cream. Materials: cotton or knit. Design: peplum hem with ruffles. Product 4: beige open-back flat shoes with square toe. Colors: beige. Materials: leather or synthetic. Design: open-back mules with square toe. Face/Model reference: young woman with pink hijab, medium-length wavy brown hair, dark eyes, light skin tone, gentle smile, wearing dark ribbed top. Generate images that ACCURATELY match the products, model face, and background from the reference images. The generated images must show the EXACT products from the reference images with accurate colors, materials, and design details. The model's face should match the reference face features. The background should match the reference background style and environment.
 INFO:    === END PROMPT ===
-INFO: Generating images for user abc123 using Fal.ai flux/schnell. Current coins: 100
+INFO: Generating images for user abc123 using fal flux/schnell. Current coins: 100
 INFO: 📝 FINAL PROMPT YANG DIKIRIM KE FAL.AI:
 INFO:    Model: fal-ai/flux/schnell
 INFO:    Steps: 7, CFG: 3.5
 INFO:    Prompt: [FULL PROMPT TEXT]
 INFO:    Prompt length: 850 chars
 INFO:    ==========================================
-INFO: 📤 Sending request to Fal.ai for image 1/2
+INFO: 📤 Sending request to fal for image 1/2
 INFO:    Model: fal-ai/flux/schnell
 INFO:    Prompt length: 850 chars
 INFO:    Prompt preview: A Woman model for Fashion in Standing pose. IMPORTANT REFERENCE DETAILS: Product 1: brown leather bucket bag...
@@ -57,7 +57,7 @@ Combined descriptions: Product 1: brown leather bucket bag... | Product 2: light
 Enhanced prompt: A Woman model for Fashion... IMPORTANT REFERENCE DETAILS: Product 1: ... Product 2: ... Face/Model reference: ...
 ```
 
-### 4. Request Payload ke Fal.ai
+### 4. Request Payload ke fal
 ```
 {
   "prompt": "[FULL ENHANCED PROMPT]",
@@ -129,5 +129,5 @@ Enhanced prompt: A Woman model for Fashion... IMPORTANT REFERENCE DETAILS: Produ
 Silakan:
 1. Restart backend server
 2. Generate batch lagi
-3. Check terminal backend untuk melihat prompt lengkap yang dikirim ke Fal.ai
+3. Check terminal backend untuk melihat prompt lengkap yang dikirim ke fal
 4. Share log tersebut untuk saya analisa lebih lanjut

@@ -37,7 +37,7 @@ SUPABASE_URL=https://your-project-id.supabase.co
 SUPABASE_SERVICE_KEY=your-service-role-key
 SUPABASE_ANON_KEY=your-anon-key
 
-# Fal.ai
+# fal
 FAL_KEY=your-fal-ai-api-key
 
 # Midtrans

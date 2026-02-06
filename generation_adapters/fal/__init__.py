@@ -1,4 +1,4 @@
-"""fal.ai generation adapters."""
+"""fal generation adapters."""
 
 from .fal_client import FalClient, FalError
 from .faceid import generate_with_faceid

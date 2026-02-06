@@ -90,7 +90,7 @@ INFO: Model: fal-ai/flux-general/image-to-image  ← Harus ini (BUKAN flux/schne
 INFO: Init Image URL: YES  ← Harus YES (BUKAN NO)
 INFO: ======================================================================
 
-INFO: Sending image-to-image request to Fal.ai for image 1/2
+INFO: Sending image-to-image request to fal for image 1/2
 INFO:    Model: fal-ai/flux-general/image-to-image  ← Harus ini
 INFO:    ✅ Image-to-image: Using image_url from Supabase Storage
 INFO:    📤 Image URL yang dikirim: https://...supabase.co/...
@@ -98,7 +98,7 @@ INFO:    Model: fal-ai/flux-general/image-to-image (support LoRA)
 INFO:    Image Strength: 0.5 (FIXED: menjaga identitas wajah)
 INFO:    Inference Steps: 7 (FIXED: INFERENCE, BUKAN training)
 INFO:    Guidance Scale: 3.5 (FIXED: prompt adherence tanpa merusak wajah)
-INFO:    📤 FULL REQUEST PAYLOAD ke Fal.ai:
+INFO:    📤 FULL REQUEST PAYLOAD ke fal:
 INFO:    {
 INFO:      "prompt": "...",
 INFO:      "image_url": "https://...supabase.co/...",  ← Harus ada ini

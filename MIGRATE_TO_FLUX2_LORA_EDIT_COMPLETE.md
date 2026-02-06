@@ -126,7 +126,7 @@ elif 'image_url' in payload_for_log:  # Legacy support
 
 **Jika parameter tidak valid:**
 - Error akan muncul saat test
-- Perlu adjust parameter sesuai dokumentasi Fal.ai
+- Perlu adjust parameter sesuai dokumentasi fal
 
 ### 2. Array Format
 
@@ -163,7 +163,7 @@ elif 'image_url' in payload_for_log:  # Legacy support
 - ✅ Results sesuai (atau lebih baik dari model lama)
 
 ### If Error:
-- ❌ Parameter tidak valid → Check Fal.ai documentation
+- ❌ Parameter tidak valid → Check fal documentation
 - ❌ Response format berbeda → Update parsing logic
 - ❌ Model tidak available → Verify API key permissions
 
@@ -182,7 +182,7 @@ elif 'image_url' in payload_for_log:  # Legacy support
    - Verify hasil
 
 3. **Verify Parameters:**
-   - Check Fal.ai API response
+   - Check fal API response
    - Verify parameter valid
    - Adjust jika perlu
 

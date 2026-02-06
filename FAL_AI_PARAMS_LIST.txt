@@ -1,4 +1,4 @@
-Listing parameter untuk Fal.ai
+Listing parameter untuk fal
 
 1) fal-ai/flux-2/lora/edit (image-to-image)
 Parameter kunci dari UI:

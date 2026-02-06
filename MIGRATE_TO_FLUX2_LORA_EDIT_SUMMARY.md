@@ -128,7 +128,7 @@ fal_request_data["image_urls"] = [init_image_url]
    - Verify hasil
 
 3. **Verify Parameters:**
-   - Check Fal.ai API response
+   - Check fal API response
    - Verify parameter valid untuk model baru
    - Adjust jika perlu (image_strength, num_inference_steps, guidance_scale)
 

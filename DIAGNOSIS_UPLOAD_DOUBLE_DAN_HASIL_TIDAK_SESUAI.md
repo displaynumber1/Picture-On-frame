@@ -160,8 +160,8 @@ FAL_NUM_INFERENCE_STEPS = 10  # Better quality
 - [ ] Check file size dan timestamp (apakah benar-benar duplicate?)
 
 ### Hasil Tidak Sama:
-- [ ] Check prompt yang dikirim ke Fal.ai
-- [ ] Check image_url yang dikirim ke Fal.ai
+- [ ] Check prompt yang dikirim ke fal
+- [ ] Check image_url yang dikirim ke fal
 - [ ] Test dengan image_strength lebih tinggi (0.65-0.7)
 - [ ] Test dengan guidance_scale lebih tinggi (4.0-4.5)
 - [ ] Test dengan num_inference_steps lebih tinggi (10-12)

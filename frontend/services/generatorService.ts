@@ -46,7 +46,7 @@ export const generatorService = {
   },
 
   /**
-   * Generate images using Fal.ai
+   * Generate images using fal
    */
   async generateImage(prompt: string, token: string): Promise<GenerateImageResponse> {
     const response = await fetch(`${API_URL}/api/generate-image`, {
@@ -67,7 +67,7 @@ export const generatorService = {
   },
 
   /**
-   * Generate video using Fal.ai
+   * Generate video using fal
    */
   async generateVideo(prompt: string, imageUrl: string | null, token: string): Promise<GenerateVideoResponse> {
     const response = await fetch(`${API_URL}/api/generate-video-saas`, {

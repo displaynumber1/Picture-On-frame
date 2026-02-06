@@ -1,5 +1,5 @@
 """
-Fal.ai service for image and video generation
+fal service for image and video generation
 """
 import os
 import httpx
@@ -15,7 +15,7 @@ FAL_KEY = os.getenv('FAL_KEY')
 FAL_API_BASE = "https://fal.run"
 
 # LOCKED CONFIGURATION: Model dan parameter untuk image-to-image generation
-# Model: fal-ai/flux-2/lora/edit - Image editing (FLUX.2 [dev] from Black Forest Labs)
+# Model: fal-ai/flux-general/image-to-image - FLUX.1 [dev] image-to-image with LoRA, ControlNet, IP-Adapter
 # Untuk text-to-image: fal-ai/flux/schnell (fallback jika tidak ada image)
 # Parameter DEFAULT untuk gambar pertama:
 # - image_strength: 0.67 (FIXED - untuk balanced reference adherence)
@@ -25,14 +25,14 @@ FAL_API_BASE = "https://fal.run"
 # - image_strength: 0.69 (+0.02 dari default, max 0.75)
 # - num_inference_steps: 26 (+2 dari default, max 30)
 # - guidance_scale: 4.95 (+10% dari default, max 6.0)
-# ❗ Jangan gunakan nilai default dari fal.ai
+# ❗ Jangan gunakan nilai default dari fal
 # ❗ Fokus hanya pada image editing + prompt adherence
 FAL_MODEL_ENDPOINT_TEXT_TO_IMAGE = "fal-ai/flux/schnell"  # Untuk text-to-image (tanpa init image)
-FAL_MODEL_ENDPOINT_IMAGE_TO_IMAGE = "fal-ai/flux-2/lora/edit"  # Untuk image-to-image editing (FLUX.2 [dev])
+FAL_MODEL_ENDPOINT_IMAGE_TO_IMAGE = "fal-ai/flux-general/image-to-image"  # Image-to-image (FLUX.1 [dev])
 FAL_NUM_INFERENCE_STEPS = 24  # Default: 24 inference steps (increased to prevent blank images)
 FAL_GUIDANCE_SCALE = 4.5  # Default: 4.5 (natural and realistic, prevents mannequin-like results)
 FAL_IMAGE_STRENGTH = 0.67  # Default: 0.67 (balanced for reference adherence)
-# NOTE: Do NOT use fal.ai size presets. Always use explicit width/height for cost control.
+# NOTE: Do NOT use fal size presets. Always use explicit width/height for cost control.
 
 def get_resolution_from_aspect_ratio(aspect_ratio: str) -> tuple[Optional[int], Optional[int]]:
     """
@@ -79,7 +79,7 @@ async def compress_and_log_image(image_url: str, width: Optional[int] = None, he
     Also logs resolution, megapixel count, and file size for cost control.
     
     Args:
-        image_url: URL of image from fal.ai
+        image_url: URL of image from fal
         width: Expected width (for logging)
         height: Expected height (for logging)
     
@@ -103,7 +103,7 @@ async def compress_and_log_image(image_url: str, width: Optional[int] = None, he
         original_size_mb = original_size_bytes / (1024 * 1024)
         
         # Log original image info
-        logger.info(f"📊 Original image from fal.ai:")
+        logger.info(f"📊 Original image from fal:")
         logger.info(f"   Resolution: {actual_width}x{actual_height} pixels")
         logger.info(f"   Megapixels: {megapixels:.3f} MP")
         logger.info(f"   File size: {original_size_bytes:,} bytes ({original_size_mb:.2f} MB)")
@@ -278,20 +278,19 @@ if not FAL_KEY:
 
 
 async def generate_images(
-    prompt: str, 
+    prompt: str,
     num_images: int = 1,
-    init_image_url: Optional[str] = None,  # Public URL image untuk image-to-image (dari Supabase Storage) - LEGACY, gunakan init_image_urls
-    init_image_urls: Optional[List[str]] = None,  # Public URL images untuk image-to-image (dari Supabase Storage) - array untuk multiple images
-    image_strength: Optional[float] = None,  # Image strength (optional, will use default if not provided)
+    image_url: Optional[str] = None,  # Public URL image untuk image-to-image
+    image_strength: Optional[float] = None,  # Strength for image-to-image (optional)
     num_inference_steps: Optional[int] = None,  # Number of inference steps (optional, will use default if not provided)
     guidance_scale: Optional[float] = None,  # Guidance scale (CFG) (optional, will use default if not provided)
     negative_prompt: Optional[str] = None,  # Negative prompt untuk menghindari hasil yang tidak diinginkan
-    aspect_ratio: Optional[str] = None  # Aspect ratio (e.g., "9:16", "16:9", "1:1") - untuk menentukan width/height
+    image_size: Optional[Dict[str, int]] = None,  # {"width": int, "height": int}
+    ip_adapters: Optional[List[Dict[str, Any]]] = None  # IP-Adapter inputs
 ) -> List[str]:
     """
-    Generate images using Fal.ai flux-2/lora/edit model
-    - Image-to-image: jika init_image_url tersedia (model: flux-2/lora/edit - FLUX.2 [dev])
-    - Text-to-image: jika init_image_url tidak tersedia (model: flux/schnell)
+    Generate images using fal flux-general/image-to-image model
+    - Image-to-image: requires image_url (model: flux-general/image-to-image - FLUX.1 [dev])
     
     DEFAULT PARAMETERS (Gambar pertama):
     - num_inference_steps: 24 (default - ini adalah INFERENCE, BUKAN training)
@@ -306,8 +305,7 @@ async def generate_images(
     Args:
         prompt: Text prompt for image generation (tetap digunakan, dikombinasikan dengan init image)
         num_images: Number of images to generate (default: 2)
-        init_image_url: Public URL image untuk image-to-image (dari Supabase Storage, optional)
-        init_image_urls: Public URL images untuk image-to-image (dari Supabase Storage, optional)
+        image_url: Public URL image untuk image-to-image (required)
     
     Returns:
         List of image URLs
@@ -320,17 +318,11 @@ async def generate_images(
     final_num_inference_steps = num_inference_steps if num_inference_steps is not None else FAL_NUM_INFERENCE_STEPS
     final_guidance_scale = guidance_scale if guidance_scale is not None else FAL_GUIDANCE_SCALE
     
-    # Determine image URLs - prioritize init_image_urls (array), fallback to init_image_url (single) for backward compatibility
-    image_urls_list = []
-    if init_image_urls and len(init_image_urls) > 0:
-        image_urls_list = init_image_urls
-    elif init_image_url:
-        image_urls_list = [init_image_url]  # Convert single URL to array for backward compatibility
+    if not image_url:
+        raise ValueError("image_url is required for image-to-image generation")
     
-    # Determine model endpoint based on image URLs availability
-    use_image_to_image = len(image_urls_list) > 0
-    # flux-2/lora/edit untuk image-to-image editing dengan LoRA support (FLUX.2 [dev]), flux/schnell untuk text-to-image
-    model_endpoint = FAL_MODEL_ENDPOINT_IMAGE_TO_IMAGE if use_image_to_image else FAL_MODEL_ENDPOINT_TEXT_TO_IMAGE
+    # flux-general/image-to-image untuk image-to-image editing (FLUX.1 [dev])
+    model_endpoint = FAL_MODEL_ENDPOINT_IMAGE_TO_IMAGE
     
     try:
         async with httpx.AsyncClient(timeout=180.0) as client:
@@ -350,7 +342,7 @@ async def generate_images(
                         # Enhanced configuration for second image:
                         # - Slightly higher guidance_scale for better prompt adherence
                         # - Slightly higher num_inference_steps for more detail
-                        # - Slightly adjusted image_strength for better balance
+                        # - Slightly adjusted image_strength for better balance (kept for future use)
                         dynamic_guidance_scale = final_guidance_scale * 1.1  # 10% increase (e.g., 4.5 -> 4.95)
                         dynamic_num_inference_steps = final_num_inference_steps + 2  # +2 steps (e.g., 24 -> 26)
                         dynamic_image_strength = final_image_strength + 0.02  # Slight increase (e.g., 0.67 -> 0.69)
@@ -365,7 +357,6 @@ async def generate_images(
                         current_guidance_scale = dynamic_guidance_scale
                         
                         logger.info(f"🎯 Using ENHANCED configuration for image {i+1} (second image) for better realism")
-                        logger.info(f"   Image Strength: {current_image_strength:.2f} (enhanced from {final_image_strength:.2f})")
                         logger.info(f"   Steps: {current_num_inference_steps} (enhanced from {final_num_inference_steps})")
                         logger.info(f"   CFG: {current_guidance_scale:.2f} (enhanced from {final_guidance_scale:.2f})")
                     else:
@@ -377,77 +368,50 @@ async def generate_images(
                         logger.info(f"📸 Using DEFAULT configuration for image {i+1} (first image)")
                     
                     # LOG: Request details (untuk debugging)
-                    generation_type = "image-to-image" if use_image_to_image else "text-to-image"
-                    logger.info(f"📤 Sending {generation_type} request to Fal.ai for image {i+1}/{num_images}")
+                    generation_type = "image-to-image"
+                    logger.info(f"📤 Sending {generation_type} request to fal for image {i+1}/{num_images}")
                     logger.info(f"   Model: {model_endpoint}")
                     logger.info(f"   Prompt length: {len(prompt)} chars")
                     logger.info(f"   Prompt preview: {prompt[:200]}...")
-                    if use_image_to_image and len(image_urls_list) > 0:
-                        logger.info(f"   Init image URLs: {len(image_urls_list)} image(s)")
-                        for idx, url in enumerate(image_urls_list[:3]):
-                            logger.info(f"      [{idx+1}] {url[:80]}...")
-                            logger.info(f"   Image Strength: {current_image_strength:.2f}")
+                    logger.info(f"   Init image URL: {image_url[:80]}...")
                     logger.debug(f"   Full prompt: {prompt}")
                     
-                    # Build request payload based on generation type
-                    if use_image_to_image and len(image_urls_list) > 0:
-                        # Image-to-image payload untuk fal-ai/flux-2/lora/edit
-                        # Model ini menggunakan image_urls (plural - array)
-                        # Support multiple images: face + products + background (max 3 images sesuai dokumentasi Fal.ai)
-                        # Fal.ai flux-2/lora/edit dapat menerima hingga 3 images dalam array
-                        request_payload = {
-                            "prompt": prompt,  # Prompt tetap digunakan, dikombinasikan dengan init images
-                            "image_urls": image_urls_list[:3],  # Public URLs dari Supabase Storage (array untuk flux-2/lora/edit, max 3 images)
-                            "image_strength": current_image_strength,  # Dynamic: default for first image, enhanced for second
-                            "num_inference_steps": current_num_inference_steps,  # Dynamic: default for first image, enhanced for second
-                            "guidance_scale": current_guidance_scale  # Dynamic: default for first image, enhanced for second
-                        }
-                        
-                        # Add width and height based on aspect ratio
-                        if aspect_ratio:
-                            width, height = get_resolution_from_aspect_ratio(aspect_ratio)
-                            if width and height:
-                                request_payload["width"] = width
-                                request_payload["height"] = height
-                                logger.info(f"   ✅ Resolution: {width}x{height} (aspect ratio: {aspect_ratio})")
-                        
-                        # Add negative prompt if provided
-                        if negative_prompt:
-                            request_payload["negative_prompt"] = negative_prompt
-                            logger.info(f"   ✅ Negative prompt included: {negative_prompt[:100]}...")
-                        
-                        logger.info(f"   ✅ Image-to-image: Using {len(image_urls_list[:3])} image(s) from Supabase Storage")
-                        logger.info(f"   📤 Image URLs yang dikirim ({len(image_urls_list[:3])} images):")
-                        for idx, url in enumerate(image_urls_list[:3]):
-                            logger.info(f"      [{idx+1}] {url[:100]}...")
-                        if len(image_urls_list) > 3:
-                            logger.warning(f"   ⚠️ More than 3 images provided. Only first 3 images will be used by Fal.ai.")
-                        logger.info(f"   Model: fal-ai/flux-2/lora/edit (FLUX.2 [dev])")
-                        logger.info(f"   Image Strength: {current_image_strength:.2f} ({'enhanced' if is_second_image else 'default'}: {FAL_IMAGE_STRENGTH})")
-                        logger.info(f"   Inference Steps: {current_num_inference_steps} ({'enhanced' if is_second_image else 'default'}: {FAL_NUM_INFERENCE_STEPS})")
-                        logger.info(f"   Guidance Scale: {current_guidance_scale:.2f} ({'enhanced' if is_second_image else 'default'}: {FAL_GUIDANCE_SCALE})")
-                    else:
-                        # This should NOT happen in image-to-image pipeline
-                        # But kept as fallback for backward compatibility
-                        raise ValueError(
-                            "This is an image-to-image pipeline. init_image_urls or init_image_url is required. "
-                            "Please provide at least one image (face_image, product_images, or background_image)."
-                        )
+                    # Build request payload
+                    # Image-to-image payload untuk fal-ai/flux-general/image-to-image
+                    request_payload = {
+                        "prompt": prompt,  # Prompt tetap digunakan, dikombinasikan dengan init image
+                        "image_url": image_url,
+                        "num_inference_steps": current_num_inference_steps,  # Dynamic: default for first image, enhanced for second
+                        "guidance_scale": current_guidance_scale,  # Dynamic: default for first image, enhanced for second
+                        "strength": current_image_strength,  # Image-to-image strength (0.0 - 1.0)
+                    }
                     
-                    # Log FULL request payload untuk debugging (termasuk image_urls lengkap)
+                    if image_size and image_size.get("width") and image_size.get("height"):
+                        request_payload["image_size"] = {
+                            "width": image_size["width"],
+                            "height": image_size["height"]
+                        }
+                        logger.info(f"   ✅ Image size: {image_size['width']}x{image_size['height']}")
+                    
+                    if negative_prompt:
+                        request_payload["negative_prompt"] = negative_prompt
+                        logger.info(f"   ✅ Negative prompt included: {negative_prompt[:100]}...")
+                    
+                    if ip_adapters is not None:
+                        request_payload["ip_adapters"] = ip_adapters
+                    
+                    logger.info(f"   ✅ Image-to-image: Using 1 image from Supabase Storage")
+                    logger.info(f"   📤 Image URL yang dikirim: {image_url[:100]}...")
+                    logger.info(f"   Model: fal-ai/flux-general/image-to-image (FLUX.1 [dev])")
+                    logger.info(f"   Inference Steps: {current_num_inference_steps} ({'enhanced' if is_second_image else 'default'}: {FAL_NUM_INFERENCE_STEPS})")
+                    logger.info(f"   Guidance Scale: {current_guidance_scale:.2f} ({'enhanced' if is_second_image else 'default'}: {FAL_GUIDANCE_SCALE})")
+                    
+                    # Log FULL request payload untuk debugging
                     payload_for_log = {**request_payload}
-                    if 'image_urls' in payload_for_log:
-                        # Keep full URLs for logging (truncate each URL if too long)
-                        image_urls_full = payload_for_log['image_urls']
-                        payload_for_log['image_urls_full'] = image_urls_full  # Keep full URLs for logging
-                        payload_for_log['image_urls'] = [
-                            url[:100] + '...' if len(url) > 100 else url 
-                            for url in image_urls_full
-                        ]
-                    elif 'image_url' in payload_for_log:  # Legacy support
+                    if 'image_url' in payload_for_log:
                         payload_for_log['image_url_full'] = payload_for_log['image_url']
                         payload_for_log['image_url'] = payload_for_log['image_url'][:100] + '...' if len(payload_for_log['image_url']) > 100 else payload_for_log['image_url']
-                    logger.info(f"   📤 FULL REQUEST PAYLOAD ke Fal.ai:")
+                    logger.info(f"   📤 FULL REQUEST PAYLOAD ke fal:")
                     logger.info(f"   {json.dumps(payload_for_log, indent=2)}")
                     logger.debug(f"   Full request payload (detailed): {json.dumps(request_payload, indent=2)}")
                     
@@ -462,15 +426,15 @@ async def generate_images(
                     # Check response status before processing
                     if response.status_code == 403:
                         error_detail = response.text if hasattr(response, 'text') else response.content.decode('utf-8', errors='ignore')
-                        logger.error(f"❌ Fal.ai API 403 Forbidden for image {i+1}. Response: {error_detail[:500]}")
+                        logger.error(f"❌ fal API 403 Forbidden for image {i+1}. Response: {error_detail[:500]}")
                         logger.error(f"   Check FAL_KEY format and permissions. Current FAL_KEY starts with: {FAL_KEY[:20]}..." if FAL_KEY else "   FAL_KEY is not set")
-                        raise ValueError(f"Fal.ai API access denied (403 Forbidden). Please check your FAL_KEY and API permissions. Response: {error_detail[:300]}")
+                        raise ValueError(f"fal API access denied (403 Forbidden). Please check your FAL_KEY and API permissions. Response: {error_detail[:300]}")
                     
                     if response.status_code == 401:
                         error_detail = response.text if hasattr(response, 'text') else response.content.decode('utf-8', errors='ignore')
-                        logger.error(f"❌ Fal.ai API 401 Unauthorized for image {i+1}. Response: {error_detail[:500]}")
+                        logger.error(f"❌ fal API 401 Unauthorized for image {i+1}. Response: {error_detail[:500]}")
                         logger.error(f"   Check FAL_KEY format. Current FAL_KEY starts with: {FAL_KEY[:20]}..." if FAL_KEY else "   FAL_KEY is not set")
-                        raise ValueError(f"Fal.ai API authentication failed (401). Please check your FAL_KEY. Response: {error_detail[:300]}")
+                        raise ValueError(f"fal API authentication failed (401). Please check your FAL_KEY. Response: {error_detail[:300]}")
                     
                     # Raise for other HTTP errors
                     response.raise_for_status()
@@ -478,14 +442,14 @@ async def generate_images(
                     # Parse JSON response
                     try:
                         result = response.json()
-                        logger.debug(f"Fal.ai API response for image {i+1}: {json.dumps(result, indent=2)[:500]}")
+                        logger.debug(f"fal API response for image {i+1}: {json.dumps(result, indent=2)[:500]}")
                     except Exception as json_error:
                         error_text = response.text if hasattr(response, 'text') else response.content.decode('utf-8', errors='ignore')
                         logger.error(f"❌ Failed to parse JSON response for image {i+1}. Status: {response.status_code}, Text: {error_text[:500]}")
-                        raise ValueError(f"Fal.ai API returned invalid JSON. Status: {response.status_code}, Error: {str(json_error)}")
+                        raise ValueError(f"fal API returned invalid JSON. Status: {response.status_code}, Error: {str(json_error)}")
                     
                     # Extract image URL(s) from response
-                    # Fal.ai may return single image or array of images
+                    # fal may return single image or array of images
                     extracted_urls = []
                     
                     # Try different response formats
@@ -515,21 +479,22 @@ async def generate_images(
                     
                     # Process all extracted URLs
                     if extracted_urls:
-                        logger.info(f"✅ Extracted {len(extracted_urls)} image URL(s) from Fal.ai response")
+                        logger.info(f"✅ Extracted {len(extracted_urls)} image URL(s) from fal response")
                         for idx, image_url in enumerate(extracted_urls):
                             # Compress and log image before adding to results
                             try:
+                                image_size = request_payload.get("image_size") or {}
                                 compressed_url, metadata = await compress_and_log_image(
                                     image_url,
-                                    width=request_payload.get("width") if "width" in request_payload else None,
-                                    height=request_payload.get("height") if "height" in request_payload else None
+                                    width=image_size.get("width"),
+                                    height=image_size.get("height")
                                 )
                                 images.append(compressed_url)
-                                logger.info(f"✅ Generated and compressed image {len(images)}/{num_images} from Fal.ai: {compressed_url[:100]}...")
+                                logger.info(f"✅ Generated and compressed image {len(images)}/{num_images} from fal: {compressed_url[:100]}...")
                             except Exception as comp_error:
                                 logger.warning(f"⚠️ Compression failed for image {len(images)+1}, using original URL: {str(comp_error)}")
                                 images.append(image_url)
-                                logger.info(f"✅ Generated image {len(images)}/{num_images} from Fal.ai (uncompressed): {image_url[:100]}...")
+                                logger.info(f"✅ Generated image {len(images)}/{num_images} from fal (uncompressed): {image_url[:100]}...")
                             
                             # If we have enough images, break from inner loop
                             if len(images) >= num_images:
@@ -579,10 +544,11 @@ async def generate_images(
                                     # Process extracted URLs from async job
                                     for idx, image_url in enumerate(extracted_urls):
                                         try:
+                                            image_size = request_payload.get("image_size") or {}
                                             compressed_url, metadata = await compress_and_log_image(
                                                 image_url,
-                                                width=request_payload.get("width") if "width" in request_payload else None,
-                                                height=request_payload.get("height") if "height" in request_payload else None
+                                                width=image_size.get("width"),
+                                                height=image_size.get("height")
                                             )
                                             images.append(compressed_url)
                                             logger.info(f"✅ Generated and compressed image {len(images)}/{num_images} from async job: {compressed_url[:100]}...")
@@ -598,12 +564,12 @@ async def generate_images(
                                         break
                                 break
                             elif poll_result.get("status") == "FAILED":
-                                logger.warning(f"Fal.ai job {request_id} failed")
+                                logger.warning(f"fal job {request_id} failed")
                                 break
                     
                         # Fallback: try to find URL in response text if still no URLs
                     if not extracted_urls:
-                        logger.warning(f"⚠️ Could not extract image URL from Fal.ai response. Full response: {json.dumps(result, indent=2)[:1000]}")
+                        logger.warning(f"⚠️ Could not extract image URL from fal response. Full response: {json.dumps(result, indent=2)[:1000]}")
                         # Try to find any URL-like field in the response
                         response_str = json.dumps(result)
                         import re
@@ -617,8 +583,8 @@ async def generate_images(
                                 images.append(url)
                                 logger.info(f"✅ Using URL found in response ({len(images)}/{num_images}): {url}")
                             else:
-                                logger.error(f"❌ No image URL found in Fal.ai response for image {i+1}")
-                                error_summaries.append(f"image {i+1}: no image URL in Fal.ai response")
+                                logger.error(f"❌ No image URL found in fal response for image {i+1}")
+                                error_summaries.append(f"image {i+1}: no image URL in fal response")
                         
                 except ValueError as e:
                     # Re-raise ValueError (it's already a meaningful error message from 401/403)
@@ -629,7 +595,7 @@ async def generate_images(
                     error_summaries.append(f"image {i+1}: HTTP {e.response.status_code} - {error_detail[:200]}")
                     # If it's 401/403, don't continue - it's an auth issue
                     if e.response.status_code in (401, 403):
-                        raise ValueError(f"Fal.ai API authentication/authorization failed ({e.response.status_code}): {error_detail[:300]}")
+                        raise ValueError(f"fal API authentication/authorization failed ({e.response.status_code}): {error_detail[:300]}")
                     # Continue with next image for other HTTP errors (but log warning)
                     logger.warning(f"Skipping image {i+1} due to HTTP error {e.response.status_code}")
                 except Exception as e:
@@ -638,24 +604,24 @@ async def generate_images(
                     # Continue with next image even if one fails (but log error)
             
             if not images:
-                error_hint = " | ".join(error_summaries[-3:]) if error_summaries else "Unknown error (no details from Fal.ai)"
-                raise ValueError(f"No images generated from Fal.ai. Last errors: {error_hint}")
+                error_hint = " | ".join(error_summaries[-3:]) if error_summaries else "Unknown error (no details from fal)"
+                raise ValueError(f"No images generated from fal. Last errors: {error_hint}")
             
-            logger.info(f"Successfully generated {len(images)}/{num_images} images from Fal.ai")
+            logger.info(f"Successfully generated {len(images)}/{num_images} images from fal")
             return images
             
     except httpx.HTTPStatusError as e:
         error_text = e.response.text if hasattr(e.response, 'text') else str(e)
-        logger.error(f"Fal.ai API error: {e.response.status_code} - {error_text}")
-        raise ValueError(f"Fal.ai API error: {e.response.status_code} - {error_text}")
+        logger.error(f"fal API error: {e.response.status_code} - {error_text}")
+        raise ValueError(f"fal API error: {e.response.status_code} - {error_text}")
     except Exception as e:
-        logger.error(f"Error generating images with Fal.ai: {str(e)}", exc_info=True)
+        logger.error(f"Error generating images with fal: {str(e)}", exc_info=True)
         raise ValueError(f"Failed to generate images: {str(e)}")
 
 
 async def generate_video(prompt: str, image_url: Optional[str] = None) -> str:
     """
-    Generate video using Fal.ai kling-v2/video-generation model
+    Generate video using fal kling-v2/video-generation model
     
     Args:
         prompt: Text prompt for video generation
@@ -716,10 +682,10 @@ async def generate_video(prompt: str, image_url: Optional[str] = None) -> str:
                             video_url = poll_result["video_url"]
                         
                         if video_url:
-                            logger.info(f"Generated video from Fal.ai: {video_url}")
+                            logger.info(f"Generated video from fal: {video_url}")
                             return video_url
                     elif poll_result.get("status") == "FAILED":
-                        logger.error(f"Fal.ai video job failed: {poll_result}")
+                        logger.error(f"fal video job failed: {poll_result}")
                         raise ValueError("Video generation failed")
                     
                     poll_count += 1
@@ -737,17 +703,17 @@ async def generate_video(prompt: str, image_url: Optional[str] = None) -> str:
                     video_url = submit_result["video_url"]
                 
                 if not video_url:
-                    logger.error(f"No video URL found in Fal.ai response: {submit_result}")
-                    raise ValueError("No video generated from Fal.ai")
+                    logger.error(f"No video URL found in fal response: {submit_result}")
+                    raise ValueError("No video generated from fal")
                 
-                logger.info(f"Generated video from Fal.ai: {video_url}")
+                logger.info(f"Generated video from fal: {video_url}")
                 return video_url
             
     except httpx.HTTPStatusError as e:
-        logger.error(f"Fal.ai API error: {e.response.status_code} - {e.response.text}")
-        raise ValueError(f"Fal.ai API error: {e.response.status_code} - {e.response.text}")
+        logger.error(f"fal API error: {e.response.status_code} - {e.response.text}")
+        raise ValueError(f"fal API error: {e.response.status_code} - {e.response.text}")
     except Exception as e:
-        logger.error(f"Error generating video with Fal.ai: {str(e)}", exc_info=True)
+        logger.error(f"Error generating video with fal: {str(e)}", exc_info=True)
         raise ValueError(f"Failed to generate video: {str(e)}")
 
 
@@ -821,8 +787,8 @@ async def generate_kling_image_to_video(prompt: str, image_url: str, negative_pr
             raise ValueError(f"Unexpected response from Kling video: {submit_result}")
     except httpx.HTTPStatusError as e:
         error_text = e.response.text if hasattr(e.response, 'text') else str(e)
-        logger.error(f"Fal.ai Kling API error: {e.response.status_code} - {error_text}")
-        raise ValueError(f"Fal.ai Kling API error: {e.response.status_code} - {error_text}")
+        logger.error(f"fal Kling API error: {e.response.status_code} - {error_text}")
+        raise ValueError(f"fal Kling API error: {e.response.status_code} - {error_text}")
     except Exception as e:
         logger.error(f"Error generating Kling video: {str(e)}", exc_info=True)
         raise ValueError(f"Failed to generate Kling video: {str(e)}")

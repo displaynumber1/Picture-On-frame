@@ -4,7 +4,7 @@
 
 ### 🔍 Analisa dari Log:
 
-## 📊 Prompt yang Dikirim ke Fal.ai:
+## 📊 Prompt yang Dikirim ke fal:
 
 **Line 323 & 408:**
 ```
@@ -22,7 +22,7 @@ Prompt length: 200 chars
 2. **Prompt hanya generic:**
    - "A Woman model, for Fashion..." - terlalu generic
    - Tidak ada reference ke foto yang di-upload
-   - Fal.ai generate berdasarkan prompt generic saja
+   - fal generate berdasarkan prompt generic saja
 
 ## 🔴 Root Cause: GEMINI_API_KEY Tidak Ditemukan
 
@@ -57,9 +57,9 @@ ERROR:gemini_service:Error extracting description from background/environment: G
    - Karena Gemini Vision gagal, function `enhance_prompt_with_multiple_images` return original prompt
    - Tidak ada deskripsi produk yang ditambahkan
 
-4. **Fal.ai Generate dengan Prompt Generic:**
+4. **fal Generate dengan Prompt Generic:**
    - Prompt yang dikirim: "A Woman model, for Fashion..." (tanpa deskripsi produk)
-   - Fal.ai tidak tahu produk apa yang harus di-generate
+   - fal tidak tahu produk apa yang harus di-generate
    - Hasil: Generic woman model (tidak sesuai dengan foto upload)
 
 ## 🔧 Solusi: Fix GEMINI_API_KEY
@@ -120,7 +120,7 @@ INFO:    Prompt: A Woman model, for Fashion... IMPORTANT REFERENCE DETAILS: Prod
 ## 🎯 Kesimpulan:
 
 ### Root Cause:
-**❌ GEMINI_API_KEY tidak ditemukan** → Gemini Vision gagal → Prompt tidak di-enhance → Fal.ai generate dengan prompt generic → Hasil tidak sesuai foto
+**❌ GEMINI_API_KEY tidak ditemukan** → Gemini Vision gagal → Prompt tidak di-enhance → fal generate dengan prompt generic → Hasil tidak sesuai foto
 
 ### Solution:
 **✅ Fix GEMINI_API_KEY di config.env** → Restart backend → Gemini Vision akan berhasil → Prompt akan di-enhance dengan deskripsi produk → Hasil akan lebih sesuai

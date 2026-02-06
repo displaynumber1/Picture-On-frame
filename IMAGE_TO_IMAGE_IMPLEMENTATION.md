@@ -1,4 +1,4 @@
-# Image-to-Image Implementation - Gambar User Langsung ke Fal.ai
+# Image-to-Image Implementation - Gambar User Langsung ke fal
 
 ## ✅ Implementasi Selesai
 
@@ -26,7 +26,7 @@
 2. **Product image[0]** (jika face image tidak ada)
 3. **Background image** (jika yang lain tidak ada)
 
-### 4. **Payload untuk Fal.ai**:
+### 4. **Payload untuk fal**:
 ```json
 {
   "prompt": "A Woman model, for Fashion...",  // Prompt tetap digunakan
@@ -45,16 +45,16 @@
 2. Backend kirim ke Gemini Vision → Extract description
 3. Gemini Vision gagal (GEMINI_API_KEY tidak ada)
 4. Backend gunakan prompt generic tanpa deskripsi produk
-5. Fal.ai generate dengan prompt generic → Hasil tidak sesuai foto
+5. fal generate dengan prompt generic → Hasil tidak sesuai foto
 ```
 
 ### Sesudah (Image-to-Image - BENAR):
 ```
 1. User upload gambar → Backend
 2. Backend SKIP Gemini Vision → Langsung ke image-to-image
-3. Backend kirim gambar user langsung ke Fal.ai sebagai init image
-4. Fal.ai FLUX melihat pixel gambar user langsung
-5. Fal.ai generate dengan prompt + init image → Hasil sesuai foto (wajah, pose, style direferensikan)
+3. Backend kirim gambar user langsung ke fal sebagai init image
+4. fal FLUX melihat pixel gambar user langsung
+5. fal generate dengan prompt + init image → Hasil sesuai foto (wajah, pose, style direferensikan)
 ```
 
 ## 📊 Log Output (Expected):
@@ -65,7 +65,7 @@ INFO: ✅ Using face_image as init image for image-to-image generation
 INFO: 📸 Image-to-image mode: Init image provided (length: 50000 chars)
 INFO:    ⚠️  SKIPPED Gemini Vision enhancement - langsung image-to-image
 INFO:    Prompt tetap digunakan, dikombinasikan dengan init image
-INFO: Generating images for user ... using Fal.ai fal-ai/flux-1.1/image-to-image (image-to-image mode)
+INFO: Generating images for user ... using fal fal-ai/flux-1.1/image-to-image (image-to-image mode)
 INFO: 📝 FINAL PROMPT YANG DIKIRIM KE FAL.AI:
 INFO:    Model: fal-ai/flux-1.1/image-to-image
 INFO:    Mode: image-to-image
@@ -73,13 +73,13 @@ INFO:    Steps: 7, CFG: 3.5
 INFO:    Strength: 0.65 (FIXED: 0.6-0.7)
 INFO:    Prompt: A Woman model, for Fashion...
 INFO:    Init image: YES
-INFO: 📤 Sending image-to-image request to Fal.ai for image 1/2
-INFO:    ✅ Image-to-image: Init image dikirim langsung ke Fal.ai (strength: 0.65)
+INFO: 📤 Sending image-to-image request to fal for image 1/2
+INFO:    ✅ Image-to-image: Init image dikirim langsung ke fal (strength: 0.65)
 ```
 
 ### Text-to-Image Mode (jika tidak ada image):
 ```
-INFO: Generating images for user ... using Fal.ai fal-ai/flux/schnell (text-to-image mode)
+INFO: Generating images for user ... using fal fal-ai/flux/schnell (text-to-image mode)
 INFO: 📝 FINAL PROMPT YANG DIKIRIM KE FAL.AI:
 INFO:    Model: fal-ai/flux/schnell
 INFO:    Mode: text-to-image
@@ -105,7 +105,7 @@ INFO:    Init image: NO
 
 ## ✅ Status:
 
-**IMPLEMENTASI SELESAI** - Gambar user langsung dikirim ke Fal.ai sebagai init image untuk image-to-image generation.
+**IMPLEMENTASI SELESAI** - Gambar user langsung dikirim ke fal sebagai init image untuk image-to-image generation.
 
 Silakan test dengan:
 1. Upload gambar (face/product/background)

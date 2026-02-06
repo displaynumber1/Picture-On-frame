@@ -129,7 +129,7 @@ else:
     )  # ✅ BENAR - Raise error
 ```
 
-## 📋 Payload yang Dikirim ke Fal.ai (SETELAH FIX)
+## 📋 Payload yang Dikirim ke fal (SETELAH FIX)
 
 ### Image-to-Image Pipeline (SELALU):
 

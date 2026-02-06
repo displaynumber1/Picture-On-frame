@@ -1,8 +1,8 @@
-# Diagnosis: Payload yang Diterima Fal.ai dari Backend
+# Diagnosis: Payload yang Diterima fal dari Backend
 
 ## 📊 Ringkasan
 
-Backend mengirim request ke Fal.ai menggunakan model **`fal-ai/flux-general/image-to-image`** untuk image-to-image generation dengan parameter yang sudah dikunci (fixed).
+Backend mengirim request ke fal menggunakan model **`fal-ai/flux-general/image-to-image`** untuk image-to-image generation dengan parameter yang sudah dikunci (fixed).
 
 ## 🔗 Endpoint dan HTTP Request
 
@@ -93,7 +93,7 @@ Content-Type: application/json
 
 #### 6. **loras** (array, OPTIONAL)
 - **Type:** `array of strings`
-- **Description:** Array of LoRA paths/IDs dari Fal.ai untuk image editing
+- **Description:** Array of LoRA paths/IDs dari fal untuk image editing
 - **Default:** Tidak ada (opsional)
 - **Example:**
   ```json
@@ -115,7 +115,7 @@ Content-Type: application/json
 
 **Fakta:**
 - ✅ Backend TIDAK mengubah prompt dari frontend
-- ✅ Prompt dikirim langsung AS-IS ke Fal.ai (tidak ada enhancement/generation)
+- ✅ Prompt dikirim langsung AS-IS ke fal (tidak ada enhancement/generation)
 - ✅ Prompt yang dikirim = Prompt dari frontend (identik)
 
 **Untuk melihat prompt sebenarnya:**
@@ -236,7 +236,7 @@ if init_image_url and FAL_IMAGE_STRENGTH != 0.5:
 ### Request Logging (Line 152-154):
 
 ```
-INFO: 📤 FULL REQUEST PAYLOAD ke Fal.ai:
+INFO: 📤 FULL REQUEST PAYLOAD ke fal:
 INFO: {
 INFO:   "prompt": "{prompt sebenarnya dari frontend}",  ← Prompt AS-IS dari user
 INFO:   "image_url": "https://...supabase.co/storage/v1/object/public/IMAGES_UPLOAD/...",
@@ -272,7 +272,7 @@ INFO:    Prompt length: {length} chars
    - Upload image ke bucket "IMAGES_UPLOAD"
    - Get public URL: https://...supabase.co/.../IMAGES_UPLOAD/{user_id}/{category}/{uuid}.{ext}
    
-3. Backend → Fal.ai (POST https://fal.run/fal-ai/flux-general/image-to-image)
+3. Backend → fal (POST https://fal.run/fal-ai/flux-general/image-to-image)
    - Payload: {
        "prompt": "...",
        "image_url": "https://...supabase.co/...",  ← Public URL dari Supabase
@@ -281,7 +281,7 @@ INFO:    Prompt length: {length} chars
        "guidance_scale": 3.5
      }
    
-4. Fal.ai → Backend
+4. fal → Backend
    - Response: { "images": [{ "url": "https://..." }] }
    
 5. Backend → Frontend
@@ -306,7 +306,7 @@ INFO:    Prompt length: {length} chars
 4. **Image URL:**
    - ✅ Harus public URL (Supabase Storage public bucket)
    - ✅ Format: `https://{project}.supabase.co/storage/v1/object/public/IMAGES_UPLOAD/...`
-   - ✅ Fal.ai harus bisa access URL ini (public access)
+   - ✅ fal harus bisa access URL ini (public access)
 
 5. **LoRA Support:**
    - ✅ Model support LoRA (optional parameter)
@@ -320,7 +320,7 @@ INFO:    Prompt length: {length} chars
    ```
    INFO: 📝 FINAL PROMPT YANG DIKIRIM KE FAL.AI:
    INFO:    Prompt: {prompt sebenarnya dari frontend}
-   INFO: 📤 FULL REQUEST PAYLOAD ke Fal.ai:
+   INFO: 📤 FULL REQUEST PAYLOAD ke fal:
    INFO: {
    INFO:   "prompt": "{prompt sebenarnya dari frontend}",  ← Prompt AS-IS dari user
    INFO:   ...
@@ -334,12 +334,12 @@ INFO:    Prompt length: {length} chars
 
 3. **Check Browser Dev Tools:**
    - Network tab → `/api/generate-image` → Response
-   - Field: `debug_info.prompt_sent` = prompt sebenarnya yang dikirim ke Fal.ai
+   - Field: `debug_info.prompt_sent` = prompt sebenarnya yang dikirim ke fal
    - Field: `debug_info.original_prompt` = prompt sebenarnya (truncated untuk display)
 
-4. **Check Fal.ai API Response:**
+4. **Check fal API Response:**
    ```
-   DEBUG: Fal.ai API response for image 1: {response JSON}
+   DEBUG: fal API response for image 1: {response JSON}
    ```
 
 ### ⚠️ Important: Prompt Flow
@@ -348,7 +348,7 @@ INFO:    Prompt length: {length} chars
 - ✅ Prompt diambil langsung: `prompt_to_use = form_data.get("prompt")` atau `json_data.get("prompt")`
 - ✅ Prompt dikirim langsung: `await fal_generate_images(prompt_to_use, ...)`
 - ✅ Tidak ada prompt enhancement, generation, atau manipulation
-- ✅ Prompt yang dikirim ke Fal.ai = Prompt dari frontend (identik)
+- ✅ Prompt yang dikirim ke fal = Prompt dari frontend (identik)
 
 ### Common Issues:
 
@@ -373,10 +373,10 @@ INFO:    Prompt length: {length} chars
 
 ## 📚 References
 
-- Fal.ai API Docs: https://fal.ai/models/fal-ai/flux-general/image-to-image
+- fal API Docs: https://fal.ai/models/fal-ai/flux-general/image-to-image
 - Model Endpoint: `fal-ai/flux-general/image-to-image`
 - Supabase Storage: https://supabase.com/docs/guides/storage
 
 ---
 
-**Dokumentasi lengkap tentang payload yang diterima Fal.ai dari backend.**
+**Dokumentasi lengkap tentang payload yang diterima fal dari backend.**

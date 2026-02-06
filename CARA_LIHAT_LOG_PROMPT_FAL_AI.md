@@ -1,8 +1,8 @@
-# Cara Melihat Log Prompt yang Dikirim ke Fal.ai
+# Cara Melihat Log Prompt yang Dikirim ke fal
 
 ## ✅ Status: LOGGING DAN DEBUG ENDPOINT SUDAH DITAMBAHKAN
 
-### 3 Cara untuk Melihat Prompt yang Dikirim ke Fal.ai:
+### 3 Cara untuk Melihat Prompt yang Dikirim ke fal:
 
 ## 🔍 Method 1: Lihat di Browser Dev Tools (Termudah) ✅
 
@@ -40,7 +40,7 @@
 }
 ```
 
-**Field `prompt_sent` berisi FULL PROMPT yang dikirim ke Fal.ai!**
+**Field `prompt_sent` berisi FULL PROMPT yang dikirim ke fal!**
 
 ---
 
@@ -76,7 +76,7 @@ INFO:    Steps: 7, CFG: 3.5
 INFO:    Prompt: [FULL PROMPT TEXT]
 INFO:    Prompt length: 850 chars
 INFO:    ==========================================
-INFO: 📤 Sending request to Fal.ai for image 1/2
+INFO: 📤 Sending request to fal for image 1/2
 INFO:    Model: fal-ai/flux/schnell
 INFO:    Prompt length: 850 chars
 INFO:    Prompt preview: A Woman model for Fashion in Standing pose. IMPORTANT REFERENCE DETAILS: Product 1: brown leather bucket bag...
@@ -195,12 +195,12 @@ original_prompt: "A Woman model for Fashion in Standing pose, with Studio backgr
 Combined descriptions: Product 1: brown leather bucket bag... | Product 2: light blue jeans... | Face/Model reference: young woman with pink hijab...
 ```
 
-### 3. Enhanced Prompt (Final yang dikirim ke Fal.ai)
+### 3. Enhanced Prompt (Final yang dikirim ke fal)
 ```
 enhanced_prompt: "A Woman model for Fashion... IMPORTANT REFERENCE DETAILS: Product 1: ... Product 2: ... Face/Model reference: ... Generate images that ACCURATELY match..."
 ```
 
-### 4. Request Payload ke Fal.ai
+### 4. Request Payload ke fal
 ```json
 {
   "prompt": "[FULL ENHANCED PROMPT]",

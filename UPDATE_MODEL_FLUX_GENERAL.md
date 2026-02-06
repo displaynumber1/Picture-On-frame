@@ -15,7 +15,7 @@
 - **Ke:** `image_strength: 0.5`
 
 ### 4. Parameter Baru: LoRA Support
-- **Tambahan:** `loras` (optional array) - untuk LoRA paths/IDs dari fal.ai
+- **Tambahan:** `loras` (optional array) - untuk LoRA paths/IDs dari fal
 - Bisa diisi dinamis di masa depan
 - Jika tidak diisi, request tetap berjalan normal
 
@@ -23,7 +23,7 @@
 
 ✅ **image_strength: 0.5**
 - Untuk menjaga identitas wajah tetap konsisten
-- ❗ JANGAN gunakan nilai default dari fal.ai
+- ❗ JANGAN gunakan nilai default dari fal
 
 ✅ **num_inference_steps: 7**
 - Ini adalah INFERENCE, BUKAN training
@@ -31,9 +31,9 @@
 
 ✅ **guidance_scale: 3.5**
 - Agar prompt dipatuhi tanpa merusak wajah
-- ❗ JANGAN gunakan nilai default dari fal.ai
+- ❗ JANGAN gunakan nilai default dari fal
 
-## 📝 Payload yang Dikirim ke Fal.ai
+## 📝 Payload yang Dikirim ke fal
 
 ### Image-to-Image (dengan init image):
 ```json

@@ -19,27 +19,60 @@ async function readErrorDetail(response: Response): Promise<string> {
   }
 }
 
-/**
- * Default negative prompt untuk menghindari hasil yang tidak diinginkan
- * Mencegah: plastic skin, artificial smoothness, CGI, 3D render, dll.
- */
-const DEFAULT_NEGATIVE_PROMPT = 'plastic skin, artificial smoothness, airbrushed, CGI, 3d render, cartoon, anime, illustration, sketch, blurry, low resolution, distorted hands, extra fingers, mutated fingers, fused fingers, deformed anatomy, bad proportions, double heads, cloned face, unnatural eyes, watermark, text, signature, grainy, low quality, overexposed, messy background elements, floating products, disconnected limbs';
+const DEFAULT_IMAGE_SIZE = { width: 768, height: 1024 };
+
+function mapAspectRatioToSize(aspectRatio?: string) {
+  switch (aspectRatio) {
+    case '1:1':
+      return { width: 768, height: 768 };
+    case '3:4':
+      return { width: 768, height: 1024 };
+    case '4:3':
+      return { width: 1024, height: 768 };
+    case '9:16':
+      return { width: 720, height: 1280 };
+    case '16:9':
+      return { width: 1280, height: 720 };
+    default:
+      return DEFAULT_IMAGE_SIZE;
+  }
+}
+
+const PRESET_ID_BY_LABEL: Record<string, string> = {
+  'Studio': 'studio_wall_fullbody_01',
+  'Tembok Polos': 'studio_wall_fullbody_01',
+  'Minimalis': 'minimalist_corner_01',
+  'Kamar Aesthetic Women': 'minimalist_corner_01',
+  'Kamar Aesthetic Men': 'minimalist_corner_01',
+  'Meja Aesthetic': 'table_aesthetic_01',
+  'Mall': 'mall_corridor_01',
+  'Jalan': 'street_sidewalk_01',
+  'Lantai Vynil & Gorden': 'flatlay_vinyl_01',
+  'Gorden': 'flatlay_vinyl_01',
+  'Karpet': 'minimalist_corner_01',
+  'Dinding, Karpet & Standing Lampu': 'minimalist_corner_01',
+  'Interior Mobil': 'car_interior_front_01'
+};
+
+function presetIdFromLabel(label: string) {
+  return PRESET_ID_BY_LABEL[label];
+}
 
 export interface FalGenerateRequest {
   prompt: string;
-  product_images?: string[];  // Multiple product images (base64 atau data URL)
-  face_image?: string;  // Face image (base64 atau data URL)
-  background_image?: string;  // Background image (base64 atau data URL)
-  identity_mode?: 'none' | 'avatar';
-  // Fal.ai flux-2/lora/edit specific parameters
-  image_strength?: number;  // Image strength for image-to-image generation (default: 0.67 - balanced for reference adherence)
-  num_inference_steps?: number;  // Number of inference steps (default: 24)
-  guidance_scale?: number;  // Guidance scale (CFG) for prompt adherence (default: 4.5 - natural and realistic)
-  model?: string;  // Model endpoint (default: fal-ai/flux-2/lora/edit)
-  negative_prompt?: string;  // Negative prompt untuk menghindari hasil yang tidak diinginkan
-  aspect_ratio?: string;  // Aspect ratio (e.g., "9:16", "16:9", "1:1") - untuk menentukan width/height
+  content_type?: string;
+  category?: string;
+  style?: string;
+  product_main_url: string;
+  product_opt_url?: string;
+  face_reference_url?: string;
+  background_url?: string | null;
+  background_mode?: 'preset' | 'upload' | 'none' | 'remove';
+  background_preset_id?: string;
+  image_size?: { width: number; height: number };
+  strength?: number;
   // Legacy field untuk backward compatibility
-  reference_image?: string;  // Base64 image atau data URL (optional, akan dimap ke product_images[0])
+  init_image_urls?: string[];
 }
 
 export interface FalGenerateResponse {
@@ -49,7 +82,7 @@ export interface FalGenerateResponse {
 }
 
 /**
- * Generate images using Fal.ai API (fal-ai/flux-2/lora/edit)
+ * Generate images using fal API (fal-ai/flux-2/lora/edit)
  * @param prompt - Text prompt for image generation (will be generated from options if not provided)
  * @param numImages - Number of images to generate (default: 2)
  * @param productImages - Optional array of product images (base64 atau data URL) - order: [Produk1, Produk2]
@@ -66,8 +99,7 @@ export async function generateImagesWithFal(
   faceImage?: string,
   backgroundImage?: string,
   options?: GenerationOptions,
-  referenceImage?: string,  // Legacy parameter untuk backward compatibility
-  identityMode?: 'none' | 'avatar'
+  referenceImage?: string  // Legacy parameter untuk backward compatibility
 ): Promise<string[]> {
   try {
     // Get access token from Supabase
@@ -94,7 +126,6 @@ export async function generateImagesWithFal(
 
     // Generate prompt from options if prompt not provided and options available
     let finalPrompt = prompt;
-    let finalNegativePrompt = DEFAULT_NEGATIVE_PROMPT;
     
     if (!finalPrompt && options) {
       // Use new 4-layer architecture with Flux-2 exclusive generator
@@ -123,14 +154,13 @@ export async function generateImagesWithFal(
       const promptOutput = generateFluxPromptV2(normalized, normalized.mode);
       
       finalPrompt = promptOutput.positivePrompt;
-      finalNegativePrompt = promptOutput.negativePrompt;
     }
 
     if (!finalPrompt) {
       throw new Error('Prompt is required. Please provide either prompt or options.');
     }
 
-    // Generate images in batches (Fal.ai generates 2 images per request)
+    // Generate images in batches (fal generates 2 images per request)
     const imageUrls: string[] = [];
     const batches = Math.ceil(numImages / 2);
     
@@ -139,40 +169,47 @@ export async function generateImagesWithFal(
       let requestBody: FalGenerateRequest | null = null;
       
       try {
-        // Build request body with all images in correct order: [Produk1, Produk2, Wajah, Background]
-        // Order: Product images first, then face, then background
+        const productMainUrl = productImages && productImages.length > 0 ? productImages[0] : referenceImage;
+        const productOptUrl = productImages && productImages.length > 1 ? productImages[1] : undefined;
+        const backgroundChoice = options?.background || 'Studio';
+        let backgroundMode: 'preset' | 'upload' | 'none' | 'remove' = 'none';
+        let backgroundPresetId: string | undefined;
+
+        if (backgroundChoice === 'Upload Background') {
+          backgroundMode = 'upload';
+        } else if (backgroundChoice === 'Hapus Latar') {
+          backgroundMode = 'remove';
+        } else if (backgroundChoice) {
+          backgroundMode = 'preset';
+          backgroundPresetId = presetIdFromLabel(backgroundChoice);
+        }
+
+        const backgroundUrl = backgroundImage || null;
+
+        if (!productMainUrl) {
+          throw new Error('Produk utama wajib diupload terlebih dahulu.');
+        }
+
+        if (backgroundMode === 'preset' && !backgroundPresetId) {
+          throw new Error('Background preset tidak dikenal. Silakan pilih preset yang valid.');
+        }
+        if (backgroundMode === 'upload' && !backgroundUrl) {
+          throw new Error('Background wajib diupload jika memilih upload background.');
+        }
+
         requestBody = {
           prompt: finalPrompt,
-          model: 'fal-ai/flux-2/lora/edit',  // Use flux-2/lora/edit model
-          image_strength: 0.67,  // Balanced image strength for reference adherence
-          num_inference_steps: 24,  // Increased steps to prevent blank images
-          guidance_scale: 4.5,  // Natural CFG for realistic results (not mannequin-like)
-          negative_prompt: finalNegativePrompt,  // Use generated negative prompt with fabric constraints
-          aspect_ratio: options?.aspectRatio,  // Aspect ratio from options (e.g., "9:16" → 720x1280)
+          content_type: options?.contentType,
+          category: options?.category,
+          style: options?.style,
+          product_main_url: productMainUrl,
+          product_opt_url: productOptUrl,
+          face_reference_url: faceImage || undefined,
+          background_url: backgroundUrl,
+          background_mode: backgroundMode,
+          background_preset_id: backgroundPresetId,
+          image_size: mapAspectRatioToSize(options?.aspectRatio),
         };
-        
-        // Include product images if provided (order: Produk1, Produk2)
-        if (productImages && productImages.length > 0) {
-          requestBody.product_images = productImages.filter(Boolean);
-        }
-        
-        // Include face image if provided (order: Wajah)
-        if (faceImage) {
-          requestBody.face_image = faceImage;
-        }
-        
-        // Include background image if provided (order: Background)
-        if (backgroundImage) {
-          requestBody.background_image = backgroundImage;
-        }
-        
-        // Legacy: if only referenceImage provided, map to product_images[0]
-        if (referenceImage && (!productImages || productImages.length === 0)) {
-          requestBody.reference_image = referenceImage;
-        }
-        
-        const resolvedIdentityMode = identityMode === 'avatar' ? 'avatar' : 'none';
-        requestBody.identity_mode = resolvedIdentityMode;
 
         const readErrorDetail = async (res: Response) => {
           let detail = 'Failed to generate images';
@@ -215,34 +252,6 @@ export async function generateImagesWithFal(
       if (!response.ok) {
         let errorDetail = await readErrorDetail(response);
 
-        if (response.status === 422 && /identity_mode/i.test(errorDetail) && requestBody) {
-          console.warn('Backend schema does not accept identity_mode, retrying without it.');
-          const fallbackBody = { ...requestBody };
-          delete fallbackBody.identity_mode;
-          response = await fetch(`${API_URL}/api/generate-image`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(fallbackBody)
-          });
-
-          if (response.ok) {
-            const result: FalGenerateResponse = await response.json();
-            if (!result.images || result.images.length === 0) {
-              throw new Error('Server mengembalikan response kosong. Silakan coba lagi.');
-            }
-            imageUrls.push(...result.images);
-            if (imageUrls.length >= numImages) {
-              break;
-            }
-            continue;
-          }
-
-          errorDetail = await readErrorDetail(response);
-        }
-        
         // Provide more specific error messages based on status code
         if (response.status === 401) {
           throw new Error('Sesi Anda telah berakhir. Silakan login ulang.');
@@ -273,7 +282,7 @@ export async function generateImagesWithFal(
     // Return only the requested number of images
     return imageUrls.slice(0, numImages);
   } catch (error: any) {
-    console.error('Error generating images with Fal.ai:', error);
+    console.error('Error generating images with fal:', error);
     const message = typeof error?.message === 'string' ? error.message : '';
     // If error message is already user-friendly, throw as is
     if (message && (
@@ -285,7 +294,7 @@ export async function generateImagesWithFal(
     )) {
       throw error;
     }
-    throw new Error('fal.ai generation failed');
+    throw new Error('fal generation failed');
   }
 }
 

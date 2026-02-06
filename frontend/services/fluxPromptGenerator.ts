@@ -1037,7 +1037,7 @@ export function generateFluxPromptV2(
    * BACKGROUND & SCALE CONTROL
    * -------------------------------------------------- */
   if (normalizedInput.useBackground) {
-    // Background is the SECOND image in the array sent to Fal.ai (priority order)
+    // Background is the SECOND image in the array sent to fal (priority order)
     // Order: [Product1, Background (second), Product2/Face (optional)]
     // This ensures background is always included if uploaded (priority over face)
     clauses.push(

@@ -10,7 +10,7 @@
 - **Image-to-image**: Menggunakan `image_urls` (array) bukan `image_url` (singular)
 - **Format**: `{"image_urls": ["https://...supabase.co/..."]}`
 
-### 3. **Parameter yang Dikirim ke Fal.ai**:
+### 3. **Parameter yang Dikirim ke fal**:
 
 **Image-to-Image Mode:**
 ```json
@@ -33,7 +33,7 @@
 }
 ```
 
-## 📋 Payload Lengkap yang Dikirim Backend ke Fal.ai
+## 📋 Payload Lengkap yang Dikirim Backend ke fal
 
 ### Image-to-Image (dengan init image):
 ```json
@@ -61,7 +61,7 @@ Content-Type: application/json
 ### 1. **Via Backend Logs:**
 Setelah generate batch, cek terminal backend. Akan ada log:
 ```
-INFO: 📤 FULL REQUEST PAYLOAD ke Fal.ai:
+INFO: 📤 FULL REQUEST PAYLOAD ke fal:
 INFO:    {
 INFO:      "prompt": "...",
 INFO:      "image_urls": ["https://..."],
@@ -108,7 +108,7 @@ Response akan berisi:
 ## 🎯 Expected Result
 
 Setelah update:
-- ✅ Fal.ai akan menerima `image_urls` dengan URL dari Supabase Storage
+- ✅ fal akan menerima `image_urls` dengan URL dari Supabase Storage
 - ✅ Model `flux-2/lora/edit` akan melihat pixel gambar user langsung
 - ✅ Hasil generate seharusnya lebih sesuai dengan foto upload
 - ✅ Wajah, pose, dan style direferensikan dari foto user

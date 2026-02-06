@@ -1,4 +1,4 @@
-# Verifikasi: Flow Prompt dari Frontend ke Fal.ai
+# Verifikasi: Flow Prompt dari Frontend ke fal
 
 ## ✅ Jawaban: YA, Prompt Sudah dari Frontend
 
@@ -90,7 +90,7 @@ prompt_to_use = json_data.get("prompt")  # ← Langsung dari frontend, tidak ada
 - ✅ Tidak ada prompt manipulation
 - ✅ Prompt digunakan AS-IS
 
-### 4. Backend: Kirim Prompt ke Fal.ai (TIDAK Ada Perubahan)
+### 4. Backend: Kirim Prompt ke fal (TIDAK Ada Perubahan)
 
 **File:** `backend/main.py` (line 1561)
 
@@ -126,9 +126,9 @@ prompt_to_use = json_data.get("prompt") (Backend - TIDAK ada perubahan)
     ↓
 await fal_generate_images(prompt_to_use, ...) (Backend)
     ↓
-request_payload = {"prompt": prompt} (Backend → Fal.ai - TIDAK ada perubahan)
+request_payload = {"prompt": prompt} (Backend → fal - TIDAK ada perubahan)
     ↓
-Fal.ai API
+fal API
 ```
 
 ### Jawaban:
@@ -136,7 +136,7 @@ Fal.ai API
 **✅ YA, prompt sudah dari frontend:**
 - Prompt dibangun di frontend dari options yang dipilih user
 - Prompt dikirim ke backend tanpa perubahan
-- Prompt dikirim ke Fal.ai tanpa perubahan
+- Prompt dikirim ke fal tanpa perubahan
 
 **⚠️ Tapi:**
 - Prompt bukan input langsung dari user (text field)
@@ -184,9 +184,9 @@ INFO:    Prompt: {prompt dari frontend}
 - Network tab → `/api/generate-image` → Request Payload
 - Field: `prompt` = prompt hasil build dari options
 
-### 4. Check Fal.ai Request Logs:
+### 4. Check fal Request Logs:
 ```
-INFO: 📤 FULL REQUEST PAYLOAD ke Fal.ai:
+INFO: 📤 FULL REQUEST PAYLOAD ke fal:
 INFO: {
 INFO:   "prompt": "{prompt dari frontend}",
 INFO:   ...
@@ -195,4 +195,4 @@ INFO: }
 
 ---
 
-**Kesimpulan: Prompt sudah dari frontend (hasil build dari options), dikirim ke backend dan Fal.ai tanpa perubahan.**
+**Kesimpulan: Prompt sudah dari frontend (hasil build dari options), dikirim ke backend dan fal tanpa perubahan.**

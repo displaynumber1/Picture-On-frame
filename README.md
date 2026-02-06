@@ -124,6 +124,12 @@ Frontend akan berjalan di `http://localhost:3000`
 - Window.aistudio interface adalah optional untuk integrasi dengan extension/plugin tertentu.
 - Pastikan `SUPABASE_URL` dan `SUPABASE_SERVICE_KEY` sudah di-set sebelum menjalankan backend.
 - Frontend `middleware.ts` hanya UX-only (marker cookie) untuk redirect awal; ini bukan security boundary. AuthGate di client yang menahan render konten private sampai session terkonfirmasi.
+- Background preset mapping (backend):
+  - Env var `BACKGROUND_PRESET_URLS_JSON` berisi mapping `preset_id -> {"9:16": "<cdn_url>", "3:4": "<cdn_url>"}`.
+  - Contoh:
+    ```
+    {"studio_wall_01":{"9:16":"https://cdn.example.com/studio_wall_01_9x16.jpg","3:4":"https://cdn.example.com/studio_wall_01_3x4.jpg"}}
+    ```
 
 ## Deploy (Vercel + Railway)
 

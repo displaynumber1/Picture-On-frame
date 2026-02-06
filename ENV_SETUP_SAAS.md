@@ -8,7 +8,7 @@ SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_KEY=your-service-role-key
 SUPABASE_ANON_KEY=your-anon-key
 
-# Fal.ai
+# fal
 FAL_KEY=your-fal-ai-api-key
 
 # Midtrans
@@ -42,8 +42,8 @@ NEXT_PUBLIC_MIDTRANS_CLIENT_KEY=your-midtrans-client-key
    - Jalankan `setup.sql` di SQL Editor untuk membuat tabel dan trigger
    - Copy URL dan keys dari Project Settings > API
 
-2. **Fal.ai Setup:**
-   - Daftar di [Fal.ai](https://fal.ai)
+2. **fal Setup:**
+   - Daftar di [fal](https://fal.ai)
    - Dapatkan API key dari dashboard
    - Pastikan memiliki kredit yang cukup
 

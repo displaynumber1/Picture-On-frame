@@ -1,4 +1,4 @@
-# Implementasi: Support Image Upload untuk Fal.ai
+# Implementasi: Support Image Upload untuk fal
 
 ## ✅ Status: SUDAH DIIMPLEMENTASI
 
@@ -61,7 +61,7 @@ if request.reference_image:
         logger.warning(f"Failed to enhance prompt with Gemini Vision: {str(e)}. Using original prompt.")
         prompt_to_use = request.prompt
 
-# Generate dengan Fal.ai menggunakan enhanced prompt
+# Generate dengan fal menggunakan enhanced prompt
 image_urls = await fal_generate_images(prompt_to_use, num_images=2)
 ```
 
@@ -83,11 +83,11 @@ image_urls = await fal_generate_images(prompt_to_use, num_images=2)
      - Call Gemini Vision API (`gemini-2.0-flash-exp`)
      - Extract deskripsi dari image
      - Enhance prompt dengan deskripsi
-   - ✅ Generate dengan Fal.ai menggunakan enhanced prompt
+   - ✅ Generate dengan fal menggunakan enhanced prompt
    - ✅ Kurangi coins 1
    - ✅ Return images dan remaining_coins
 
-4. **Fal.ai** (`flux/schnell`):
+4. **fal** (`flux/schnell`):
    - ✅ Receive enhanced prompt (dengan deskripsi image)
    - ✅ Generate images berdasarkan enhanced prompt
    - ✅ Return image URLs
@@ -117,12 +117,12 @@ image_urls = await fal_generate_images(prompt_to_use, num_images=2)
 ### Tanpa Image Reference:
 - **Kecepatan**: < 2 detik ✅
 - **Biaya**: 1 coin per batch ✅
-- **API Calls**: 1 (Fal.ai)
+- **API Calls**: 1 (fal)
 
 ### Dengan Image Reference:
-- **Kecepatan**: ~3-5 detik (Gemini Vision + Fal.ai)
+- **Kecepatan**: ~3-5 detik (Gemini Vision + fal)
 - **Biaya**: 1 coin per batch ✅ (Gemini Vision gratis/digunakan di tempat lain)
-- **API Calls**: 2 (Gemini Vision + Fal.ai)
+- **API Calls**: 2 (Gemini Vision + fal)
 
 ## 🔧 Testing
 
@@ -132,7 +132,7 @@ POST /api/generate-image
 {
   "prompt": "A Woman model for Fashion in Standing pose"
 }
-# Expected: Generate langsung dengan Fal.ai (cepat, < 2 detik)
+# Expected: Generate langsung dengan fal (cepat, < 2 detik)
 ```
 
 ### Test 2: Generate Dengan Image Reference
@@ -145,7 +145,7 @@ POST /api/generate-image
 # Expected: 
 # 1. Gemini Vision extract deskripsi (~1-2 detik)
 # 2. Enhance prompt dengan deskripsi
-# 3. Generate dengan Fal.ai (~2 detik)
+# 3. Generate dengan fal (~2 detik)
 # Total: ~3-4 detik
 ```
 
@@ -159,7 +159,7 @@ POST /api/generate-image
 # Expected: 
 # 1. Gemini Vision error
 # 2. Fallback ke original prompt (log warning)
-# 3. Generate dengan Fal.ai menggunakan original prompt
+# 3. Generate dengan fal menggunakan original prompt
 # Total: < 2 detik
 ```
 

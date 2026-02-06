@@ -1,4 +1,4 @@
-# Implementation Summary: Image Upload ke Supabase Storage + Image-to-Image Fal.ai
+# Implementation Summary: Image Upload ke Supabase Storage + Image-to-Image fal
 
 ## ✅ Perubahan yang Telah Dilakukan
 
@@ -18,7 +18,7 @@
 - ✅ Jika image diupload → Upload ke Supabase Storage → Ambil public URL → Gunakan untuk image-to-image
 - ✅ Jika tidak ada image → Text-to-image (flow lama)
 
-### 3. **Image-to-Image dengan Fal.ai** (`backend/fal_service.py`)
+### 3. **Image-to-Image dengan fal** (`backend/fal_service.py`)
 - ✅ Model: `fal-ai/flux/schnell` (sama untuk text-to-image dan image-to-image)
 - ✅ **Parameter FIXED**:
   - `steps`: 7
@@ -53,8 +53,8 @@
 ### 5. **Logging yang Jelas**
 - ✅ Log ketika image diupload ke Supabase Storage
 - ✅ Log public image URL dari Supabase
-- ✅ Log apakah request ke Fal.ai menggunakan image-to-image atau text-only
-- ✅ Log semua parameter yang dikirim ke Fal.ai
+- ✅ Log apakah request ke fal menggunakan image-to-image atau text-only
+- ✅ Log semua parameter yang dikirim ke fal
 - ✅ Debug info di response (bisa dilihat di browser Dev Tools)
 
 ### 6. **Environment Variables**
@@ -72,25 +72,25 @@
 1. User upload gambar via multipart/form-data → Backend
 2. Backend upload file ke Supabase Storage (bucket: "public")
 3. Ambil public URL dari Supabase Storage
-4. Kirim ke Fal.ai dengan parameter:
+4. Kirim ke fal dengan parameter:
    - prompt: (dari user)
    - image_url: (public URL dari Supabase)
    - steps: 7
    - guidance_scale: 3.5
    - strength: 0.65
-5. Fal.ai generate image berdasarkan prompt + image reference
+5. fal generate image berdasarkan prompt + image reference
 6. Return image URLs ke frontend
 ```
 
 ### Tanpa Image Upload (Text-to-Image):
 ```
 1. User kirim prompt saja → Backend
-2. Backend kirim ke Fal.ai dengan parameter:
+2. Backend kirim ke fal dengan parameter:
    - prompt: (dari user)
    - image_size: "square_hd"
    - steps: 7
    - guidance_scale: 3.5
-3. Fal.ai generate image berdasarkan prompt saja
+3. fal generate image berdasarkan prompt saja
 4. Return image URLs ke frontend
 ```
 
@@ -139,16 +139,16 @@ INFO: ✅ Image uploaded to Supabase Storage successfully
 INFO:    ⚠️  SKIPPED Gemini Vision - langsung image-to-image
 ```
 
-### Fal.ai Request (Image-to-Image):
+### fal Request (Image-to-Image):
 ```
-INFO: Generating images for user ... using Fal.ai fal-ai/flux/schnell (image-to-image mode)
+INFO: Generating images for user ... using fal fal-ai/flux/schnell (image-to-image mode)
 INFO: 📝 FINAL PROMPT YANG DIKIRIM KE FAL.AI:
 INFO:    Model: fal-ai/flux/schnell
 INFO:    Mode: image-to-image
 INFO:    Steps: 7, CFG: 3.5
 INFO:    Strength: 0.65 (FIXED: 0.6-0.7)
 INFO:    Image URL: https://...supabase.co/storage/v1/object/public/public/...
-INFO: 📤 Sending image-to-image request to Fal.ai for image 1/2
+INFO: 📤 Sending image-to-image request to fal for image 1/2
 INFO:    ✅ Image-to-image: Using image_url from Supabase Storage (strength: 0.65)
 ```
 
@@ -157,7 +157,7 @@ INFO:    ✅ Image-to-image: Using image_url from Supabase Storage (strength: 0.
 - [x] Backend menerima file upload (multipart/form-data)
 - [x] Upload file ke Supabase Storage (bucket "public")
 - [x] Ambil public URL dari Supabase Storage
-- [x] Modifikasi request ke Fal.ai untuk image-to-image dengan `image_url`
+- [x] Modifikasi request ke fal untuk image-to-image dengan `image_url`
 - [x] Support text-to-image jika tidak ada image
 - [x] Skip Gemini Vision
 - [x] Logging lengkap

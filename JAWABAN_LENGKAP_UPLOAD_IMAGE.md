@@ -1,4 +1,4 @@
-# Jawaban Lengkap: Upload Image dari Frontend ke Backend ke Fal.ai
+# Jawaban Lengkap: Upload Image dari Frontend ke Backend ke fal
 
 ## ✅ Status: SUDAH DIPERBAIKI SEMUA
 
@@ -41,7 +41,7 @@
 
 ---
 
-### 2. "Backend mengirim ke Fal.ai?"
+### 2. "Backend mengirim ke fal?"
 
 **✅ JAWABAN: YA, TAPI TIDAK LANGSUNG**
 
@@ -50,9 +50,9 @@
 1. **Frontend** → Upload images → Send ke backend (base64/data URL)
 2. **Backend** → Receive images → **Gemini Vision API** extract descriptions
 3. **Backend** → Enhance prompt dengan descriptions dari semua images
-4. **Backend** → Send **enhanced prompt (text only)** ke Fal.ai
+4. **Backend** → Send **enhanced prompt (text only)** ke fal
 
-**Yang Dikirim ke Fal.ai:**
+**Yang Dikirim ke fal:**
 ```json
 POST https://fal.run/fal-ai/flux/schnell
 {
@@ -64,17 +64,17 @@ POST https://fal.run/fal-ai/flux/schnell
 ```
 
 **Catatan:**
-- ✅ Enhanced prompt dikirim ke Fal.ai
-- ❌ Image **TIDAK dikirim langsung** ke Fal.ai
+- ✅ Enhanced prompt dikirim ke fal
+- ❌ Image **TIDAK dikirim langsung** ke fal
 - ✅ Semua images digunakan untuk enhance prompt via Gemini Vision
 
 ---
 
-### 3. "Apakah Fal.ai sudah tersedia jika yang dikirim adalah file gambar/base64?"
+### 3. "Apakah fal sudah tersedia jika yang dikirim adalah file gambar/base64?"
 
 **❌ JAWABAN: TIDAK, MODEL `flux/schnell` TIDAK SUPPORT IMAGE INPUT**
 
-**Fakta tentang Fal.ai Model `flux/schnell`:**
+**Fakta tentang fal Model `flux/schnell`:**
 
 - ✅ Model: **Text-to-Image** (hanya menerima text prompt)
 - ❌ **TIDAK support** image input/base64
@@ -96,11 +96,11 @@ json={
 
 **Workaround yang Digunakan:**
 
-Karena Fal.ai `flux/schnell` tidak support image input, kita menggunakan **workaround**:
+Karena fal `flux/schnell` tidak support image input, kita menggunakan **workaround**:
 1. ✅ Image digunakan untuk **enhance prompt** via **Gemini Vision API**
 2. ✅ Gemini Vision extract descriptions dari semua images
-3. ✅ Enhanced prompt (text only) dikirim ke Fal.ai
-4. ✅ Fal.ai generate berdasarkan enhanced prompt
+3. ✅ Enhanced prompt (text only) dikirim ke fal
+4. ✅ fal generate berdasarkan enhanced prompt
 
 **Alasan Workaround Ini:**
 - ✅ Tetap menggunakan `flux/schnell` yang **cepat (< 2 detik)** dan **murah**
@@ -226,20 +226,20 @@ Karena Fal.ai `flux/schnell` tidak support image input, kita menggunakan **worka
 3. **Backend Processing**: ✅ Semua images diproses
    - Gemini Vision extract descriptions dari semua images
    - Enhanced prompt dengan semua descriptions
-   - Generate dengan Fal.ai menggunakan enhanced prompt
+   - Generate dengan fal menggunakan enhanced prompt
 
-4. **Backend → Fal.ai**: ✅ Enhanced prompt dikirim
-   - Enhanced prompt (text) dikirim ke Fal.ai
+4. **Backend → fal**: ✅ Enhanced prompt dikirim
+   - Enhanced prompt (text) dikirim ke fal
    - Semua images digunakan untuk enhance prompt
    - Generate berhasil dengan enhanced prompt
 
 ### ⚠️ Catatan Penting:
 
-1. **Image TIDAK Dikirim Langsung ke Fal.ai**
-   - Fal.ai model `flux/schnell` TIDAK support image input
+1. **Image TIDAK Dikirim Langsung ke fal**
+   - fal model `flux/schnell` TIDAK support image input
    - Workaround: Image digunakan untuk enhance prompt via Gemini Vision
 
-2. **Fal.ai Tetap Text-to-Image**
+2. **fal Tetap Text-to-Image**
    - Request body hanya menerima text prompt
    - Generate berdasarkan enhanced text prompt
    - Image descriptions dari Gemini Vision digunakan untuk enhance prompt
@@ -252,14 +252,14 @@ Karena Fal.ai `flux/schnell` tidak support image input, kita menggunakan **worka
 
 ### 🎯 Jika Perlu Image-to-Image Generation:
 
-**Perlu ganti model Fal.ai:**
+**Perlu ganti model fal:**
 - `fal-ai/flux-2/edit` - Support image input langsung
 - `fal-ai/flux-1.1/image-to-image` - Support image input langsung
 
 **Trade-off:**
 - ❌ Lebih lambat (~5-10 detik)
 - ❌ Lebih mahal
-- ✅ Image dikirim langsung ke Fal.ai
+- ✅ Image dikirim langsung ke fal
 - ✅ Image-to-image transformation
 - ✅ Hasil lebih akurat dengan reference image
 
@@ -275,12 +275,12 @@ Karena Fal.ai `flux/schnell` tidak support image input, kita menggunakan **worka
 ### ✅ Backend Processing:
 - [x] ✅ Semua images diproses via Gemini Vision
 - [x] ✅ Enhanced prompt dengan semua descriptions
-- [x] ✅ Generate dengan Fal.ai menggunakan enhanced prompt
+- [x] ✅ Generate dengan fal menggunakan enhanced prompt
 
-### ⚠️ Fal.ai Model:
+### ⚠️ fal Model:
 - [x] ⚠️ Image **TIDAK dikirim langsung** (karena flux/schnell tidak support)
 - [x] ✅ Image digunakan untuk **enhance prompt** via Gemini Vision
-- [x] ✅ Enhanced prompt (text) dikirim ke Fal.ai
+- [x] ✅ Enhanced prompt (text) dikirim ke fal
 - [x] ✅ Generate berhasil dengan enhanced prompt
 
 ---

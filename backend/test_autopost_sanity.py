@@ -230,6 +230,175 @@ def run_sanity_tests():
             app_module.get_user_profile = original_get_user_profile
             app_module.update_user_coins = original_update_user_coins
 
+        # generate-image contract: base/identity selection + prompt/strength rules
+        original_fal_generate_images = app_module.fal_generate_images
+        original_get_user_identity_record = app_module.get_user_identity_record
+        original_create_avatar_ref_signed_url = app_module.create_avatar_ref_signed_url
+        original_background_presets = getattr(app_module, "BACKGROUND_PRESET_URLS", None)
+        captured = []
+
+        async def fake_fal_generate_images(
+            prompt: str,
+            num_images: int = 1,
+            image_url: str = None,
+            image_strength: float = None,
+            num_inference_steps: int = None,
+            guidance_scale: float = None,
+            negative_prompt: str = None,
+            image_size: dict = None,
+            ip_adapters: list = None
+        ):
+            captured.append({
+                "prompt": prompt,
+                "image_url": image_url,
+                "image_strength": image_strength,
+                "num_inference_steps": num_inference_steps,
+                "guidance_scale": guidance_scale,
+                "negative_prompt": negative_prompt,
+                "ip_adapters": ip_adapters or []
+            })
+            return ["https://example.com/img.png"]
+
+        app_module.fal_generate_images = fake_fal_generate_images
+        app_module.get_user_profile = lambda _user_id: {"coins_balance": 1000}
+        app_module.update_user_coins = _noop
+
+        try:
+            # avatar exists -> identity from avatar, base from background_url
+            app_module.get_user_identity_record = lambda _user_id: {
+                "avatar_state": "ACTIVE",
+                "avatar_ref_path": "user/ref.jpg"
+            }
+            app_module.create_avatar_ref_signed_url = lambda _path, expires_in=1800: "https://example.com/avatar.jpg"
+            app_module.BACKGROUND_PRESET_URLS = {
+                "studio_wall_fullbody_01": {
+                    "3:4": "https://example.com/bg_3_4.jpg",
+                    "9:16": "https://example.com/bg_9_16.jpg"
+                },
+                "studio_tabletop_01": {
+                    "3:4": "https://example.com/table_3_4.jpg"
+                },
+                "flatlay_vinyl_01": {
+                    "3:4": "https://example.com/flatlay_3_4.jpg"
+                }
+            }
+            resp = client.post("/api/generate-image", json={
+                "prompt": "test",
+                "content_type": "Model",
+                "product_main_url": "https://example.com/product-main.jpg",
+                "face_reference_url": "https://example.com/face.jpg",
+                "background_preset_id": "studio_wall_fullbody_01",
+                "background_mode": "preset",
+                "image_size": {"width": 768, "height": 1024}
+            })
+            assert resp.status_code == 200
+            assert captured[-1]["image_url"] == "https://example.com/bg_3_4.jpg"
+            assert captured[-1]["ip_adapters"] == [{"image_url": "https://example.com/avatar.jpg", "scale": 0.7}]
+            assert captured[-1]["num_inference_steps"] == 28
+            assert captured[-1]["guidance_scale"] == 5.5
+            assert captured[-1]["negative_prompt"]
+
+            # no avatar -> identity from face_reference_url
+            app_module.get_user_identity_record = lambda _user_id: None
+            resp = client.post("/api/generate-image", json={
+                "prompt": "test",
+                "content_type": "Non Model",
+                "product_main_url": "https://example.com/product-main.jpg",
+                "face_reference_url": "https://example.com/face.jpg",
+                "background_mode": "none"
+            })
+            assert resp.status_code == 200
+            assert captured[-1]["image_url"] == "https://example.com/product-main.jpg"
+            assert captured[-1]["ip_adapters"] == []
+            assert "no humans" in captured[-1]["prompt"].lower()
+
+            # face_reference_url empty -> ip_adapters empty
+            resp = client.post("/api/generate-image", json={
+                "prompt": "test",
+                "content_type": "Non Model",
+                "product_main_url": "https://example.com/product-main.jpg",
+                "background_mode": "none"
+            })
+            assert resp.status_code == 200
+            assert captured[-1]["ip_adapters"] == []
+
+            # background_mode=remove -> base product_main_url + prompt/strength changes
+            resp = client.post("/api/generate-image", json={
+                "prompt": "test",
+                "content_type": "Model",
+                "product_main_url": "https://example.com/product-main.jpg",
+                "background_mode": "remove"
+            })
+            assert resp.status_code == 200
+            assert "plain neutral wall" in captured[-1]["prompt"]
+            assert captured[-1]["image_strength"] == 0.6
+
+            # Beauty category applies stricter anti-retouch negative prompt + strength
+            resp = client.post("/api/generate-image", json={
+                "prompt": "test",
+                "content_type": "Model",
+                "category": "Beauty",
+                "product_main_url": "https://example.com/product-main.jpg",
+                "background_mode": "none"
+            })
+            assert resp.status_code == 200
+            assert "airbrushed skin" in captured[-1]["negative_prompt"]
+            assert captured[-1]["image_strength"] == 0.62
+
+            # Food & Beverage adds steam/condensation realism + strength
+            resp = client.post("/api/generate-image", json={
+                "prompt": "test",
+                "content_type": "Non Model",
+                "category": "Food & Beverage",
+                "product_main_url": "https://example.com/product-main.jpg",
+                "background_mode": "none"
+            })
+            assert resp.status_code == 200
+            assert "steam/condensation" in captured[-1]["prompt"]
+            assert captured[-1]["image_strength"] == 0.70
+
+            # Flat Lay style forces strength 0.60
+            resp = client.post("/api/generate-image", json={
+                "prompt": "test",
+                "content_type": "Non Model",
+                "category": "Fashion",
+                "style": "Flat Lay",
+                "product_main_url": "https://example.com/product-main.jpg",
+                "background_mode": "none"
+            })
+            assert resp.status_code == 200
+            assert captured[-1]["image_strength"] == 0.60
+
+            # preset mismatch triggers fallback
+            resp = client.post("/api/generate-image", json={
+                "prompt": "test",
+                "content_type": "Non Model",
+                "product_main_url": "https://example.com/product-main.jpg",
+                "background_preset_id": "studio_wall_fullbody_01",
+                "background_mode": "preset",
+                "image_size": {"width": 768, "height": 1024}
+            })
+            assert resp.status_code == 200
+            assert captured[-1]["image_url"] == "https://example.com/table_3_4.jpg"
+
+            # flatlay preset forces top-down angle
+            resp = client.post("/api/generate-image", json={
+                "prompt": "test",
+                "content_type": "Non Model",
+                "product_main_url": "https://example.com/product-main.jpg",
+                "background_preset_id": "flatlay_vinyl_01",
+                "background_mode": "preset",
+                "image_size": {"width": 768, "height": 1024}
+            })
+            assert resp.status_code == 200
+            assert "top-down" in captured[-1]["prompt"].lower()
+        finally:
+            app_module.fal_generate_images = original_fal_generate_images
+            app_module.get_user_identity_record = original_get_user_identity_record
+            app_module.create_avatar_ref_signed_url = original_create_avatar_ref_signed_url
+            if original_background_presets is not None:
+                app_module.BACKGROUND_PRESET_URLS = original_background_presets
+
         # scheduler: resolve_schedule_time
         now_in_window = datetime(2024, 1, 1, 11, 30, 0)
         assert scheduler_module.resolve_schedule_time(now_in_window) is None

@@ -90,14 +90,14 @@ Setelah perbaikan:
 
 3. **Cek log backend:**
    - Tidak ada TypeError
-   - Harus ada log: "Successfully generated 2/2 images from Fal.ai"
+   - Harus ada log: "Successfully generated 2/2 images from fal"
 
 ## Struktur Fungsi Setelah Perbaikan
 
 ### fal_service.py:
 ```python
 async def generate_images(prompt: str, num_images: int = 2) -> List[str]:
-    # Generate images using Fal.ai
+    # Generate images using fal
     ...
 ```
 

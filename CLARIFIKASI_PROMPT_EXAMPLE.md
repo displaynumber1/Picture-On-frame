@@ -6,7 +6,7 @@
 
 ## ✅ Fakta: Backend TIDAK Mengubah Prompt
 
-### Flow Prompt dari Frontend ke Fal.ai:
+### Flow Prompt dari Frontend ke fal:
 
 ```
 1. Frontend → Backend (/api/generate-image)
@@ -20,7 +20,7 @@
    - ✅ TIDAK ada prompt manipulation
    - Prompt langsung digunakan AS-IS
 
-3. Backend → Fal.ai
+3. Backend → fal
    - Prompt dikirim langsung: `await fal_generate_images(prompt_to_use, ...)`
    - Prompt yang dikirim = Prompt dari frontend (identik)
 ```
@@ -39,7 +39,7 @@ prompt_to_use = form_data.get("prompt")  # Langsung dari frontend, tidak ada per
 prompt_to_use = json_data.get("prompt")  # Langsung dari frontend, tidak ada perubahan
 ```
 
-#### Line 1561 (Send to Fal.ai):
+#### Line 1561 (Send to fal):
 ```python
 image_urls = await fal_generate_images(prompt_to_use, num_images=2, init_image_url=init_image_url)
 # prompt_to_use digunakan langsung tanpa perubahan
@@ -86,7 +86,7 @@ INFO:    Prompt length: {length} chars
 
 ### 2. Debug Prompt Log
 - File: `backend/prompt_log.json`
-- Contains: Prompt sebenarnya yang dikirim ke Fal.ai
+- Contains: Prompt sebenarnya yang dikirim ke fal
 - Format:
   ```json
   {
@@ -100,12 +100,12 @@ INFO:    Prompt length: {length} chars
 ### 3. Browser Dev Tools
 - Network tab → `/api/generate-image` → Response
 - Field: `debug_info.prompt_sent` atau `debug_info.original_prompt`
-- Contains: Prompt sebenarnya yang dikirim ke Fal.ai
+- Contains: Prompt sebenarnya yang dikirim ke fal
 
-### 4. Fal.ai Request Logs
+### 4. fal Request Logs
 - Backend logs:
   ```
-  INFO: 📤 FULL REQUEST PAYLOAD ke Fal.ai:
+  INFO: 📤 FULL REQUEST PAYLOAD ke fal:
   INFO: {
   INFO:   "prompt": "{prompt sebenarnya dari frontend}",
   INFO:   ...
@@ -122,7 +122,7 @@ INFO:    Prompt length: {length} chars
 ## ✅ Kesimpulan
 
 1. **Backend TIDAK mengubah prompt dari frontend**
-   - Prompt dikirim langsung AS-IS ke Fal.ai
+   - Prompt dikirim langsung AS-IS ke fal
    - Tidak ada enhancement, generation, atau manipulation
 
 2. **Example di dokumentasi adalah generic**
@@ -133,7 +133,7 @@ INFO:    Prompt length: {length} chars
    - Check backend logs
    - Check `backend/prompt_log.json`
    - Check browser dev tools network tab
-   - Check Fal.ai request logs
+   - Check fal request logs
 
 ## 🔧 Update Dokumentasi
 

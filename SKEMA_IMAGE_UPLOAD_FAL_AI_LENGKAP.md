@@ -1,8 +1,8 @@
-# Skema Lengkap: Upload Image → Generate Fal.ai → Preview
+# Skema Lengkap: Upload Image → Generate fal → Preview
 
 ## ✅ Status: SUDAH DIIMPLEMENTASI LENGKAP
 
-### Alur Lengkap dari Frontend ke Backend ke Fal.ai
+### Alur Lengkap dari Frontend ke Backend ke fal
 
 ## 📋 Flow Diagram
 
@@ -287,7 +287,7 @@ async def generate_image_saas(
             request.reference_image
         )
     
-    # 3. Generate dengan Fal.ai
+    # 3. Generate dengan fal
     image_urls = await fal_generate_images(prompt_to_use, num_images=2)
     
     # 4. Deduct coins
@@ -335,7 +335,7 @@ async def enhance_prompt_with_image(prompt: str, image_base64: str) -> str:
     return enhanced_prompt
 ```
 
-### 6. Backend: Generate dengan Fal.ai ✅
+### 6. Backend: Generate dengan fal ✅
 
 **File**: `backend/fal_service.py` (line 37-85)
 
@@ -371,7 +371,7 @@ async def generate_images(prompt: str, num_images: int = 2) -> List[str]:
 ```typescript
 // Convert image URLs to GenerationResult format
 const newResults = imageUrls.map((url, i) => ({
-  url: url,  // URL dari Fal.ai
+  url: url,  // URL dari fal
   promptA: `GROK VIDEO PROMPT (6 SECONDS) — VERSION A...`,
   promptB: `GROK VIDEO PROMPT (6 SECONDS) — VERSION B...`
 }));
@@ -401,7 +401,7 @@ setState(prev => ({
 - [x] ✅ Function enhance_prompt_with_image() untuk Gemini Vision
 - [x] ✅ Integration dengan Gemini Vision API (gemini-2.0-flash-exp)
 - [x] ✅ Update endpoint /api/generate-image untuk enhance prompt jika ada reference_image
-- [x] ✅ Generate dengan Fal.ai menggunakan enhanced prompt
+- [x] ✅ Generate dengan fal menggunakan enhanced prompt
 - [x] ✅ Deduct coins setelah generate berhasil
 - [x] ✅ Return images dan remaining_coins
 
@@ -410,7 +410,7 @@ setState(prev => ({
 - [x] ✅ Convert ke base64 dan save di state
 - [x] ✅ Pass reference_image ke backend via API
 - [x] ✅ Backend enhance prompt dengan Gemini Vision
-- [x] ✅ Backend generate dengan Fal.ai
+- [x] ✅ Backend generate dengan fal
 - [x] ✅ Return image URLs ke frontend
 - [x] ✅ Frontend display preview
 
@@ -438,7 +438,7 @@ setState(prev => ({
 ### Test 3: Error Handling
 1. ✅ Upload invalid image → Error handling
 2. ✅ Gemini Vision error → Fallback ke original prompt
-3. ✅ Fal.ai error → Show error message
+3. ✅ fal error → Show error message
 4. ✅ Network error → Show error message
 
 ## 📊 Performance
@@ -446,16 +446,16 @@ setState(prev => ({
 ### Dengan Image Reference:
 - **Frontend upload**: ~0.1s (convert file ke base64)
 - **Gemini Vision**: ~1-2s (extract deskripsi dari image)
-- **Fal.ai generate**: ~2s (generate 2 images)
+- **fal generate**: ~2s (generate 2 images)
 - **Total**: ~3-4 detik
 
 ### Tanpa Image Reference:
-- **Fal.ai generate**: ~2s (generate 2 images)
+- **fal generate**: ~2s (generate 2 images)
 - **Total**: ~2 detik
 
 ## ✅ Status: SKEMA LENGKAP SUDAH DIIMPLEMENTASI
 
-**Semua flow sudah bekerja dari frontend sampai backend sampai Fal.ai dan kembali ke frontend untuk preview.**
+**Semua flow sudah bekerja dari frontend sampai backend sampai fal dan kembali ke frontend untuk preview.**
 
 Silakan test dengan:
 1. Upload produk di STEP 1

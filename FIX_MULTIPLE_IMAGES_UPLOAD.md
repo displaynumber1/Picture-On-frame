@@ -51,14 +51,14 @@ if background_image:
     uploaded_images.append({"type": "background_image", "url": public_url})
 ```
 
-### 2. Gunakan Priority untuk Fal.ai Generation
+### 2. Gunakan Priority untuk fal Generation
 
-**Primary Image untuk Fal.ai** (prioritas tetap sama):
+**Primary Image untuk fal** (prioritas tetap sama):
 1. `face_image` (jika ada) - **Primary untuk generation**
 2. `product_images[0]` (jika tidak ada face_image) - **Primary untuk generation**
 3. `background_image` (jika tidak ada face_image dan product_images) - **Primary untuk generation**
 
-**Semua images diupload ke Supabase Storage**, tapi hanya **satu primary image** yang digunakan untuk Fal.ai generation (sesuai API limitation).
+**Semua images diupload ke Supabase Storage**, tapi hanya **satu primary image** yang digunakan untuk fal generation (sesuai API limitation).
 
 ## 📋 Perilaku Baru
 
@@ -73,12 +73,12 @@ if background_image:
    - `product_image_3_userid.jpg`
    - `background_image_userid.jpg`
 
-2. ✅ **Primary image untuk Fal.ai:** `face_image` (karena prioritas tertinggi)
+2. ✅ **Primary image untuk fal:** `face_image` (karena prioritas tertinggi)
 
 3. ✅ **Log:**
    ```
    INFO: ✅ Total 6 image(s) uploaded to Supabase Storage
-   INFO:    Primary image for Fal.ai generation: face_image (https://...)
+   INFO:    Primary image for fal generation: face_image (https://...)
    ```
 
 ### Scenario 2: User Upload 4 product_images saja (tanpa face_image)
@@ -90,12 +90,12 @@ if background_image:
    - `product_image_2_userid.jpg`
    - `product_image_3_userid.jpg`
 
-2. ✅ **Primary image untuk Fal.ai:** `product_image_0` (yang pertama)
+2. ✅ **Primary image untuk fal:** `product_image_0` (yang pertama)
 
 3. ✅ **Log:**
    ```
    INFO: ✅ Total 4 image(s) uploaded to Supabase Storage
-   INFO:    Primary image for Fal.ai generation: product_image_0 (https://...)
+   INFO:    Primary image for fal generation: product_image_0 (https://...)
    ```
 
 ### Scenario 3: User Upload background_image saja
@@ -104,12 +104,12 @@ if background_image:
 1. ✅ **background_image diupload** ke Supabase Storage:
    - `background_image_userid.jpg`
 
-2. ✅ **Primary image untuk Fal.ai:** `background_image`
+2. ✅ **Primary image untuk fal:** `background_image`
 
 3. ✅ **Log:**
    ```
    INFO: ✅ Total 1 image(s) uploaded to Supabase Storage
-   INFO:    Primary image for Fal.ai generation: background_image (https://...)
+   INFO:    Primary image for fal generation: background_image (https://...)
    ```
 
 ## 📊 Perubahan File
@@ -121,7 +121,7 @@ if background_image:
    - Upload semua product_images (jika ada)
    - Upload background_image (jika ada)
 
-2. **Priority untuk Fal.ai:**
+2. **Priority untuk fal:**
    - Gunakan `primary_image_url` sesuai prioritas
    - Simpan semua `uploaded_images` untuk logging/debugging
 
@@ -144,9 +144,9 @@ if background_image:
 
 ## ⚠️ Catatan Penting
 
-### Fal.ai API Limitation
+### fal API Limitation
 
-**Fal.ai `flux-general/image-to-image` hanya menerima SATU `image_url`:**
+**fal `flux-general/image-to-image` hanya menerima SATU `image_url`:**
 ```json
 {
   "image_url": "https://...",  // SINGULAR, not array
@@ -157,12 +157,12 @@ if background_image:
 
 **Oleh karena itu:**
 - ✅ Semua images diupload ke Supabase Storage (untuk storage/backup)
-- ✅ Hanya **satu primary image** yang digunakan untuk Fal.ai generation
+- ✅ Hanya **satu primary image** yang digunakan untuk fal generation
 - ✅ Priority: face_image > product_images[0] > background_image
 
 ### Future Enhancement
 
-Jika di masa depan Fal.ai support multiple images atau kita ingin implementasi custom logic:
+Jika di masa depan fal support multiple images atau kita ingin implementasi custom logic:
 - ✅ Semua images sudah tersimpan di Supabase Storage
 - ✅ Bisa diakses dari `uploaded_images` list
 - ✅ Bisa digunakan untuk comparison, blending, atau batch processing
@@ -201,11 +201,11 @@ INFO: ✅ product_image[3] uploaded to Supabase Storage: https://...supabase.co/
 INFO: 📤 Uploading background_image to Supabase Storage
 INFO: ✅ background_image uploaded to Supabase Storage: https://...supabase.co/.../background_image_userid.jpg
 INFO: ✅ Total 6 image(s) uploaded to Supabase Storage
-INFO:    Primary image for Fal.ai generation: face_image (https://...supabase.co/.../face_image_userid.jpg)
+INFO:    Primary image for fal generation: face_image (https://...supabase.co/.../face_image_userid.jpg)
 INFO:    Image-to-image pipeline: Using face_image as reference
 ```
 
-### Payload ke Fal.ai:
+### Payload ke fal:
 
 ```json
 {

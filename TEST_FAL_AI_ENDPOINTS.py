@@ -1,5 +1,5 @@
 """
-Script untuk Test Fal.ai Endpoints dan Verifikasi Model yang Tersedia
+Script untuk Test fal Endpoints dan Verifikasi Model yang Tersedia
 """
 import os
 import sys
@@ -195,11 +195,11 @@ async def main():
     elif forbidden_models:
         print(f"⚠️ All tested models return 403 Forbidden")
         print(f"   Possible solutions:")
-        print(f"   1. Check Fal.ai dashboard for available models")
+        print(f"   1. Check fal dashboard for available models")
         print(f"   2. Upgrade API key permissions")
         print(f"   3. Verify FAL_KEY is correct")
     else:
-        print(f"❌ No models available. Check Fal.ai documentation for correct endpoints.")
+        print(f"❌ No models available. Check fal documentation for correct endpoints.")
 
 if __name__ == "__main__":
     asyncio.run(main())

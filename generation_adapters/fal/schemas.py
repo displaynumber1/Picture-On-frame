@@ -1,4 +1,4 @@
-"""Typed schemas for fal.ai adapter."""
+"""Typed schemas for fal adapter."""
 
 from __future__ import annotations
 

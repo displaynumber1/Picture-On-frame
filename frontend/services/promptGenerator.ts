@@ -342,7 +342,7 @@ export async function generateProfessionalPrompt(
 }
 
 /**
- * Default Fal.ai API Configuration
+ * Default fal API Configuration
  * Based on flux-2/lora/edit model requirements
  */
 export interface FalAIConfig {
@@ -354,9 +354,9 @@ export interface FalAIConfig {
 }
 
 /**
- * Get default Fal.ai configuration
+ * Get default fal configuration
  * @param aspectRatio - User's selected aspect ratio
- * @returns Fal.ai API configuration object
+ * @returns fal API configuration object
  */
 export function getDefaultFalAIConfig(aspectRatio?: string): FalAIConfig {
   // Map aspect ratios to image sizes

@@ -1,4 +1,4 @@
-# Konfigurasi Terkunci: Fal.ai Model dan Parameter
+# Konfigurasi Terkunci: fal Model dan Parameter
 
 ## 🔒 Konfigurasi yang Dikunci
 
@@ -52,7 +52,7 @@ response = await client.post(
 
 ### 1. Kecepatan
 - **< 2 detik** per generate
-- Model `flux/schnell` adalah fastest model di Fal.ai
+- Model `flux/schnell` adalah fastest model di fal
 - `num_inference_steps: 4` adalah minimum untuk hasil cepat
 
 ### 2. Biaya
@@ -111,7 +111,7 @@ print("✅ Konfigurasi terkunci dengan benar")
 ### Test 2: Cek Request yang Dikirim
 Setelah generate, cek log backend harus menunjukkan:
 ```
-INFO: Generating images using Fal.ai flux/schnell
+INFO: Generating images using fal flux/schnell
 INFO: Request payload: {"prompt": "...", "num_inference_steps": 4, ...}
 ```
 

@@ -1,8 +1,8 @@
-# Analisis: Support Image Upload untuk Fal.ai
+# Analisis: Support Image Upload untuk fal
 
 ## 📋 Status Saat Ini
 
-### ❌ Backend BELUM Support Image Upload ke Fal.ai
+### ❌ Backend BELUM Support Image Upload ke fal
 
 **File**: `backend/main.py` (line 1192-1193)
 ```python
@@ -14,7 +14,7 @@ class GenerateImageRequest(BaseModel):
 ```python
 async def generate_images(prompt: str, num_images: int = 2) -> List[str]:
     """
-    Generate images using Fal.ai flux/schnell model
+    Generate images using fal flux/schnell model
     ...
     Args:
         prompt: Text prompt for image generation
@@ -23,7 +23,7 @@ async def generate_images(prompt: str, num_images: int = 2) -> List[str]:
     """
 ```
 
-**Request ke Fal.ai** (line 79-84):
+**Request ke fal** (line 79-84):
 ```python
 json={
     "prompt": prompt,
@@ -45,7 +45,7 @@ json={
    - `main.py`: Ada endpoint yang menerima base64 images
    - `fal_service.py`: Video generation sudah support `image_url`
 
-## 🔍 Analisis Fal.ai API
+## 🔍 Analisis fal API
 
 ### Model `flux/schnell` (Current)
 - **Type**: Text-to-Image
@@ -149,7 +149,7 @@ if (userUploadedImage) {
 - ✅ **Sudah bisa** dengan cara meng-enhance prompt
 - Contoh: "A product photo similar to this [deskripsi dari image], with [prompt tambahan]"
 - Gunakan Gemini Vision API untuk extract deskripsi dari image
-- Lalu generate dengan Fal.ai menggunakan enhanced prompt
+- Lalu generate dengan fal menggunakan enhanced prompt
 - **Kecepatan**: < 2 detik ✅
 - **Biaya**: Minimal ✅
 
@@ -180,7 +180,7 @@ if (userUploadedImage) {
 2. **Jika Scenario 1** (Recommended untuk kecepatan dan biaya):
    - ✅ Sudah bisa dengan Gemini Vision API (sudah ada di `gemini_service.py`)
    - Enhance prompt dengan deskripsi dari image
-   - Generate dengan Fal.ai menggunakan enhanced prompt
+   - Generate dengan fal menggunakan enhanced prompt
    - Tidak perlu perubahan backend
 
 3. **Jika Scenario 2** (Perlu implementasi):
@@ -212,7 +212,7 @@ async def generate_image_saas(
     else:
         prompt_to_use = request.prompt
     
-    # Generate dengan Fal.ai menggunakan enhanced prompt
+    # Generate dengan fal menggunakan enhanced prompt
     image_urls = await fal_generate_images(prompt_to_use, num_images=2)
     # ... rest of the code
 ```
@@ -224,7 +224,7 @@ async def generate_image_saas(
 
 ## 🎯 Kesimpulan
 
-**Backend saat ini TIDAK bisa mengirim image ke Fal.ai** karena:
+**Backend saat ini TIDAK bisa mengirim image ke fal** karena:
 1. ❌ Model `flux/schnell` tidak support image input
 2. ❌ Function `generate_images()` tidak menerima parameter image
 3. ❌ Request body tidak ada parameter `image` atau `image_url`

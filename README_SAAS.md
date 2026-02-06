@@ -1,12 +1,12 @@
 # SaaS AI Image & Video Generator
 
-Sistem lengkap untuk generate gambar dan video menggunakan AI dengan integrasi Supabase Auth, Fal.ai, dan Midtrans payment.
+Sistem lengkap untuk generate gambar dan video menggunakan AI dengan integrasi Supabase Auth, fal, dan Midtrans payment.
 
 ## Fitur
 
 - ✅ **Google OAuth** via Supabase
-- ✅ **Generate 2 Images** per klik menggunakan Fal.ai flux/schnell
-- ✅ **Animate to Video** menggunakan Fal.ai kling-v2 (5 coins per video)
+- ✅ **Generate 2 Images** per klik menggunakan fal flux/schnell
+- ✅ **Animate to Video** menggunakan fal kling-v2 (5 coins per video)
 - ✅ **Payment System** dengan Midtrans Snap
 - ✅ **Quota Management** (free_image_quota dan coins_balance)
 - ✅ **Dark Mode UI** dengan tema purple-600
@@ -18,7 +18,7 @@ Sistem lengkap untuk generate gambar dan video menggunakan AI dengan integrasi S
 project-gemini-ai/
 ├── backend/
 │   ├── main.py                 # FastAPI main app dengan routes SaaS
-│   ├── fal_service.py          # Service untuk Fal.ai integration
+│   ├── fal_service.py          # Service untuk fal integration
 │   ├── supabase_service.py     # Service untuk Supabase database
 │   ├── requirements.txt        # Python dependencies
 │   └── ...
@@ -54,7 +54,7 @@ SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_KEY=your-service-role-key
 SUPABASE_ANON_KEY=your-anon-key
 
-# Fal.ai
+# fal
 FAL_KEY=your-fal-ai-api-key
 
 # Midtrans
@@ -109,14 +109,14 @@ Akses aplikasi di `http://localhost:3000`
 ## API Routes
 
 ### `/api/generate-image` (POST)
-Generate 2 images menggunakan Fal.ai flux/schnell
+Generate 2 images menggunakan fal flux/schnell
 - **Auth**: Required (Bearer token)
 - **Body**: `{ "prompt": "your prompt" }`
 - **Response**: `{ "images": ["url1", "url2"], "remaining_quota": 6 }`
 - **Logic**: Mengurangi `free_image_quota` sebanyak 1
 
 ### `/api/generate-video-saas` (POST)
-Generate video menggunakan Fal.ai kling-v2
+Generate video menggunakan fal kling-v2
 - **Auth**: Required (Bearer token)
 - **Body**: `{ "prompt": "your prompt", "image_url": "optional" }`
 - **Response**: `{ "video_url": "url", "remaining_coins": 95 }`
@@ -212,7 +212,7 @@ Handle Midtrans payment webhook
 - Atau buat profile manual untuk user yang sudah ada
 
 ### Images tidak muncul
-- Cek Fal.ai API key valid
+- Cek fal API key valid
 - Cek quota masih tersedia
 - Cek console untuk error details
 

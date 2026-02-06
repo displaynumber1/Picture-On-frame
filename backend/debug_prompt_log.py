@@ -1,5 +1,5 @@
 """
-Debug helper: Save prompt yang dikirim ke Fal.ai ke file
+Debug helper: Save prompt yang dikirim ke fal ke file
 Untuk memudahkan analisa prompt tanpa harus scroll terminal logs
 """
 import json
@@ -10,12 +10,12 @@ PROMPT_LOG_FILE = Path(__file__).parent / "prompt_log.json"
 
 def save_prompt_log(request_data: dict, enhanced_prompt: str, fal_request: dict):
     """
-    Save prompt yang dikirim ke Fal.ai ke file JSON untuk debugging
+    Save prompt yang dikirim ke fal ke file JSON untuk debugging
     
     Args:
         request_data: Data dari request (termasuk images info, image_url, dll)
-        enhanced_prompt: Final prompt yang dikirim ke Fal.ai
-        fal_request: Request payload yang dikirim ke Fal.ai (steps, CFG, image_url, dll)
+        enhanced_prompt: Final prompt yang dikirim ke fal
+        fal_request: Request payload yang dikirim ke fal (steps, CFG, image_url, dll)
     """
     try:
         log_entry = {

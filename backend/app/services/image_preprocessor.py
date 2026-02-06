@@ -1,6 +1,6 @@
 """
-Strict Image Preprocessing Pipeline for fal.ai / Flux
-Processes all user-uploaded images before sending to fal.ai
+Strict Image Preprocessing Pipeline for fal / Flux
+Processes all user-uploaded images before sending to fal
 """
 import logging
 from typing import Tuple, Optional, Dict, Any
