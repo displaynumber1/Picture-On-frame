@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware  # type: ignore
 from fastapi.responses import JSONResponse, FileResponse, Response  # type: ignore
 from fastapi.exceptions import RequestValidationError  # type: ignore
 from pydantic import BaseModel  # type: ignore
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, Dict, Any, Tuple, Literal
 from datetime import datetime, timedelta
 import random
 import time
@@ -35,7 +35,14 @@ from app.services.gemini_service import (
 )
 import logging
 import httpx  # type: ignore
-from app.services.fal_service import generate_images as fal_generate_images, generate_video as fal_generate_video, generate_kling_image_to_video as fal_generate_kling_video
+from app.services.fal_service import (
+    generate_images as fal_generate_images,
+    generate_video as fal_generate_video,
+    generate_kling_image_to_video as fal_generate_kling_video,
+)
+import app.services.fal_service as fal_service_module
+import app.services.supabase_service as supabase_service_module
+from app.services.presenter_pipeline import run_presenter_one_hand
 from app.services.video_service import create_video_from_url, check_ffmpeg_available, get_ffmpeg_path
 from app.services.video_config import get_video_presets, get_video_preset
 from app.services.human_video_service import check_ffmpeg_available as check_ffmpeg_available_human
@@ -3048,15 +3055,236 @@ class ImageGenerationRequest(BaseModel):
 # Request models for SaaS routes
 class GenerateImageRequest(BaseModel):
     prompt: str
-    product_images: Optional[List[str]] = None  # Multiple product images (base64 atau data URL)
-    face_image: Optional[str] = None  # Face image (base64 atau data URL)
-    background_image: Optional[str] = None  # Background image (base64 atau data URL)
-    # Legacy field untuk backward compatibility
-    reference_image: Optional[str] = None  # Base64 image atau data URL (optional, akan dimap ke product_images[0])
+    content_type: Optional[str] = None
+    category: Optional[str] = None
+    style: Optional[str] = None
+    product_main_url: str
+    product_opt_url: Optional[str] = None
+    face_reference_url: Optional[str] = None
+    background_url: Optional[str] = None
+    background_preset_id: Optional[str] = None
+    background_mode: Literal["preset", "upload", "none", "remove"] = "none"
+    image_size: Optional[Dict[str, int]] = None
+    strength: Optional[float] = None
+    # Legacy fields (backward compatibility)
+    init_image_urls: Optional[List[str]] = None
 
 class GenerateVideoRequestSaaS(BaseModel):
     prompt: str
     image_url: Optional[str] = None
+
+
+ANTI_THROTTLE_PROMPT = "high detail, realistic texture, clean edges, professional product photo, sharp focus"
+NEGATIVE_PROMPT = "plastic skin, artificial smoothness, airbrushed, CGI, 3d render, cartoon, anime, illustration, sketch, blurry, low resolution, distorted hands, extra fingers, mutated fingers, fused fingers, deformed anatomy, bad proportions, double heads, cloned face, unnatural eyes, watermark, text, signature, grainy, low quality, overexposed"
+DEFAULT_IMAGE_SIZE = {"width": 768, "height": 1024}
+DEFAULT_GUIDANCE_SCALE = 5.5
+DEFAULT_TIKTOK_GUIDANCE_SCALE = 5.3
+DEFAULT_NUM_STEPS = 28
+DEFAULT_STRENGTH = 0.65
+DEFAULT_REMOVE_STRENGTH = 0.60
+DEFAULT_FLATLAY_STRENGTH = 0.64
+DEFAULT_TIKTOK_STRENGTH_HUMAN = 0.67
+DEFAULT_TIKTOK_STRENGTH_PRODUCT = 0.63
+DEFAULT_IP_ADAPTER_SCALE = 0.70
+
+PRESET_META: Dict[str, Dict[str, Any]] = {
+    "studio_wall_fullbody_01": {"target": "model", "tags": ["full_body"]},
+    "mall_corridor_01": {"target": "model", "tags": ["full_body"]},
+    "street_sidewalk_01": {"target": "model", "tags": ["full_body"]},
+    "car_interior_front_01": {"target": "model", "tags": ["seated"]},
+    "car_interior_back_01": {"target": "model", "tags": ["seated"]},
+    "studio_tabletop_01": {"target": "non_model", "tags": ["tabletop"]},
+    "flatlay_vinyl_01": {"target": "non_model", "tags": ["flatlay"]},
+    "table_aesthetic_01": {"target": "non_model", "tags": ["tabletop"]},
+    "minimalist_corner_01": {"target": "both", "tags": ["neutral"]},
+}
+
+BACKGROUND_PRESET_URLS: Dict[str, Dict[str, str]] = {
+    "studio_wall_fullbody_01": {},
+    "mall_corridor_01": {},
+    "street_sidewalk_01": {},
+    "car_interior_front_01": {},
+    "car_interior_back_01": {},
+    "studio_tabletop_01": {},
+    "flatlay_vinyl_01": {},
+    "table_aesthetic_01": {},
+    "minimalist_corner_01": {},
+}
+
+
+def clamp(value: float, min_value: float, max_value: float) -> float:
+    return max(min_value, min(max_value, value))
+
+
+def clamp_int(value: int, min_value: int, max_value: int) -> int:
+    return int(max(min_value, min(max_value, value)))
+
+
+def is_data_url(value: Optional[str]) -> bool:
+    return bool(value) and value.startswith("data:")
+
+
+def is_http_url(value: Optional[str]) -> bool:
+    if not value:
+        return False
+    return value.startswith("http://") or value.startswith("https://")
+
+
+def classify_init_image_url(url: str) -> Optional[str]:
+    lower = url.lower()
+    if "/face/" in lower or "face" in lower:
+        return "face"
+    if "/background/" in lower or "background" in lower:
+        return "background"
+    if "/product/" in lower or "product" in lower:
+        return "product"
+    return None
+
+
+def get_background_preset_url(preset_id: str, aspect_ratio: Optional[str]) -> Optional[str]:
+    if not preset_id:
+        return None
+    mapping: Dict[str, Any] = {}
+    raw = os.getenv("BACKGROUND_PRESET_URLS_JSON", "")
+    if raw:
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, dict):
+                mapping = parsed
+        except json.JSONDecodeError:
+            logger.warning("Invalid BACKGROUND_PRESET_URLS_JSON; expected JSON object.")
+    mapping = mapping or BACKGROUND_PRESET_URLS
+    value = mapping.get(preset_id)
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        if aspect_ratio and value.get(aspect_ratio):
+            return value.get(aspect_ratio)
+        for ratio_key, url in value.items():
+            if url:
+                if aspect_ratio and ratio_key != aspect_ratio:
+                    logger.warning(
+                        "Background preset ratio fallback: preset_id=%s requested=%s fallback=%s",
+                        preset_id,
+                        aspect_ratio,
+                        ratio_key
+                    )
+                return url
+    return None
+
+
+def build_garment_hint(product_main_url: str, product_opt_url: Optional[str], background_mode: str) -> str:
+    hints = ["use the product reference image for garment details"]
+    if product_opt_url:
+        hints.append("use the optional product reference as secondary angle")
+    if background_mode in ("preset", "upload"):
+        hints.append("background should remain unchanged")
+    return ", ".join(hints)
+
+
+def resolve_subject_kind(content_type: Optional[str]) -> str:
+    if content_type and content_type.strip().lower() == "non model":
+        return "product_only"
+    return "human"
+
+
+def resolve_preset_for_subject(preset_id: str, subject_kind: str) -> str:
+    meta = PRESET_META.get(preset_id)
+    if not meta:
+        return preset_id
+    target = meta.get("target")
+    if subject_kind == "human":
+        allowed = target in ("model", "both")
+        fallback = "studio_wall_fullbody_01"
+    else:
+        allowed = target in ("non_model", "both")
+        fallback = "studio_tabletop_01"
+    if not allowed:
+        logger.warning(
+            "Preset target mismatch: preset_id=%s target=%s subject_kind=%s. Falling back to %s",
+            preset_id,
+            target,
+            subject_kind,
+            fallback,
+        )
+        return fallback
+    return preset_id
+
+
+def normalize_category(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    return value.strip()
+
+
+def normalize_style(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    return value.strip().lower()
+
+
+def resolve_strength_for_category(
+    category: Optional[str],
+    subject_kind: str,
+    style: Optional[str],
+    background_mode: str
+) -> Optional[float]:
+    if style == "flat lay":
+        return 0.60
+    if background_mode == "remove":
+        return 0.60
+    if not category:
+        return None
+    if category == "Fashion":
+        return 0.63 if subject_kind == "product_only" else 0.66
+    if category == "Beauty":
+        return 0.62
+    if category in ("Tas", "Sandal/Sepatu"):
+        return 0.64
+    if category == "Aksesoris":
+        return 0.63
+    if category == "Home Living":
+        return 0.68
+    if category == "Food & Beverage":
+        return 0.70
+    return None
+
+
+def aspect_ratio_from_image_size(image_size: Optional[Dict[str, int]]) -> Optional[str]:
+    if not image_size:
+        return None
+    width = image_size.get("width")
+    height = image_size.get("height")
+    if not width or not height:
+        return None
+    mapping = {
+        (768, 768): "1:1",
+        (768, 1024): "3:4",
+        (1024, 768): "4:3",
+        (720, 1280): "9:16",
+        (1280, 720): "16:9",
+    }
+    return mapping.get((width, height))
+
+
+def resolve_identity_face_url(
+    user_id: str,
+    face_reference_url: Optional[str]
+) -> Tuple[Optional[str], str]:
+    identity_source = "none"
+    identity_face_url = None
+    record = get_user_identity_record(user_id) or {}
+    avatar_state = record.get("avatar_state")
+    avatar_ref_path = record.get("avatar_ref_path")
+    if avatar_state == "ACTIVE" and avatar_ref_path:
+        identity_face_url = create_avatar_ref_signed_url(avatar_ref_path, expires_in=1800)
+        if identity_face_url:
+            identity_source = "avatar_primary"
+            return identity_face_url, identity_source
+    if face_reference_url:
+        identity_source = "face_reference"
+        identity_face_url = face_reference_url
+    return identity_face_url, identity_source
 
 class MidtransWebhookRequest(BaseModel):
     transaction_status: str
@@ -3149,7 +3377,7 @@ async def get_profile(current_user: Dict[str, Any] = Depends(get_current_user)):
 @debug_router.get("/last-prompt")
 async def get_last_prompt(current_user: Dict[str, Any] = Depends(get_current_user)):
     """
-    Debug endpoint: Get last prompt that was sent to Fal.ai
+    Debug endpoint: Get last prompt that was sent to fal
     Returns the most recent prompt log entry for debugging
     """
     try:
@@ -3179,8 +3407,8 @@ async def generate_image_saas(
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
     """
-    Generate 2 images using Fal.ai flux/schnell
-    - Image-to-image: jika image file diupload (upload ke Supabase Storage, lalu kirim image_url ke Fal.ai)
+    Generate 2 images using fal flux/schnell
+    - Image-to-image: jika image file diupload (upload ke Supabase Storage, lalu kirim image_url ke fal)
     - Text-to-image: jika tidak ada image file
     
     Endpoint: https://fal.run/fal-ai/flux/schnell
@@ -3213,15 +3441,21 @@ async def generate_image_saas(
         # Determine request format based on Content-Type
         content_type = request.headers.get("content-type", "").lower()
         prompt_to_use = None
-        init_image_url = None  # Public URL dari Supabase Storage - LEGACY, gunakan init_image_urls
-        init_image_urls = []  # Array of public URLs dari Supabase Storage - REQUIRED untuk image-to-image pipeline (multiple images)
+        product_main_url = None
+        product_opt_url = None
+        face_reference_url = None
+        background_url = None
+        background_preset_id = None
+        content_type = None
+        category = None
+        style = None
+        subject_kind = "human"
+        interaction = None
+        background_mode = "none"
+        request_image_size = None
+        request_strength = None
         uploaded_images = []  # Store all uploaded image URLs (for logging/debugging)
-        primary_image_type = None  # Type of primary image used for Fal.ai generation (legacy)
-        fal_image_strength = None  # Image strength parameter from request (default: 0.67 - balanced for reference adherence)
-        fal_num_inference_steps = None  # Number of inference steps from request (default: 24 - increased to prevent blank images)
-        fal_guidance_scale = None  # Guidance scale (CFG) parameter from request (default: 4.5 - natural and realistic)
-        fal_negative_prompt = None  # Negative prompt from request
-        aspect_ratio = None  # Aspect ratio from request (e.g., "9:16", "16:9", "1:1")
+        aspect_ratio = None  # Aspect ratio for preprocessing (derived if possible)
         
         if "multipart/form-data" in content_type:
             # Handle multipart/form-data (file upload)
@@ -3313,13 +3547,11 @@ async def generate_image_saas(
                     category=category
                 )
                 
-                init_image_url = public_url  # Legacy compatibility
-                init_image_urls = [public_url]  # Array format untuk Fal.ai
-                primary_image_type = "multipart_upload"
-                uploaded_images = [{"type": "multipart_upload", "url": public_url}]
+                product_main_url = public_url
+                uploaded_images = [{"type": "product_main_url", "url": public_url}]
                 logger.info(f"✅ Image uploaded to Supabase Storage successfully")
-                logger.info(f"   Public URL: {init_image_url}")
-                logger.info(f"   Image-to-image pipeline: Using uploaded image as reference")
+                logger.info(f"   Public URL: {product_main_url}")
+                logger.info(f"   Image-to-image pipeline: Using uploaded image as base reference")
                 logger.info(f"✅ Total 1 image(s) uploaded to Supabase Storage")
                 upload_elapsed = time.perf_counter() - start_time
                 logger.info(f"⏱️ Upload + preprocess time: {upload_elapsed:.2f}s")
@@ -3331,7 +3563,7 @@ async def generate_image_saas(
                     detail=f"Failed to upload image to Supabase Storage: {str(e)}. Image is required for image-to-image pipeline."
                 )
         else:
-            # Handle JSON body (backward compatible)
+            # Handle JSON body (explicit URL fields + backward compatibility)
             try:
                 json_data = await request.json()
                 prompt_to_use = json_data.get("prompt")
@@ -3339,293 +3571,164 @@ async def generate_image_saas(
                 if not prompt_to_use:
                     raise HTTPException(status_code=422, detail="Missing required field: prompt")
                 
-                # Read Fal.ai parameters from request body (if provided)
-                # Default: image_strength=0.67, num_inference_steps=24, guidance_scale=4.5 (natural and realistic)
-                fal_image_strength = json_data.get("image_strength")
-                fal_num_inference_steps = json_data.get("num_inference_steps")
-                fal_guidance_scale = json_data.get("guidance_scale")
-                fal_negative_prompt = json_data.get("negative_prompt")
-                aspect_ratio = json_data.get("aspect_ratio") or json_data.get("aspectRatio")  # Support both formats
+                background_mode = (json_data.get("background_mode") or "none").lower()
+                background_preset_id = json_data.get("background_preset_id")
+                content_type = json_data.get("content_type") or json_data.get("contentType") or json_data.get("tipe_konten")
+                category = normalize_category(json_data.get("category"))
+                style = normalize_style(json_data.get("style"))
+                subject_kind = resolve_subject_kind(content_type)
+                interaction = json_data.get("interaction") or json_data.get("interactionType")
+                request_image_size = json_data.get("image_size")
+                request_strength = json_data.get("strength")
+                aspect_ratio = (
+                    json_data.get("aspect_ratio")
+                    or json_data.get("aspectRatio")
+                    or aspect_ratio_from_image_size(request_image_size)
+                )
                 
-                # Handle base64 images - REQUIRED untuk image-to-image pipeline
-                # Upload ALL images to Supabase Storage, but use priority for Fal.ai generation
-                # Priority: face_image > product_images[0] > background_image
-                product_images = json_data.get("product_images") or []
-                reference_image = json_data.get("reference_image")
-                if reference_image and not product_images:
-                    product_images = [reference_image]
+                product_main_url = json_data.get("product_main_url")
+                product_opt_url = json_data.get("product_opt_url")
+                face_reference_url = json_data.get("face_reference_url")
+                background_url = json_data.get("background_url")
                 
-                face_image = json_data.get("face_image")
-                background_image = json_data.get("background_image")
+                init_image_urls = json_data.get("init_image_urls") or []
+                legacy_product_images = json_data.get("product_images") or []
+                legacy_reference_image = json_data.get("reference_image")
+                legacy_face_image = json_data.get("face_image")
+                legacy_background_image = json_data.get("background_image")
                 
-                # Check if any images provided (base64) - REQUIRED untuk image-to-image pipeline
-                has_images = (product_images and len([img for img in product_images if img]) > 0) or face_image or background_image
+                has_explicit_fields = any([
+                    product_main_url,
+                    product_opt_url,
+                    face_reference_url,
+                    background_url
+                ])
                 
-                if not has_images:
-                    raise HTTPException(
-                        status_code=422,
-                        detail="Missing required image. This is an image-to-image pipeline - please provide at least one image (face_image, product_images, or background_image)."
-                    )
+                if not has_explicit_fields and init_image_urls:
+                    logger.warning("init_image_urls is deprecated; use explicit fields instead.")
+                    for url in init_image_urls:
+                        kind = classify_init_image_url(url)
+                        if kind == "face" and not face_reference_url:
+                            face_reference_url = url
+                        elif kind == "background" and not background_url:
+                            background_url = url
+                        elif kind == "product":
+                            if not product_main_url:
+                                product_main_url = url
+                            elif not product_opt_url:
+                                product_opt_url = url
+                    if not product_main_url and init_image_urls:
+                        product_main_url = init_image_urls[0]
+                    if background_url and background_mode == "none":
+                        background_mode = "upload"
+                elif not has_explicit_fields and (legacy_product_images or legacy_reference_image or legacy_face_image or legacy_background_image):
+                    if legacy_reference_image and not legacy_product_images:
+                        legacy_product_images = [legacy_reference_image]
+                    if legacy_product_images:
+                        product_main_url = legacy_product_images[0]
+                        if len(legacy_product_images) > 1:
+                            product_opt_url = legacy_product_images[1]
+                    face_reference_url = legacy_face_image or face_reference_url
+                    background_url = legacy_background_image or background_url
                 
-                # Upload ALL images to Supabase Storage (for storage/backup)
-                uploaded_images = []  # Store all uploaded image URLs
-                primary_image_url = None  # Primary image for Fal.ai generation
+                if not product_main_url:
+                    raise HTTPException(status_code=422, detail="product_main_url is required.")
                 
-                try:
-                    # 1. Upload face_image if provided
-                    if face_image:
-                        try:
-                            # Convert base64 to bytes
-                            raw_image_bytes, raw_file_ext = convert_base64_to_image_bytes(face_image, compress_if_over_1mb=False)
-                            
-                            # PREPROCESSING PIPELINE: Process image before uploading
-                            target_aspect_ratio = aspect_ratio or "1:1"
-                            logger.info(f"🔄 Preprocessing face_image (target aspect: {target_aspect_ratio})...")
-                            
-                            try:
-                                processed_bytes, file_ext, preprocess_metadata = preprocess_image(
-                                    image_bytes=raw_image_bytes,
-                                    target_aspect_ratio=target_aspect_ratio,
-                                    image_type="face_dominant",  # Face images are typically face-dominant
-                                    filename=f"face_image{raw_file_ext}"
-                                )
-                                
-                                logger.info(f"✅ Face image preprocessing complete:")
-                                logger.info(f"   Final: {preprocess_metadata.get('final_resolution')} ({preprocess_metadata.get('final_megapixels')} MP), {preprocess_metadata.get('final_size_mb')} MB")
-                                
-                                # Use processed image
-                                image_bytes = processed_bytes
-                                file_size = len(image_bytes)
-                                
-                            except Exception as preprocess_error:
-                                logger.error(f"❌ Face image preprocessing failed: {str(preprocess_error)}", exc_info=True)
-                                raise HTTPException(
-                                    status_code=422,
-                                    detail=f"Face image preprocessing failed: {str(preprocess_error)}"
-                                )
-                            
-                            logger.info(f"📤 Uploading preprocessed face_image to Supabase Storage (size: {file_size} bytes)")
-                            
-                            public_url = upload_image_to_supabase_storage(
-                                file_content=image_bytes,
-                                file_name=f"face_image{file_ext}",
-                                bucket_name="IMAGES_UPLOAD",
-                                user_id=user_id,
-                                category="face"
-                            )
-                            
-                            uploaded_images.append({"type": "face_image", "url": public_url})
-                            if not primary_image_url:
-                                primary_image_url = public_url
-                                primary_image_type = "face_image"
-                            logger.info(f"✅ face_image uploaded successfully: {public_url}")
-                        except Exception as e:
-                            logger.error(f"❌ Failed to upload face_image: {str(e)}")
-                            raise  # Stop process on failure
-                    
-                    # 2. Upload all product_images if provided
-                    if product_images and len([img for img in product_images if img]) > 0:
-                        valid_product_images = [img for img in product_images if img]  # Filter out None/empty
-                        logger.info(f"📤 Uploading {len(valid_product_images)} product_image(s) to Supabase Storage")
-                        
-                        for idx, img in enumerate(valid_product_images):
-                            try:
-                                # Convert base64 to bytes
-                                raw_image_bytes, raw_file_ext = convert_base64_to_image_bytes(img, compress_if_over_1mb=False)
-                                
-                                # PREPROCESSING PIPELINE: Process image before uploading
-                                target_aspect_ratio = aspect_ratio or "1:1"
-                                logger.info(f"🔄 Preprocessing product_image[{idx}] (target aspect: {target_aspect_ratio})...")
-                                
-                                try:
-                                    # Determine image type based on index (first product might be full body, second might be half body)
-                                    image_type = "full_body" if idx == 0 else "half_body"
-                                    
-                                    processed_bytes, file_ext, preprocess_metadata = preprocess_image(
-                                        image_bytes=raw_image_bytes,
-                                        target_aspect_ratio=target_aspect_ratio,
-                                        image_type=image_type,
-                                        filename=f"product_image_{idx}{raw_file_ext}"
-                                    )
-                                    
-                                    logger.info(f"✅ Product image[{idx}] preprocessing complete:")
-                                    logger.info(f"   Final: {preprocess_metadata.get('final_resolution')} ({preprocess_metadata.get('final_megapixels')} MP), {preprocess_metadata.get('final_size_mb')} MB")
-                                    
-                                    # Use processed image
-                                    image_bytes = processed_bytes
-                                    file_size = len(image_bytes)
-                                    
-                                except Exception as preprocess_error:
-                                    logger.error(f"❌ Product image[{idx}] preprocessing failed: {str(preprocess_error)}", exc_info=True)
-                                    raise HTTPException(
-                                        status_code=422,
-                                        detail=f"Product image[{idx}] preprocessing failed: {str(preprocess_error)}"
-                                    )
-                                
-                                logger.info(f"📤 Uploading preprocessed product_image[{idx}] to Supabase Storage (size: {file_size} bytes)")
-                                
-                                public_url = upload_image_to_supabase_storage(
-                                    file_content=image_bytes,
-                                    file_name=f"product_image_{idx}{file_ext}",
-                                    bucket_name="IMAGES_UPLOAD",
-                                    user_id=user_id,
-                                    category="product"
-                                )
-                                
-                                uploaded_images.append({"type": f"product_image_{idx}", "url": public_url})
-                                if not primary_image_url:
-                                    primary_image_url = public_url
-                                    primary_image_type = f"product_image_{idx}"
-                                logger.info(f"✅ product_image[{idx}] uploaded successfully: {public_url}")
-                            except Exception as e:
-                                logger.error(f"❌ Failed to upload product_image[{idx}]: {str(e)}")
-                                raise  # Stop process on failure
-                    
-                    # 3. Upload background_image if provided
-                    if background_image:
-                        try:
-                            # Convert base64 to bytes
-                            raw_image_bytes, raw_file_ext = convert_base64_to_image_bytes(background_image, compress_if_over_1mb=False)
-                            
-                            # PREPROCESSING PIPELINE: Process image before uploading
-                            target_aspect_ratio = aspect_ratio or "1:1"
-                            logger.info(f"🔄 Preprocessing background_image (target aspect: {target_aspect_ratio})...")
-                            
-                            try:
-                                processed_bytes, file_ext, preprocess_metadata = preprocess_image(
-                                    image_bytes=raw_image_bytes,
-                                    target_aspect_ratio=target_aspect_ratio,
-                                    image_type="full_body",  # Backgrounds are typically full scene
-                                    filename=f"background_image{raw_file_ext}"
-                                )
-                                
-                                logger.info(f"✅ Background image preprocessing complete:")
-                                logger.info(f"   Final: {preprocess_metadata.get('final_resolution')} ({preprocess_metadata.get('final_megapixels')} MP), {preprocess_metadata.get('final_size_mb')} MB")
-                                
-                                # Use processed image
-                                image_bytes = processed_bytes
-                                file_size = len(image_bytes)
-                                
-                            except Exception as preprocess_error:
-                                logger.error(f"❌ Background image preprocessing failed: {str(preprocess_error)}", exc_info=True)
-                                raise HTTPException(
-                                    status_code=422,
-                                    detail=f"Background image preprocessing failed: {str(preprocess_error)}"
-                                )
-                            
-                            logger.info(f"📤 Uploading preprocessed background_image to Supabase Storage (size: {file_size} bytes)")
-                            
-                            public_url = upload_image_to_supabase_storage(
-                                file_content=image_bytes,
-                                file_name=f"background_image{file_ext}",
-                                bucket_name="IMAGES_UPLOAD",
-                                user_id=user_id,
-                                category="background"
-                            )
-                            
-                            uploaded_images.append({"type": "background_image", "url": public_url})
-                            if not primary_image_url:
-                                primary_image_url = public_url
-                                primary_image_type = "background_image"
-                            logger.info(f"✅ background_image uploaded successfully: {public_url}")
-                        except Exception as e:
-                            logger.error(f"❌ Failed to upload background_image: {str(e)}")
-                            raise  # Stop process on failure
-                    
-                    # Collect ALL uploaded images for Fal.ai generation (products + face + background)
-                    # Priority order: Main Product (Ref 1) → Optional Product (Ref 2) → Face (Ref 3) → Background (Ref 4)
-                    # Fal.ai flux-2/lora/edit supports up to 3 images in image_urls array
-                    init_image_urls = []  # Array untuk multiple images
-                    
-                    # Priority order untuk Fal.ai (max 3 images):
-                    # 1. Product images (REQUIRED - at least 1)
-                    # 2. Background (CRITICAL - must be included if uploaded, as it's the environment)
-                    # 3. Face (optional, only if space available)
-                    
-                    # Check if background exists
-                    background_image_info = next((img for img in uploaded_images if img["type"] == "background_image"), None)
-                    has_background = background_image_info is not None
-                    
-                    # 1. Add Main Product first (REQUIRED - at least 1 product)
-                    product_image_infos = [img for img in uploaded_images if img["type"].startswith("product_image_")]
-                    # Sort by index to maintain order (product_image_0 = Main, product_image_1 = Optional)
-                    product_image_infos.sort(key=lambda x: int(x["type"].split("_")[-1]) if x["type"].split("_")[-1].isdigit() else 999)
-                    
-                    # Calculate available slots (max 3 total)
-                    max_slots = 3
-                    slots_used = 0
-                    
-                    # Add at least 1 product (required)
-                    if len(product_image_infos) > 0:
-                        init_image_urls.append(product_image_infos[0]["url"])
-                        slots_used += 1
-                        logger.info(f"   ✅ Added {product_image_infos[0]['type']} to Fal.ai request (Ref {slots_used}: The Main - REQUIRED)")
-                    
-                    # 2. Add background_image (CRITICAL - must be included if uploaded)
-                    # Background is critical because it defines the entire scene/environment
-                    if background_image_info and slots_used < max_slots:
-                        init_image_urls.append(background_image_info["url"])
-                        slots_used += 1
-                        logger.info(f"   ✅ Added background_image to Fal.ai request (Ref {slots_used}: The Background Environment - CRITICAL)")
-                    
-                    # 3. Add second product if available and space allows
-                    if len(product_image_infos) > 1 and slots_used < max_slots:
-                        init_image_urls.append(product_image_infos[1]["url"])
-                        slots_used += 1
-                        logger.info(f"   ✅ Added {product_image_infos[1]['type']} to Fal.ai request (Ref {slots_used}: The Optional)")
-                    
-                    # 4. Add face_image LAST (only if space available)
-                    face_image_info = next((img for img in uploaded_images if img["type"] == "face_image"), None)
-                    if face_image_info and slots_used < max_slots:
-                        init_image_urls.append(face_image_info["url"])
-                        slots_used += 1
-                        logger.info(f"   ✅ Added face_image to Fal.ai request (Ref {slots_used}: The Face)")
-                    elif face_image_info:
-                        logger.warning(f"   ⚠️ Skipping face_image - max 3 images reached (background takes priority)")
-                    
-                    # Final order: [Product1, Background, Product2/Face] or [Product1, Product2, Face] if no background
-                    # This ensures background is always included if uploaded (priority over face)
-                    logger.info(f"   📋 Final image order for Fal.ai ({len(init_image_urls)} images):")
-                    for idx, url in enumerate(init_image_urls):
-                        img_type = next((img["type"] for img in uploaded_images if img["url"] == url), "unknown")
-                        if img_type == "background_image":
-                            ref_name = "The Background Environment (CRITICAL)"
-                        elif idx == 0:
-                            ref_name = "The Main Product"
-                        elif idx == 1 and has_background:
-                            ref_name = "The Background Environment (CRITICAL)"
-                        elif idx == 2 or (idx == 1 and not has_background):
-                            ref_name = "The Optional Product" if "product_image" in img_type else "The Face"
-                        else:
-                            ref_name = "The Face"
-                        logger.info(f"      [{idx+1}] {ref_name}: {img_type}")
-                    
-                    # Legacy: keep init_image_url for backward compatibility (first image in array)
-                    init_image_url = init_image_urls[0] if len(init_image_urls) > 0 else None
-                    
-                    if not init_image_url or len(init_image_urls) == 0:
+                async def resolve_input_to_url(
+                    value: Optional[str],
+                    image_type: str,
+                    category: str,
+                    image_index: Optional[int] = None
+                ) -> Optional[str]:
+                    if not value:
+                        return None
+                    if is_http_url(value):
+                        uploaded_images.append({"type": image_type, "url": value, "source": "provided_url"})
+                        return value
+                    if not is_data_url(value):
                         raise HTTPException(
                             status_code=422,
-                            detail="Invalid image format. Please provide valid base64 encoded image."
+                            detail=f"Invalid {image_type} format. Use data URL or http(s) URL."
                         )
                     
-                    logger.info(f"✅ Total {len(uploaded_images)} image(s) uploaded to Supabase Storage")
-                    logger.info(f"   Sending {len(init_image_urls)} image(s) to Fal.ai for generation:")
-                    for idx, url in enumerate(init_image_urls):
-                        img_type = next((img["type"] for img in uploaded_images if img["url"] == url), "unknown")
-                        logger.info(f"      [{idx+1}] {img_type}: {url[:80]}...")
-                    logger.info(f"   Image-to-image pipeline: Using {len(init_image_urls)} reference image(s)")
-                    upload_elapsed = time.perf_counter() - start_time
-                    logger.info(f"⏱️ Upload + preprocess time: {upload_elapsed:.2f}s")
+                    raw_image_bytes, raw_file_ext = convert_base64_to_image_bytes(value, compress_if_over_1mb=False)
+                    target_aspect_ratio = aspect_ratio or "1:1"
+                    logger.info(f"🔄 Preprocessing {image_type} (target aspect: {target_aspect_ratio})...")
                     
-                except HTTPException:
-                    raise
-                except Exception as e:
-                    logger.error(f"Failed to upload images to Supabase Storage: {str(e)}", exc_info=True)
-                    raise HTTPException(
-                        status_code=500,
-                        detail=f"Failed to upload image to Supabase Storage: {str(e)}. Image is required for image-to-image pipeline."
+                    if image_type == "face_reference_url":
+                        image_role = "face_dominant"
+                        file_name = f"face_image{raw_file_ext}"
+                    elif image_type == "background_url":
+                        image_role = "full_body"
+                        file_name = f"background_image{raw_file_ext}"
+                    else:
+                        image_role = "full_body" if image_index == 0 else "half_body"
+                        file_name = f"product_image_{image_index}{raw_file_ext}"
+                    
+                    try:
+                        processed_bytes, file_ext, preprocess_metadata = preprocess_image(
+                            image_bytes=raw_image_bytes,
+                            target_aspect_ratio=target_aspect_ratio,
+                            image_type=image_role,
+                            filename=file_name
+                        )
+                        logger.info(f"✅ {image_type} preprocessing complete:")
+                        logger.info(f"   Final: {preprocess_metadata.get('final_resolution')} ({preprocess_metadata.get('final_megapixels')} MP), {preprocess_metadata.get('final_size_mb')} MB")
+                        image_bytes = processed_bytes
+                    except Exception as preprocess_error:
+                        logger.error(f"❌ {image_type} preprocessing failed: {str(preprocess_error)}", exc_info=True)
+                        raise HTTPException(
+                            status_code=422,
+                            detail=f"{image_type} preprocessing failed: {str(preprocess_error)}"
+                        )
+                    
+                    logger.info(f"📤 Uploading {image_type} to Supabase Storage")
+                    public_url = upload_image_to_supabase_storage(
+                        file_content=image_bytes,
+                        file_name=file_name,
+                        bucket_name="IMAGES_UPLOAD",
+                        user_id=user_id,
+                        category=category
                     )
+                    uploaded_images.append({"type": image_type, "url": public_url})
+                    return public_url
+                
+                if background_mode == "preset":
+                    if background_preset_id:
+                        resolved_preset_id = resolve_preset_for_subject(background_preset_id, subject_kind)
+                        mapped_url = get_background_preset_url(resolved_preset_id, aspect_ratio)
+                        if not mapped_url:
+                            raise HTTPException(
+                                status_code=422,
+                                detail="Unknown background_preset_id. Please use a valid preset."
+                            )
+                        background_preset_id = resolved_preset_id
+                        background_url = mapped_url
+                    elif not background_url:
+                        raise HTTPException(
+                            status_code=422,
+                            detail="background_preset_id or background_url is required when background_mode is preset."
+                        )
+                elif background_mode == "upload" and not background_url:
+                    raise HTTPException(
+                        status_code=422,
+                        detail="background_url is required when background_mode is upload."
+                    )
+                
+                product_main_url = await resolve_input_to_url(product_main_url, "product_main_url", "product", 0)
+                product_opt_url = await resolve_input_to_url(product_opt_url, "product_opt_url", "product", 1)
+                face_reference_url = await resolve_input_to_url(face_reference_url, "face_reference_url", "face")
+                background_url = await resolve_input_to_url(background_url, "background_url", "background")
+                
+                if background_mode == "upload" and not background_url:
+                    raise HTTPException(
+                        status_code=422,
+                        detail="background_url is required when background_mode is upload."
+                    )
+                
+                upload_elapsed = time.perf_counter() - start_time
+                logger.info(f"✅ Total {len(uploaded_images)} image(s) available for generation")
+                logger.info(f"⏱️ Upload + preprocess time: {upload_elapsed:.2f}s")
                 
             except HTTPException:
                 # Re-raise HTTPException (validation errors)
@@ -3634,27 +3737,112 @@ async def generate_image_saas(
                 logger.error(f"Error parsing JSON request: {str(e)}", exc_info=True)
                 raise HTTPException(status_code=422, detail=f"Invalid request format: {str(e)}")
         
-        # Image-to-image pipeline - init_image_urls is REQUIRED at this point
-        if not init_image_urls or len(init_image_urls) == 0:
+        if not product_main_url:
             raise HTTPException(
                 status_code=500,
-                detail="Internal error: Image URLs not available. This should not happen in image-to-image pipeline."
+                detail="Internal error: product_main_url not available."
             )
         
-        # ALWAYS use image-to-image mode and model (this is an image-to-image pipeline)
-        generation_mode = "image-to-image"
-        model_name = "fal-ai/flux-2/lora/edit"  # ALWAYS use image-to-image editing model (FLUX.2 [dev])
+        # Identity selection: avatar primary -> face_reference_url -> none
+        identity_face_url, identity_source = resolve_identity_face_url(user_id, face_reference_url)
+        if subject_kind == "product_only":
+            identity_face_url = None
+            identity_source = "none"
         
-        logger.info(f"Generating images for user {user_id} using Fal.ai {model_name} ({generation_mode} mode). Current coins: {coins}")
+        # Base image selection: background > product_main
+        if background_mode in ("preset", "upload") and background_url:
+            base_image_url = background_url
+            base_image_source = "background"
+        else:
+            base_image_url = product_main_url
+            base_image_source = "product_main"
+        
+        # Prompt augmentation rules
+        preset_tags = PRESET_META.get(background_preset_id or "", {}).get("tags", [])
+        is_tiktok_916 = aspect_ratio == "9:16"
+        if subject_kind == "product_only":
+            base_prompt = (
+                "natural minimally processed product photo, real-world camera capture, "
+                "real surface texture, realistic contact shadow under product, "
+                "natural highlight roll-off, subtle grain, "
+                "no humans, no person, no face, no hands, no mannequin, "
+                "no CGI gloss, no HDR, no oversharpen, no studio polish"
+            )
+        else:
+            base_prompt = "realistic human subject, natural skin texture, authentic fabric detail, true-to-life lighting"
+        prompt_parts = [base_prompt, prompt_to_use, ANTI_THROTTLE_PROMPT, build_garment_hint(product_main_url, product_opt_url, background_mode)]
+        if "seated" in preset_tags and subject_kind == "human":
+            prompt_parts.append("seated pose, seated posture, realistic seated body position")
+        if "flatlay" in preset_tags:
+            prompt_parts.append("top-down camera angle, flatlay composition")
+        if "tabletop" in preset_tags:
+            prompt_parts.append("3/4 angle product composition on tabletop")
+        if is_tiktok_916 and subject_kind == "human":
+            prompt_parts.append(
+                "vertical smartphone framing, slight handheld camera feel, "
+                "subtle micro motion realism, natural depth variation, "
+                "slightly imperfect centering, organic composition, "
+                "natural ambient noise, social media candid vibe, "
+                "not overly staged, not catalog-perfect, "
+                "slight shoulder asymmetry, micro head tilt, relaxed hand position, "
+                "half-body or 3/4 body framing, avoid perfect centered symmetry"
+            )
+            prompt_parts.append("slight exposure inconsistency typical of handheld phone capture")
+        if is_tiktok_916 and subject_kind == "product_only":
+            prompt_parts.append(
+                "vertical product framing for social media, "
+                "natural depth separation, slight framing imperfection, "
+                "realistic ambient indoor lighting, not hyper-polished, "
+                "subtle shadow gradient, realistic contact shadow, "
+                "not stock photo, not commercial CGI, "
+                "center product with slight negative space top/bottom"
+            )
+            prompt_parts.append("slight exposure inconsistency typical of handheld phone capture")
+        if background_mode == "remove":
+            prompt_parts.append("plain neutral wall, soft shadow, no cutout look")
+        elif background_mode in ("preset", "upload"):
+            prompt_parts.append("background unchanged, grounded contact shadow, natural edge blending")
+        if subject_kind == "human" and identity_face_url:
+            prompt_parts.append("use provided identity reference for face consistency")
+        if category == "Food & Beverage":
+            prompt_parts.append("natural steam/condensation realism, no oversaturation")
+        final_prompt = ". ".join([p for p in prompt_parts if p])
+        
+        # Strength rules (category/style/background overrides)
+        category_strength = resolve_strength_for_category(category, subject_kind, style, background_mode)
+        if "flatlay" in preset_tags and category_strength is None:
+            category_strength = DEFAULT_FLATLAY_STRENGTH
+        if category_strength is None:
+            if is_tiktok_916:
+                category_strength = DEFAULT_TIKTOK_STRENGTH_PRODUCT if subject_kind == "product_only" else DEFAULT_TIKTOK_STRENGTH_HUMAN
+            else:
+                category_strength = DEFAULT_REMOVE_STRENGTH if background_mode == "remove" else DEFAULT_STRENGTH
+        strength_value = request_strength if request_strength is not None else category_strength
+        final_strength = clamp(strength_value, 0.55, 0.75)
+        
+        # Guidance + steps guardrails
+        guidance_default = DEFAULT_TIKTOK_GUIDANCE_SCALE if is_tiktok_916 else DEFAULT_GUIDANCE_SCALE
+        final_guidance_scale = clamp(guidance_default, 5.0, 6.2)
+        final_num_steps = clamp_int(DEFAULT_NUM_STEPS, 26, 32)
+        
+        # Image size
+        final_image_size = request_image_size if request_image_size and request_image_size.get("width") and request_image_size.get("height") else DEFAULT_IMAGE_SIZE
+        
+        # ALWAYS use image-to-image mode and model
+        generation_mode = "image-to-image"
+        model_name = "fal-ai/flux-general/image-to-image"
+        
+        logger.info(f"Generating images for user {user_id} using fal {model_name} ({generation_mode} mode). Current coins: {coins}")
         logger.info(f"📝 FINAL PROMPT YANG DIKIRIM KE FAL.AI (IMAGE-TO-IMAGE PIPELINE):")
         logger.info(f"   Model: {model_name} (IMAGE-TO-IMAGE PIPELINE)")
         logger.info(f"   Mode: {generation_mode} (REQUIRED)")
-        logger.info(f"   Steps: 24 (INFERENCE, BUKAN training), CFG: 4.5, Image Strength: 0.67 (natural and realistic)")
-        logger.info(f"   Image Strength: 0.4 (FIXED: menjaga identitas wajah)")
-        logger.info(f"   Image URL: {init_image_url} (REQUIRED)")
-        logger.info(f"   Prompt: {prompt_to_use}")
-        logger.info(f"   Prompt length: {len(prompt_to_use)} chars")
-        logger.info(f"   Init image URL: YES (REQUIRED for image-to-image pipeline)")
+        logger.info(f"   Steps: {final_num_steps} (INFERENCE), CFG: {final_guidance_scale}, Strength: {final_strength}")
+        logger.info(f"   Image URL (base): {base_image_url}")
+        logger.info(f"   Base image source: {base_image_source}")
+        logger.info(f"   Identity source: {identity_source}")
+        logger.info(f"   Image size: {final_image_size}")
+        logger.info(f"   Prompt: {final_prompt}")
+        logger.info(f"   Prompt length: {len(final_prompt)} chars")
         logger.info(f"   ==========================================")
         
         # Save prompt to file for debugging
@@ -3662,47 +3850,82 @@ async def generate_image_saas(
             from debug_prompt_log import save_prompt_log
             fal_request_data = {
                 "model": model_name,
-                "prompt": prompt_to_use,
-                "num_inference_steps": 24,
-                "guidance_scale": 4.5
+                "prompt": final_prompt,
+                "num_inference_steps": final_num_steps,
+                "guidance_scale": final_guidance_scale,
+                "image_url": base_image_url,
+                "strength": final_strength,
+                "image_size": final_image_size
             }
-            # Image-to-image pipeline - always include image_urls (array) and image_strength
-            fal_request_data["image_strength"] = 0.67
-            fal_request_data["image_urls"] = init_image_urls  # flux-2/lora/edit menggunakan image_urls (array) - REQUIRED
+            if identity_face_url:
+                fal_request_data["ip_adapters"] = [{"image_url": identity_face_url, "scale": 0.7}]
             
             save_prompt_log(
                 request_data={
-                    "prompt": prompt_to_use,
-                    "image_url": init_image_url,  # Primary image URL for Fal.ai generation
-                    "all_uploaded_images": uploaded_images,  # All uploaded image URLs
-                    "primary_image_type": primary_image_type,  # Type of primary image
+                    "prompt": final_prompt,
+                    "base_image_url": base_image_url,
+                    "base_image_source": base_image_source,
+                    "identity_source": identity_source,
+                    "all_uploaded_images": uploaded_images,
                     "request_format": "multipart/form-data" if "multipart/form-data" in content_type else "application/json",
-                    "has_image_url": True  # Always True in image-to-image pipeline
                 },
-                enhanced_prompt=prompt_to_use,
+                enhanced_prompt=final_prompt,
                 fal_request=fal_request_data
             )
             logger.info(f"💾 Prompt saved to debug_prompt_log.json for debugging")
         except Exception as e:
             logger.warning(f"Failed to save prompt log: {str(e)}")
         
-        # Generate images dengan init_image_urls (image-to-image pipeline - REQUIRED)
-        # Use init_image_urls (multiple images array) - flux-2/lora/edit supports up to 3 images
-        # Use Fal.ai parameters from request (if provided), otherwise use defaults: image_strength=0.67, num_inference_steps=24, guidance_scale=4.5 (natural and realistic)
-        # Lower image strength (0.4) for identity preservation: face, fabric, color
+        # Generate images (image-to-image pipeline)
         fal_start = time.perf_counter()
+        ip_adapter_scale = clamp(DEFAULT_IP_ADAPTER_SCALE, 0.60, 0.78)
+        ip_adapters = [{"image_url": identity_face_url, "scale": ip_adapter_scale}] if identity_face_url else []
+        if subject_kind == "product_only":
+            final_negative_prompt = (
+                f"{NEGATIVE_PROMPT}, human, person, face, hands, mannequin"
+            )
+        else:
+            final_negative_prompt = NEGATIVE_PROMPT
+        if category == "Beauty":
+            final_negative_prompt = f"{final_negative_prompt}, heavy retouching, airbrushed skin, overly smoothed skin"
+
+        if content_type == "Model" and interaction == "one_hand_hold":
+            render_plan = {
+                "base_image_url": base_image_url,
+                "user_id": user_id,
+                "image_size": final_image_size,
+                "strength": final_strength,
+                "num_inference_steps": final_num_steps,
+                "guidance_scale": final_guidance_scale,
+                "negative_prompt": final_negative_prompt,
+            }
+            result = await run_presenter_one_hand(
+                product_main_url=product_main_url,
+                render_plan=render_plan,
+                fal_service=fal_service_module,
+                supabase_service=supabase_service_module
+            )
+            logger.info(f"Images generated successfully. Reducing coins by {image_batch_cost} for user {user_id}")
+            updated_profile = update_user_coins(user_id, -image_batch_cost)
+            remaining_coins = updated_profile.get("coins_balance", 0) if updated_profile else coins - image_batch_cost
+            return {
+                "output_url": result.get("output_url"),
+                "interaction": "one_hand_hold",
+                "remaining_coins": remaining_coins
+            }
         image_urls = await fal_generate_images(
-            prompt_to_use, 
-            num_images=1, 
-            init_image_urls=init_image_urls,
-            image_strength=fal_image_strength if fal_image_strength is not None else 0.67,
-            num_inference_steps=fal_num_inference_steps if fal_num_inference_steps is not None else 24,
-            guidance_scale=fal_guidance_scale if fal_guidance_scale is not None else 4.5,
-            negative_prompt=fal_negative_prompt,
-            aspect_ratio=aspect_ratio
+            final_prompt,
+            num_images=1,
+            image_url=base_image_url,
+            image_strength=final_strength,
+            num_inference_steps=final_num_steps,
+            guidance_scale=final_guidance_scale,
+            negative_prompt=final_negative_prompt,
+            image_size=final_image_size,
+            ip_adapters=ip_adapters
         )
         fal_elapsed = time.perf_counter() - fal_start
-        logger.info(f"⏱️ Fal.ai call time: {fal_elapsed:.2f}s")
+        logger.info(f"⏱️ fal call time: {fal_elapsed:.2f}s")
         
         # Only reduce coins if generation was successful (no exception raised)
         # Reduce coins_balance by 75 after successful generation
@@ -3720,19 +3943,19 @@ async def generate_image_saas(
         # Log debug info server-side only (no UI exposure)
         try:
             logger.info(
-                "Fal.ai debug info: model=%s mode=%s steps=%s guidance=%s strength=%s pipeline=%s format=%s prompt_len=%s image_url=%s",
+                "fal debug info: model=%s mode=%s steps=%s guidance=%s strength=%s pipeline=%s format=%s prompt_len=%s image_url=%s",
                 model_name,
                 generation_mode,
-                24,
-                4.5,
-                0.67,
+                final_num_steps,
+                final_guidance_scale,
+                final_strength,
                 "image-to-image",
                 "multipart/form-data" if "multipart/form-data" in content_type else "application/json",
-                len(prompt_to_use),
-                init_image_url
+                len(final_prompt),
+                base_image_url
             )
         except Exception as e:
-            logger.warning(f"Failed to log Fal.ai debug info: {str(e)}")
+            logger.warning(f"Failed to log fal debug info: {str(e)}")
         
         total_elapsed = time.perf_counter() - start_time
         logger.info(f"⏱️ Total generate-image time: {total_elapsed:.2f}s")
@@ -4312,7 +4535,7 @@ async def generate_video_saas(
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
     """
-    Generate video using Fal.ai kling-v2/video-generation
+    Generate video using fal kling-v2/video-generation
     Costs 5 coins from coins_balance
     """
     try:
@@ -4334,7 +4557,7 @@ async def generate_video_saas(
                 detail="Insufficient coins. You need 5 coins to generate a video. Please top up."
             )
         
-        # Generate video using Fal.ai
+        # Generate video using fal
         video_url = await fal_generate_video(request.prompt, request.image_url)
         
         # Deduct 5 coins
