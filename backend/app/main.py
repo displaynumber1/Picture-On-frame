@@ -43,6 +43,7 @@ from app.services.fal_service import (
 import app.services.fal_service as fal_service_module
 import app.services.supabase_service as supabase_service_module
 from app.services.presenter_pipeline import run_presenter_one_hand
+from app.services.auth_service import extract_bearer_token, verify_user_token
 from app.services.video_service import create_video_from_url, check_ffmpeg_available, get_ffmpeg_path
 from app.services.video_config import get_video_presets, get_video_preset
 from app.services.human_video_service import check_ffmpeg_available as check_ffmpeg_available_human
@@ -87,7 +88,6 @@ from app.services.supabase_service import (
     insert_subscription_reminder,
     get_user_by_id,
     ensure_user_profile,
-    verify_user_token,
     upload_image_to_supabase_storage,
     convert_base64_to_image_bytes,
     get_user_identity_record,
@@ -131,21 +131,22 @@ RATE_LIMIT_ANON_LIMIT = 10
 
 # Authentication dependency
 async def get_current_user(request: Request, authorization: Optional[str] = Header(None)) -> Dict[str, Any]:
-    """Verify Supabase JWT token and return user info."""
-    if not authorization:
+    """Verify Supabase access token and return user info."""
+    try:
+        token = extract_bearer_token(authorization)
+    except ValueError:
         raise HTTPException(status_code=401, detail="Authorization header required")
 
     try:
-        # Extract token from "Bearer <token>" format
-        token = authorization.replace("Bearer ", "").strip()
-        user = verify_user_token(token)
+        user = await verify_user_token(token)
         if not user:
             raise HTTPException(status_code=401, detail="Invalid or expired token")
+
         user_id = user.get("id")
         if not user_id:
             raise HTTPException(status_code=401, detail="User ID not found in token")
 
-        # SECURITY: validate profile existence and status; no side effects in auth.
+        # SECURITY: validate profile existence and status
         profile = get_user_profile(user_id)
         if not profile:
             try:
@@ -156,14 +157,16 @@ async def get_current_user(request: Request, authorization: Optional[str] = Head
             except Exception as e:
                 logger.error(f"Error ensuring user profile: {str(e)}", exc_info=True)
                 raise HTTPException(status_code=500, detail="Failed to initialize user profile")
+
         if "is_active" in profile and profile.get("is_active") is False:
             raise HTTPException(status_code=403, detail="Account disabled")
 
-        # SECURITY: enforce role from DB (not metadata).
+        # SECURITY: enforce role from DB (not metadata)
         role_value = profile.get("role") or profile.get("role_user") or "user"
         user["role"] = role_value
         request.state.user_id = user_id
         return user
+
     except HTTPException:
         raise
     except Exception as e:
@@ -176,11 +179,12 @@ async def get_current_user_raw(request: Request, authorization: Optional[str] = 
     # SECURITY: disable debug auth in non-development environments.
     if os.getenv("ENV", "").lower() != "development":
         raise HTTPException(status_code=404, detail="Not found")
-    if not authorization:
+    try:
+        token = extract_bearer_token(authorization)
+    except ValueError:
         raise HTTPException(status_code=401, detail="Authorization header required")
     try:
-        token = authorization.replace("Bearer ", "").strip()
-        user = verify_user_token(token)
+        user = await verify_user_token(token)
         if not user:
             raise HTTPException(status_code=401, detail="Invalid or expired token")
         user_id = user.get("id")
@@ -6587,7 +6591,7 @@ async def autopost_ws(websocket: WebSocket):
     if not token:
         await websocket.close(code=1008)
         return
-    user = verify_user_token(token)
+    user = await verify_user_token(token)
     if not user or not user.get("id"):
         await websocket.close(code=1008)
         return
